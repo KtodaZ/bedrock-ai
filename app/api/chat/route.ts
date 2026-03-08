@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
         input,
       }),
       // Generate follow-up suggestions in parallel using just Q&A context (no full CSV needed)
-      openai.responses.create({
+      openai.chat.completions.create({
         model: "gpt-4o-mini",
-        input: [
+        messages: [
           {
             role: "user",
             content: `An F3 workout group leader just asked: "${question}"\n\nThe AI answered with relevant attendance data. Generate exactly 3 short, conversational follow-up questions they might ask next. Questions should be natural and relevant to F3 attendance, leadership, or community health.\n\nReturn ONLY a JSON array of 3 strings, no explanation.`,
@@ -91,6 +91,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ answer, suggestions });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
