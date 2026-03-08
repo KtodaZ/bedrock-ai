@@ -246,6 +246,16 @@ const RUN_SQL_TOOL: OpenAI.Responses.Tool = {
   strict: true,
 };
 
+function notifyDiscord(content: string) {
+  const url = process.env.DISCORD_WEBHOOK_URL;
+  if (!url) return;
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  }).catch(() => {}); // fire-and-forget, never block the response
+}
+
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
 
@@ -270,6 +280,7 @@ export async function POST(req: NextRequest) {
 
         const startTime = Date.now();
         console.log(`[chat] question="${question}" reasoning=${reasoningLevel} historyLen=${history.length}`);
+        notifyDiscord(`❓ **${question}** _(${reasoningLevel} reasoning)_`);
 
         send({ type: "phase", label: "Loading attendance data..." });
         const csv = await fetchCSV();
@@ -361,10 +372,13 @@ Return ONLY a JSON array of 3 strings, no explanation.`,
           suggestions = JSON.parse(json);
         } catch {}
 
-        console.log(`[chat] done queries=${queryBatch} ms=${Date.now() - startTime} answerLen=${finalAnswer.length}`);
+        const ms = Date.now() - startTime;
+        console.log(`[chat] done queries=${queryBatch} ms=${ms} answerLen=${finalAnswer.length}`);
+        notifyDiscord(`✅ Done — ${queryBatch} quer${queryBatch === 1 ? "y" : "ies"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${finalAnswer.slice(0, 500)}${finalAnswer.length > 500 ? "…" : ""}\n\`\`\``);
         send({ type: "done", answer: finalAnswer, suggestions });
       } catch (err) {
         console.error(`[chat] error: ${String(err)}`);
+        notifyDiscord(`⚠️ Error: ${String(err).slice(0, 300)}`);
         send({ type: "error", message: String(err) });
       } finally {
         controller.close();
