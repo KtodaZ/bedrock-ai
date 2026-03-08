@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
+import { useQuery } from "@tanstack/react-query";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,8 +19,6 @@ interface Conversation {
 }
 
 const STORAGE_KEY = "bedrock-conversations";
-const SUGGESTIONS_KEY = "bedrock-suggestions";
-const SUGGESTIONS_TTL_MS = 24 * 60 * 60 * 1000; // refresh daily
 
 const FALLBACK_SUGGESTIONS = [
   "Who is showing up the most in the last 30 days?",
@@ -65,8 +64,17 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
+    queryKey: ["suggestions"],
+    queryFn: async () => {
+      const res = await fetch("/api/suggestions");
+      if (!res.ok) throw new Error("Failed to fetch suggestions");
+      const { suggestions } = await res.json();
+      return suggestions as string[];
+    },
+    placeholderData: FALLBACK_SUGGESTIONS,
+  });
+  const suggestions = suggestionsData ?? FALLBACK_SUGGESTIONS;
   const [reasoningLevel, setReasoningLevel] = useState<"low" | "medium" | "high">("low");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -75,31 +83,6 @@ export default function Home() {
     setConversations(loadConversations());
   }, []);
 
-  useEffect(() => {
-    // Load suggestions from cache or fetch fresh
-    try {
-      const raw = localStorage.getItem(SUGGESTIONS_KEY);
-      if (raw) {
-        const { suggestions: cached, fetchedAt } = JSON.parse(raw);
-        if (Date.now() - fetchedAt < SUGGESTIONS_TTL_MS) {
-          setSuggestions(cached);
-          setSuggestionsLoading(false);
-          return;
-        }
-      }
-    } catch {}
-
-    fetch("/api/suggestions")
-      .then((r) => r.json())
-      .then(({ suggestions: fresh }) => {
-        if (Array.isArray(fresh) && fresh.length > 0) {
-          setSuggestions(fresh);
-          localStorage.setItem(SUGGESTIONS_KEY, JSON.stringify({ suggestions: fresh, fetchedAt: Date.now() }));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setSuggestionsLoading(false));
-  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
