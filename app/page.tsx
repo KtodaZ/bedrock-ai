@@ -373,9 +373,9 @@ export default function Home() {
               style={{ background: "rgba(255,255,255,0.03)" }}
               title="Reasoning level"
             >
-              <option value="low" style={{ background: "#0f0f1a" }}>Low</option>
-              <option value="medium" style={{ background: "#0f0f1a" }}>Medium</option>
-              <option value="high" style={{ background: "#0f0f1a" }}>High</option>
+              <option value="low" style={{ background: "#0f0f1a" }}>Low Reasoning</option>
+              <option value="medium" style={{ background: "#0f0f1a" }}>Medium Reasoning</option>
+              <option value="high" style={{ background: "#0f0f1a" }}>High Reasoning</option>
             </select>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
