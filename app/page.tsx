@@ -60,10 +60,13 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [phaseLabel, setPhaseLabel] = useState<string>("");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
     queryKey: ["suggestions"],
     queryFn: async () => {
@@ -82,6 +85,17 @@ export default function Home() {
   useEffect(() => {
     setConversations(loadConversations());
   }, []);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [settingsOpen]);
 
 
   useEffect(() => {
@@ -118,6 +132,7 @@ export default function Home() {
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
+    setPhaseLabel("Starting...");
 
     try {
       const res = await fetch("/api/chat", {
@@ -129,15 +144,54 @@ export default function Home() {
           reasoningLevel,
         }),
       });
-      const data = await res.json();
-      const assistantMsg: Message = {
-        role: "assistant",
-        content: data.answer ?? data.error ?? "Something went wrong.",
-        suggestions: data.suggestions ?? [],
-      };
-      const finalMessages = [...nextMessages, assistantMsg];
-      setMessages(finalMessages);
-      persistConversation(currentId, finalMessages);
+
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse complete SSE messages (delimited by double newline)
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
+          if (!dataLine) continue;
+          let event: { type: string; label?: string; answer?: string; suggestions?: string[]; message?: string };
+          try {
+            event = JSON.parse(dataLine.slice(6));
+          } catch {
+            continue;
+          }
+
+          if (event.type === "phase" && event.label) {
+            setPhaseLabel(event.label);
+          } else if (event.type === "done") {
+            const assistantMsg: Message = {
+              role: "assistant",
+              content: event.answer ?? "No answer returned.",
+              suggestions: event.suggestions ?? [],
+            };
+            const finalMessages = [...nextMessages, assistantMsg];
+            setMessages(finalMessages);
+            persistConversation(currentId, finalMessages);
+          } else if (event.type === "error") {
+            const errMsg: Message = {
+              role: "assistant",
+              content: `Error: ${event.message ?? "Something went wrong."}`,
+            };
+            const finalMessages = [...nextMessages, errMsg];
+            setMessages(finalMessages);
+            persistConversation(currentId, finalMessages);
+          }
+        }
+      }
     } catch {
       const errMsg: Message = { role: "assistant", content: "Failed to reach the server. Try again." };
       const finalMessages = [...nextMessages, errMsg];
@@ -145,6 +199,7 @@ export default function Home() {
       persistConversation(currentId, finalMessages);
     } finally {
       setLoading(false);
+      setPhaseLabel("");
       inputRef.current?.focus();
     }
   }
@@ -171,8 +226,22 @@ export default function Home() {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
+  function stripMarkdown(md: string): string {
+    return md
+      .replace(/^#{1,6}\s+/gm, "")          // headings
+      .replace(/\*\*(.+?)\*\*/g, "$1")       // bold
+      .replace(/\*(.+?)\*/g, "$1")           // italic
+      .replace(/`(.+?)`/g, "$1")             // inline code
+      .replace(/^[-*]\s+/gm, "• ")           // unordered list bullets
+      .replace(/^\d+\.\s+/gm, (m) => m)      // keep numbered list as-is
+      .replace(/^-{3,}$/gm, "")              // horizontal rules
+      .replace(/\[(.+?)\]\(.+?\)/g, "$1")    // links
+      .replace(/\n{3,}/g, "\n\n")            // collapse excess blank lines
+      .trim();
+  }
+
   function copyMessage(content: string, index: number) {
-    navigator.clipboard.writeText(content).then(() => {
+    navigator.clipboard.writeText(stripMarkdown(content)).then(() => {
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 2000);
     });
@@ -202,7 +271,7 @@ export default function Home() {
           >
             B
           </div>
-          <span className="text-sm font-semibold text-white/70 truncate">Bedrock AI</span>
+          <span className="text-sm font-semibold text-white/70 truncate">Bedrock Data AI</span>
         </div>
         <button
           onClick={() => setSidebarOpen(false)}
@@ -331,7 +400,7 @@ export default function Home() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <span className="font-semibold text-white/80 tracking-tight text-sm">Bedrock AI</span>
+            <span className="font-semibold text-white/80 tracking-tight text-sm">Bedrock Data AI</span>
             <span className="hidden sm:inline text-xs text-white/25 border border-white/10 rounded-full px-2 py-0.5">
               F3 Intelligence
             </span>
@@ -349,17 +418,6 @@ export default function Home() {
                 <span className="hidden sm:inline text-xs">New chat</span>
               </button>
             )}
-            <select
-              value={reasoningLevel}
-              onChange={(e) => setReasoningLevel(e.target.value as "low" | "medium" | "high")}
-              className="text-xs rounded-lg px-2 py-1.5 border border-white/10 bg-transparent text-white/40 hover:text-white/60 hover:border-white/20 transition-colors cursor-pointer outline-none"
-              style={{ background: "rgba(255,255,255,0.03)" }}
-              title="Reasoning level"
-            >
-              <option value="low" style={{ background: "#0f0f1a" }}>Low Reasoning</option>
-              <option value="medium" style={{ background: "#0f0f1a" }}>Medium Reasoning</option>
-              <option value="high" style={{ background: "#0f0f1a" }}>High Reasoning</option>
-            </select>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs text-white/30">Live data</span>
@@ -377,10 +435,10 @@ export default function Home() {
                     className="text-4xl font-bold mb-3 bg-clip-text text-transparent"
                     style={{ backgroundImage: "linear-gradient(135deg, #a78bfa, #60a5fa, #f0f0ff)" }}
                   >
-                    Ask anything about Bedrock
+                    Bedrock Data AI
                   </h1>
                   <p className="text-white/40 text-sm">
-                    Real-time answers from your workout attendance data
+                    Precise answers from your F3 workout attendance data
                   </p>
                 </div>
 
@@ -432,17 +490,22 @@ export default function Home() {
                         {msg.role === "assistant" ? (
                           <ReactMarkdown
                             components={{
-                              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                              ul: ({ children }) => <ul className="list-disc list-inside mb-1 space-y-0.5">{children}</ul>,
-                              ol: ({ children }) => <ol className="list-decimal list-inside mb-1 space-y-0.5">{children}</ol>,
-                              li: ({ children }) => <li>{children}</li>,
+                              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                              ul: ({ children }) => <ul className="mb-3 last:mb-0 space-y-1 pl-1">{children}</ul>,
+                              ol: ({ children }) => <ol className="mb-3 last:mb-0 space-y-1 pl-1 list-decimal list-inside">{children}</ol>,
+                              li: ({ children }) => (
+                                <li className="flex gap-2 items-start">
+                                  <span className="mt-1.5 w-1 h-1 rounded-full bg-violet-400/70 flex-shrink-0" />
+                                  <span>{children}</span>
+                                </li>
+                              ),
                               strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-                              em: ({ children }) => <em className="italic">{children}</em>,
-                              h1: ({ children }) => <h1 className="text-base font-bold mb-1">{children}</h1>,
-                              h2: ({ children }) => <h2 className="text-sm font-bold mb-1">{children}</h2>,
-                              h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
+                              em: ({ children }) => <em className="italic text-white/60">{children}</em>,
+                              h1: ({ children }) => <h1 className="text-base font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h1>,
+                              h2: ({ children }) => <h2 className="text-sm font-bold text-white/90 mt-3 mb-1.5 first:mt-0">{children}</h2>,
+                              h3: ({ children }) => <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wide mt-3 mb-1.5 first:mt-0">{children}</h3>,
                               code: ({ children }) => <code className="bg-white/10 rounded px-1 text-xs font-mono">{children}</code>,
-                              hr: () => <hr className="border-white/10 my-2" />,
+                              hr: () => <hr className="border-white/8 my-3" />,
                             }}
                           >
                             {msg.content}
@@ -497,22 +560,27 @@ export default function Home() {
                 {loading && (
                   <div className="flex gap-3 justify-start">
                     <div
-                      className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold"
+                      className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
                       style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
                     >
                       B
                     </div>
-                    <div
-                      className="rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                    >
-                      {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          className="w-1.5 h-1.5 rounded-full bg-violet-400"
-                          style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
-                        />
-                      ))}
+                    <div className="flex flex-col gap-1.5">
+                      {phaseLabel && (
+                        <p className="text-xs text-white/35 italic pl-1">{phaseLabel}</p>
+                      )}
+                      <div
+                        className="rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                      >
+                        {[0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="w-1.5 h-1.5 rounded-full bg-violet-400"
+                            style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -525,44 +593,95 @@ export default function Home() {
               className="sticky bottom-0 pb-4 pt-2"
               style={{ background: "linear-gradient(to top, #07070f 80%, transparent)" }}
             >
-              <div
-                className="relative rounded-2xl p-px"
-                style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(37,99,235,0.5))" }}
-              >
-                <div
-                  className="relative rounded-2xl flex items-end gap-3 px-4 py-3"
-                  style={{ background: "#0f0f1a" }}
-                >
-                  <textarea
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask about workouts, attendance, leaders..."
-                    rows={1}
-                    className="flex-1 bg-transparent placeholder-white/20 text-sm resize-none outline-none leading-relaxed max-h-32 overflow-y-auto scrollbar-thin"
-                    style={{ minHeight: "24px", color: "rgba(255,255,255,0.9)" }}
-                    onInput={(e) => {
-                      const t = e.target as HTMLTextAreaElement;
-                      t.style.height = "auto";
-                      t.style.height = `${Math.min(t.scrollHeight, 128)}px`;
+              <div ref={settingsRef} className="relative">
+                {/* Settings popover */}
+                {settingsOpen && (
+                  <div
+                    className="absolute bottom-full mb-2 left-0 rounded-xl p-3 flex flex-col gap-2 z-50"
+                    style={{
+                      background: "#13131f",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                      minWidth: "200px",
                     }}
-                  />
-                  <button
-                    onClick={() => sendMessage(input)}
-                    disabled={!input.trim() || loading}
-                    className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
-                    style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13" />
-                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                    </svg>
-                  </button>
+                    <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium px-1 mb-0.5">
+                      Reasoning effort
+                    </p>
+                    {(["low", "medium", "high"] as const).map((level) => (
+                      <button
+                        key={level}
+                        onClick={() => { setReasoningLevel(level); setSettingsOpen(false); }}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-100 cursor-pointer text-left"
+                        style={
+                          reasoningLevel === level
+                            ? { background: "rgba(124,58,237,0.2)", color: "rgba(167,139,250,1)" }
+                            : { background: "transparent", color: "rgba(255,255,255,0.45)" }
+                        }
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: reasoningLevel === level ? "#a78bfa" : "rgba(255,255,255,0.2)" }}
+                        />
+                        <span className="capitalize">{level}</span>
+                        <span className="ml-auto text-[10px] opacity-50">
+                          {level === "low" ? "Faster" : level === "medium" ? "Balanced" : "Most thorough"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div
+                  className="relative rounded-2xl p-px"
+                  style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(37,99,235,0.5))" }}
+                >
+                  <div
+                    className="relative rounded-2xl flex items-end gap-3 px-4 py-3"
+                    style={{ background: "#0f0f1a" }}
+                  >
+                    <button
+                      onClick={() => setSettingsOpen((o) => !o)}
+                      className="flex-shrink-0 mb-0.5 transition-colors duration-150 cursor-pointer"
+                      title="Settings"
+                      style={{ color: settingsOpen ? "rgba(167,139,250,0.8)" : "rgba(255,255,255,0.2)" }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                    </button>
+                    <textarea
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask about workouts, attendance, leaders..."
+                      rows={1}
+                      className="flex-1 bg-transparent placeholder-white/20 text-sm resize-none outline-none leading-relaxed max-h-32 overflow-y-auto scrollbar-thin"
+                      style={{ minHeight: "24px", color: "rgba(255,255,255,0.9)" }}
+                      onInput={(e) => {
+                        const t = e.target as HTMLTextAreaElement;
+                        t.style.height = "auto";
+                        t.style.height = `${Math.min(t.scrollHeight, 128)}px`;
+                      }}
+                    />
+                    <button
+                      onClick={() => sendMessage(input)}
+                      disabled={!input.trim() || loading}
+                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
+                      style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13" />
+                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
               <p className="text-center text-xs mt-2" style={{ color: "rgba(255,255,255,0.15)" }}>
-                Data refreshes every 10 minutes · Press Enter to send
+                Queries your live attendance data · Press Enter to send
               </p>
             </div>
           </div>

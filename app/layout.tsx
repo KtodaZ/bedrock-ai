@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bedrock AI",
-  description: "F3 workout data intelligence",
+  title: "Bedrock Data AI",
+  description: "F3 workout attendance intelligence",
 };
 
 export default function RootLayout({
