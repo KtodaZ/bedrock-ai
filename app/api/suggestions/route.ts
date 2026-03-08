@@ -25,10 +25,9 @@ export async function GET() {
   try {
     const csv = await fetchCSV();
 
-    const response = await openai.responses.create({
-      model: "gpt-5.4",
-      reasoning: { effort: "low" },
-      input: [
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
         {
           role: "system",
           content: `You are Bedrock, an AI assistant for an F3 Nation workout group. F3 terminology: PAX = members, Q = workout leader, FNG = first-timer, Site = workout location, Kotter = someone who hasn't posted in 30+ days, HIM = High Impact Man.`,
@@ -49,7 +48,7 @@ Data:\n${csv}`,
       ],
     });
 
-    const raw = response.output_text?.trim() ?? "[]";
+    const raw = response.choices[0]?.message?.content?.trim() ?? "[]";
     // Strip markdown code fences if present
     const json = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
     const suggestions = JSON.parse(json) as string[];
