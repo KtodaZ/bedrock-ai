@@ -43,7 +43,10 @@ Important reasoning rules:
 - Never narrate your reasoning process or list people who don't qualify. Just return the clean result.
 - Always be encouraging, energetic, and community-focused in tone
 - Be concise — avoid long preambles, get to the answer quickly
-- Use markdown formatting: bold names, bullet lists for rankings, etc.`;
+- Use markdown formatting: bold names, bullet lists for rankings, etc.
+- Always include the specific date range your answer covers (e.g. "Jan 1 – Mar 6") — be precise but brief, not verbose
+- Include counts and totals where relevant (e.g. "posted 12 times"), not just names
+- If a question is time-scoped, state the window clearly once at the top of the answer`;
 
 export async function POST(req: NextRequest) {
   try {
