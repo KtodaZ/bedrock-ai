@@ -4,10 +4,18 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
 
+interface QueryLogEntry {
+  index: number;
+  reason: string;
+  sql: string;
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
   suggestions?: string[];
+  queryLog?: QueryLogEntry[];
+  reasoningUsed?: string;
 }
 
 interface Conversation {
@@ -65,6 +73,7 @@ export default function Home() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [expandedQueries, setExpandedQueries] = useState<Set<number>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
@@ -78,7 +87,7 @@ export default function Home() {
     placeholderData: FALLBACK_SUGGESTIONS,
   });
   const suggestions = suggestionsData ?? FALLBACK_SUGGESTIONS;
-  const [reasoningLevel, setReasoningLevel] = useState<"low" | "medium" | "high">("low");
+  const [reasoningLevel, setReasoningLevel] = useState<"auto" | "low" | "medium" | "high">("auto");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -133,6 +142,7 @@ export default function Home() {
     setInput("");
     setLoading(true);
     setPhaseLabel("Starting...");
+    const queryLog: QueryLogEntry[] = [];
 
     try {
       const res = await fetch("/api/chat", {
@@ -163,7 +173,7 @@ export default function Home() {
         for (const part of parts) {
           const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
           if (!dataLine) continue;
-          let event: { type: string; label?: string; answer?: string; suggestions?: string[]; message?: string };
+          let event: { type: string; label?: string; answer?: string; suggestions?: string[]; message?: string; index?: number; reason?: string; sql?: string; reasoningLevel?: string };
           try {
             event = JSON.parse(dataLine.slice(6));
           } catch {
@@ -172,11 +182,15 @@ export default function Home() {
 
           if (event.type === "phase" && event.label) {
             setPhaseLabel(event.label);
+          } else if (event.type === "query") {
+            queryLog.push({ index: event.index!, reason: event.reason!, sql: event.sql! });
           } else if (event.type === "done") {
             const assistantMsg: Message = {
               role: "assistant",
               content: event.answer ?? "No answer returned.",
               suggestions: event.suggestions ?? [],
+              queryLog: [...queryLog],
+              reasoningUsed: event.reasoningLevel,
             };
             const finalMessages = [...nextMessages, assistantMsg];
             setMessages(finalMessages);
@@ -418,6 +432,18 @@ export default function Home() {
                 <span className="hidden sm:inline text-xs">New chat</span>
               </button>
             )}
+            <select
+              value={reasoningLevel}
+              onChange={(e) => setReasoningLevel(e.target.value as "auto" | "low" | "medium" | "high")}
+              className="text-xs rounded-lg px-2 py-1.5 border border-white/10 bg-transparent text-white/40 hover:text-white/60 hover:border-white/20 transition-colors cursor-pointer outline-none"
+              style={{ background: "rgba(255,255,255,0.03)" }}
+              title="Reasoning level"
+            >
+              <option value="auto" style={{ background: "#0f0f1a" }}>Auto</option>
+              <option value="low" style={{ background: "#0f0f1a" }}>Low</option>
+              <option value="medium" style={{ background: "#0f0f1a" }}>Medium</option>
+              <option value="high" style={{ background: "#0f0f1a" }}>High</option>
+            </select>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs text-white/30">Live data</span>
@@ -539,6 +565,40 @@ export default function Home() {
                           )}
                         </button>
                       )}
+                      {msg.role === "assistant" && msg.queryLog && msg.queryLog.length > 0 && (
+                        <div className="mt-1">
+                          <button
+                            onClick={() => setExpandedQueries((prev) => {
+                              const next = new Set(prev);
+                              next.has(i) ? next.delete(i) : next.add(i);
+                              return next;
+                            })}
+                            className="flex items-center gap-1.5 text-[11px] transition-colors cursor-pointer"
+                            style={{ color: "rgba(255,255,255,0.2)" }}
+                          >
+                            <svg
+                              width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                              style={{ transform: expandedQueries.has(i) ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
+                            >
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                            {msg.queryLog.length} {msg.queryLog.length === 1 ? "query" : "queries"}
+                            {msg.reasoningUsed && <span className="opacity-60">· {msg.reasoningUsed}</span>}
+                          </button>
+                          {expandedQueries.has(i) && (
+                            <div className="mt-2 flex flex-col gap-2">
+                              {msg.queryLog.map((q) => (
+                                <div key={q.index} className="rounded-lg px-3 py-2.5 text-[11px] font-mono" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                  {q.reason && (
+                                    <p className="text-white/35 mb-1.5 font-sans text-[10px] uppercase tracking-wide">{q.reason}</p>
+                                  )}
+                                  <p className="text-violet-300/70 leading-relaxed whitespace-pre-wrap break-all">{q.sql}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && i === messages.length - 1 && (
                         <div className="flex flex-col gap-1.5 mt-1">
                           {msg.suggestions.map((s) => (
@@ -593,45 +653,7 @@ export default function Home() {
               className="sticky bottom-0 pb-4 pt-2"
               style={{ background: "linear-gradient(to top, #07070f 80%, transparent)" }}
             >
-              <div ref={settingsRef} className="relative">
-                {/* Settings popover */}
-                {settingsOpen && (
-                  <div
-                    className="absolute bottom-full mb-2 left-0 rounded-xl p-3 flex flex-col gap-2 z-50"
-                    style={{
-                      background: "#13131f",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                      minWidth: "200px",
-                    }}
-                  >
-                    <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium px-1 mb-0.5">
-                      Reasoning effort
-                    </p>
-                    {(["low", "medium", "high"] as const).map((level) => (
-                      <button
-                        key={level}
-                        onClick={() => { setReasoningLevel(level); setSettingsOpen(false); }}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-100 cursor-pointer text-left"
-                        style={
-                          reasoningLevel === level
-                            ? { background: "rgba(124,58,237,0.2)", color: "rgba(167,139,250,1)" }
-                            : { background: "transparent", color: "rgba(255,255,255,0.45)" }
-                        }
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ background: reasoningLevel === level ? "#a78bfa" : "rgba(255,255,255,0.2)" }}
-                        />
-                        <span className="capitalize">{level}</span>
-                        <span className="ml-auto text-[10px] opacity-50">
-                          {level === "low" ? "Faster" : level === "medium" ? "Balanced" : "Most thorough"}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
+              <div className="relative">
                 <div
                   className="relative rounded-2xl p-px"
                   style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(37,99,235,0.5))" }}
@@ -640,17 +662,6 @@ export default function Home() {
                     className="relative rounded-2xl flex items-end gap-3 px-4 py-3"
                     style={{ background: "#0f0f1a" }}
                   >
-                    <button
-                      onClick={() => setSettingsOpen((o) => !o)}
-                      className="flex-shrink-0 mb-0.5 transition-colors duration-150 cursor-pointer"
-                      title="Settings"
-                      style={{ color: settingsOpen ? "rgba(167,139,250,0.8)" : "rgba(255,255,255,0.2)" }}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="3" />
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                      </svg>
-                    </button>
                     <textarea
                       ref={inputRef}
                       value={input}

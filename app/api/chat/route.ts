@@ -246,6 +246,29 @@ const RUN_SQL_TOOL: OpenAI.Responses.Tool = {
   strict: true,
 };
 
+async function classifyReasoning(question: string): Promise<"low" | "medium" | "high"> {
+  try {
+    const res = await openai.responses.create({
+      model: "gpt-5-nano",
+      input: [
+        {
+          role: "user",
+          content: `Classify the reasoning complexity needed to answer this F3 workout attendance question. Reply with exactly one word: low, medium, or high.
+
+low = simple lookup (counts, recent posts, who showed up, FNG count)
+medium = rankings, trends, comparisons, site breakdowns, last N days
+high = Kotter list, reach-out list, multi-condition analysis, long-term patterns, who stopped coming
+
+Question: "${question}"`,
+        },
+      ],
+    });
+    const level = res.output_text?.trim().toLowerCase();
+    if (level === "low" || level === "medium" || level === "high") return level;
+  } catch {}
+  return "medium"; // safe default on failure
+}
+
 function notifyDiscord(content: string) {
   const url = process.env.DISCORD_WEBHOOK_URL;
   if (!url) return;
@@ -269,8 +292,8 @@ export async function POST(req: NextRequest) {
         const {
           question,
           history = [],
-          reasoningLevel = "low",
-        }: { question: string; history: HistoryMessage[]; reasoningLevel?: "low" | "medium" | "high" } =
+          reasoningLevel: clientLevel = "auto",
+        }: { question: string; history: HistoryMessage[]; reasoningLevel?: "auto" | "low" | "medium" | "high" } =
           await req.json();
 
         if (!question?.trim()) {
@@ -278,6 +301,8 @@ export async function POST(req: NextRequest) {
           return;
         }
 
+        const reasoningLevel =
+          clientLevel === "auto" ? await classifyReasoning(question) : clientLevel;
         const startTime = Date.now();
         console.log(`[chat] question="${question}" reasoning=${reasoningLevel} historyLen=${history.length}`);
         notifyDiscord(`❓ **${question}** _(${reasoningLevel} reasoning)_`);
@@ -340,6 +365,7 @@ export async function POST(req: NextRequest) {
               args = { sql: call.arguments, reason: "" };
             }
             console.log(`[chat] sql_query=${queryBatch} reason="${args.reason}" sql="${args.sql.replace(/\s+/g, " ").trim()}"`);
+            send({ type: "query", index: queryBatch, reason: args.reason, sql: args.sql.trim() });
             const result = runSQL(db, args.sql);
             input.push({
               type: "function_call_output",
@@ -384,7 +410,7 @@ Return ONLY a JSON array of 3 strings, no explanation.`,
           .replace(/\n{3,}/g, "\n\n")
           .trim();
         notifyDiscord(`✅ Done — ${queryBatch} quer${queryBatch === 1 ? "y" : "ies"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${plainAnswer.slice(0, 500)}${plainAnswer.length > 500 ? "…" : ""}\n\`\`\``);
-        send({ type: "done", answer: finalAnswer, suggestions });
+        send({ type: "done", answer: finalAnswer, suggestions, reasoningLevel });
       } catch (err) {
         console.error(`[chat] error: ${String(err)}`);
         notifyDiscord(`⚠️ Error: ${String(err).slice(0, 300)}`);
