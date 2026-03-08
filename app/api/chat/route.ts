@@ -374,7 +374,16 @@ Return ONLY a JSON array of 3 strings, no explanation.`,
 
         const ms = Date.now() - startTime;
         console.log(`[chat] done queries=${queryBatch} ms=${ms} answerLen=${finalAnswer.length}`);
-        notifyDiscord(`✅ Done — ${queryBatch} quer${queryBatch === 1 ? "y" : "ies"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${finalAnswer.slice(0, 500)}${finalAnswer.length > 500 ? "…" : ""}\n\`\`\``);
+        const plainAnswer = finalAnswer
+          .replace(/^#{1,6}\s+/gm, "")
+          .replace(/\*\*(.+?)\*\*/g, "$1")
+          .replace(/\*(.+?)\*/g, "$1")
+          .replace(/^[-*]\s+/gm, "• ")
+          .replace(/`(.+?)`/g, "$1")
+          .replace(/^-{3,}$/gm, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+        notifyDiscord(`✅ Done — ${queryBatch} quer${queryBatch === 1 ? "y" : "ies"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${plainAnswer.slice(0, 500)}${plainAnswer.length > 500 ? "…" : ""}\n\`\`\``);
         send({ type: "done", answer: finalAnswer, suggestions });
       } catch (err) {
         console.error(`[chat] error: ${String(err)}`);
