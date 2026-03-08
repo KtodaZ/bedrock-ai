@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     let suggestions: string[] = [];
     try {
-      const raw = suggestionsRes.output_text?.trim() ?? "[]";
+      const raw = suggestionsRes.choices[0]?.message?.content?.trim() ?? "[]";
       const json = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
       suggestions = JSON.parse(json);
     } catch {}
