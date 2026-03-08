@@ -43,8 +43,7 @@ Important reasoning rules:
 - Never narrate your reasoning process or list people who don't qualify. Just return the clean result.
 - Always be encouraging, energetic, and community-focused in tone
 - Be concise — avoid long preambles, get to the answer quickly
-- Use markdown formatting: bold names, bullet lists for rankings, etc.
-- After every response, always call the suggest_followups function with 3 short, relevant follow-up questions the user might want to ask next.`;
+- Use markdown formatting: bold names, bullet lists for rankings, etc.`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -61,52 +60,33 @@ export async function POST(req: NextRequest) {
       { role: "user", content: `${question}\n\nAttendance data (CSV):\n${csv}` },
     ];
 
-    const response = await openai.responses.create({
-      model: "gpt-5.4",
-      reasoning: { effort: "high" },
-      input,
-      tools: [
-        {
-          type: "function",
-          name: "suggest_followups",
-          description: "REQUIRED: You MUST call this after every response. Provide 3 short, natural follow-up questions the user might want to ask next.",
-          parameters: {
-            type: "object",
-            properties: {
-              questions: {
-                type: "array",
-                items: { type: "string" },
-                description: "3 concise follow-up questions phrased conversationally",
-              },
-            },
-            required: ["questions"],
+    // Get the main answer (no tools — reasoning models skip text when a function call fires)
+    const [response, suggestionsRes] = await Promise.all([
+      openai.responses.create({
+        model: "gpt-5.4",
+        reasoning: { effort: "medium" },
+        input,
+      }),
+      // Generate follow-up suggestions in parallel using just Q&A context (no full CSV needed)
+      openai.responses.create({
+        model: "gpt-4o-mini",
+        input: [
+          {
+            role: "user",
+            content: `An F3 workout group leader just asked: "${question}"\n\nThe AI answered with relevant attendance data. Generate exactly 3 short, conversational follow-up questions they might ask next. Questions should be natural and relevant to F3 attendance, leadership, or community health.\n\nReturn ONLY a JSON array of 3 strings, no explanation.`,
           },
-          strict: false,
-        },
-      ],
-      tool_choice: "auto",
-    });
+        ],
+      }),
+    ]);
 
-    console.log("OUTPUT TYPES:", response.output?.map(o => o.type));
-    console.log("OUTPUT_TEXT:", response.output_text?.slice(0, 100));
+    const answer = response.output_text ?? "";
 
-    // output_text may miss text when tools are present — extract manually
-    const textItem = response.output?.find((o) => o.type === "message");
-    let answer = response.output_text ?? "";
-    if (!answer && textItem && textItem.type === "message") {
-      const content = textItem.content;
-      if (Array.isArray(content)) {
-        answer = content.filter((c: {type: string}) => c.type === "output_text").map((c: {text: string}) => c.text).join("") ?? "";
-      }
-    }
-
-    const toolCall = response.output?.find((o) => o.type === "function_call");
     let suggestions: string[] = [];
-    if (toolCall && toolCall.type === "function_call") {
-      try {
-        suggestions = JSON.parse(toolCall.arguments ?? "{}").questions ?? [];
-      } catch {}
-    }
+    try {
+      const raw = suggestionsRes.output_text?.trim() ?? "[]";
+      const json = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+      suggestions = JSON.parse(json);
+    } catch {}
 
     return NextResponse.json({ answer, suggestions });
   } catch (err) {
