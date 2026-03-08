@@ -47,7 +47,7 @@ Important reasoning rules:
 
 export async function POST(req: NextRequest) {
   try {
-    const { question, history = [] }: { question: string; history: HistoryMessage[] } = await req.json();
+    const { question, history = [], reasoningLevel = "low" }: { question: string; history: HistoryMessage[]; reasoningLevel?: "low" | "medium" | "high" } = await req.json();
     if (!question?.trim()) {
       return NextResponse.json({ error: "No question provided" }, { status: 400 });
     }
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const [response, suggestionsRes] = await Promise.all([
       openai.responses.create({
         model: "gpt-5.4",
-        reasoning: { effort: "medium" },
+        reasoning: { effort: reasoningLevel },
         input,
       }),
       // Generate follow-up suggestions in parallel using just Q&A context (no full CSV needed)

@@ -67,6 +67,7 @@ export default function Home() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const [reasoningLevel, setReasoningLevel] = useState<"low" | "medium" | "high">("low");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -142,6 +143,7 @@ export default function Home() {
         body: JSON.stringify({
           question,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
+          reasoningLevel,
         }),
       });
       const data = await res.json();
@@ -364,6 +366,17 @@ export default function Home() {
                 <span className="hidden sm:inline text-xs">New chat</span>
               </button>
             )}
+            <select
+              value={reasoningLevel}
+              onChange={(e) => setReasoningLevel(e.target.value as "low" | "medium" | "high")}
+              className="text-xs rounded-lg px-2 py-1.5 border border-white/10 bg-transparent text-white/40 hover:text-white/60 hover:border-white/20 transition-colors cursor-pointer outline-none"
+              style={{ background: "rgba(255,255,255,0.03)" }}
+              title="Reasoning level"
+            >
+              <option value="low" style={{ background: "#0f0f1a" }}>Low</option>
+              <option value="medium" style={{ background: "#0f0f1a" }}>Medium</option>
+              <option value="high" style={{ background: "#0f0f1a" }}>High</option>
+            </select>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs text-white/30">Live data</span>
