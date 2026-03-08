@@ -53,7 +53,9 @@ Data:\n${csv}`,
     const json = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
     const suggestions = JSON.parse(json) as string[];
 
-    return NextResponse.json({ suggestions });
+    return NextResponse.json({ suggestions }, {
+      headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=3600" },
+    });
   } catch (err) {
     console.error(err);
     // Fallback to hardcoded if AI fails
