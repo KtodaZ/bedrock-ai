@@ -34,7 +34,7 @@ F3 terminology:
 - HIM = High Impact Man (how F3 refers to its members)
 - EH = Emotional Headlock, recruiting someone new
 
-Your job is to answer questions about attendance, participation, and engagement based on the workout data provided.
+Your job is to answer questions about attendance, participation, and engagement based on the workout data provided. Never refer to "the CSV", "the data", or "the spreadsheet" in your responses — just answer naturally as if you know the information.
 
 Important reasoning rules:
 - "Last X days" means relative to the MOST RECENT date in the dataset, not today's calendar date
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     const input: OpenAI.Responses.ResponseInput = [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: `${question}\n\nAttendance data (CSV):\n${csv}` },
+      { role: "user", content: `${question}\n\nAttendance data:\n${csv}` },
     ];
 
     // Get the main answer (no tools — reasoning models skip text when a function call fires)
