@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     // Get the main answer (no tools — reasoning models skip text when a function call fires)
     const [response, suggestionsRes] = await Promise.all([
       openai.responses.create({
-        model: "gpt-5.2",
+        model: "gpt-5-mini",
         reasoning: { effort: reasoningLevel },
         input,
       }),
