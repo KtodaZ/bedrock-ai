@@ -268,6 +268,9 @@ export async function POST(req: NextRequest) {
           return;
         }
 
+        const startTime = Date.now();
+        console.log(`[chat] question="${question}" reasoning=${reasoningLevel} historyLen=${history.length}`);
+
         send({ type: "phase", label: "Loading attendance data..." });
         const csv = await fetchCSV();
 
@@ -325,6 +328,7 @@ export async function POST(req: NextRequest) {
             } catch {
               args = { sql: call.arguments, reason: "" };
             }
+            console.log(`[chat] sql_query=${queryBatch} reason="${args.reason}" sql="${args.sql.replace(/\s+/g, " ").trim()}"`);
             const result = runSQL(db, args.sql);
             input.push({
               type: "function_call_output",
@@ -357,8 +361,10 @@ Return ONLY a JSON array of 3 strings, no explanation.`,
           suggestions = JSON.parse(json);
         } catch {}
 
+        console.log(`[chat] done queries=${queryBatch} ms=${Date.now() - startTime} answerLen=${finalAnswer.length}`);
         send({ type: "done", answer: finalAnswer, suggestions });
       } catch (err) {
+        console.error(`[chat] error: ${String(err)}`);
         send({ type: "error", message: String(err) });
       } finally {
         controller.close();
