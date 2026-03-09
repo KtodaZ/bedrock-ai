@@ -182,6 +182,7 @@ F3 TERMINOLOGY:
 - HIM = High Impact Man (how F3 refers to members)
 - Kotter List = PAX who have posted at least once ever, but NOT in the last 30 days
 - Reach-out list = PAX with 60+ day gap after a history of regular attendance
+- Site Q (SiteQ) = the ongoing leader/owner of a specific AO, distinct from a one-time Q
 
 CRITICAL ANALYTICAL RULES:
 1. ALWAYS begin by querying the most recent date in the dataset:
@@ -218,6 +219,41 @@ RESPONSE FORMATTING RULES:
 - Keep commentary tight — one sentence of context per section max, no lengthy paragraphs
 - Include counts and totals always; never just list names without numbers
 - Be encouraging and community-focused, but keep it brief
+
+DATE RULES — always include specific dates wherever relevant:
+- First post date when mentioning a PAX's history or milestone (e.g. "first post Mar 5, 2025")
+- Last post date for any PAX on the Kotter list or reach-out list
+- Exact date for any "most recent" or "first time" event
+- Date of peak attendance, FNG records, or any superlative
+- When projecting future milestones, state the projected date explicitly
+- Format dates as human-readable (e.g. "Mar 7, 2026" not "2026-03-07")
+- "All time" queries must state the full dataset range (first date – last date)
+
+DATA ACCURACY RULES:
+- PAX names are case-sensitive and must match exactly as they appear in the data — query with exact casing
+- If a PAX name has variants in the data (e.g. "Peekaboo" vs "Peekaboo (<18)"), treat them as distinct PAX unless the user clarifies
+- If a PAX name is not found in the data at all, say so clearly — never return silent zero counts as if the person exists
+- If the dataset doesn't cover the full requested window (e.g. user asks "last 6 months" but data only goes back 4), state that clearly in the answer
+
+CONVERSATIONAL CONTEXT:
+- When the user references someone by pronoun or nickname from earlier in the conversation (e.g. "what about him?", "same site"), resolve the reference from conversation history before querying
+- When the user provides new facts in their message (e.g. "he posted Mar 8 at Spartan"), treat that as ground truth and incorporate it into your analysis without re-querying for it
+
+PROJECTIONS AND FORECASTING:
+- Always state your assumptions explicitly (e.g. "based on his last 30-day pace of 3.2 posts/week, assuming no breaks")
+- Show the math briefly inline (e.g. "11 posts needed ÷ 3.2/week ≈ 3.4 weeks")
+- Give a specific projected date or narrow date range, not just "a few weeks"
+- Note any caveats (attendance streaks, holidays, etc.) only if directly relevant
+
+F3 LANGUAGE — use correct F3 terminology throughout:
+- "AO" not "site" or "location"
+- "Q" not "leader" or "instructor"
+- "PAX" not "member", "person", or "attendee"
+- "post" not "attend", "show up", or "participate"
+- "FNG" not "new member" or "first-timer"
+- "HIM" when referring to members generally
+- "EH" for recruiting/inviting someone new
+- "Site Q" (or "SiteQ") = the PAX responsible for leading/managing a specific AO — not just a one-time Q, but the ongoing leader of that location
 
 OFF-TOPIC HANDLING:
 If asked about anything unrelated to F3 attendance data (workout planning, nutrition, general fitness, etc.), respond:
@@ -269,14 +305,46 @@ Question: "${question}"`,
   return "medium"; // safe default on failure
 }
 
-function notifyDiscord(content: string) {
+// Discord webhook queue — retries with exponential backoff, never blocks requests
+const discordQueue: string[] = [];
+let discordFlushing = false;
+
+async function flushDiscordQueue() {
+  if (discordFlushing) return;
+  discordFlushing = true;
   const url = process.env.DISCORD_WEBHOOK_URL;
-  if (!url) return;
-  fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
-  }).catch(() => {}); // fire-and-forget, never block the response
+  while (discordQueue.length > 0) {
+    const content = discordQueue[0];
+    let sent = false;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const res = await fetch(url!, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        });
+        if (res.ok || res.status === 400) { // 400 = bad payload, don't retry
+          sent = true;
+          break;
+        }
+        // 429 rate limit or 5xx — wait and retry
+        const retryAfter = res.status === 429
+          ? parseInt(res.headers.get("retry-after") ?? "1", 10) * 1000
+          : Math.min(1000 * 2 ** attempt, 8000);
+        await new Promise((r) => setTimeout(r, retryAfter));
+      } catch {
+        await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** attempt, 8000)));
+      }
+    }
+    if (sent || discordQueue[0] === content) discordQueue.shift(); // remove whether sent or exhausted
+  }
+  discordFlushing = false;
+}
+
+function notifyDiscord(content: string) {
+  if (!process.env.DISCORD_WEBHOOK_URL) return;
+  discordQueue.push(content);
+  flushDiscordQueue(); // fire-and-forget flush
 }
 
 export async function POST(req: NextRequest) {
@@ -383,11 +451,15 @@ export async function POST(req: NextRequest) {
             input: [
               {
                 role: "user",
-                content: `Bedrock Data AI is a tool that answers questions about F3 workout attendance data. It can answer questions about: post counts, Q counts, FNG counts, attendance trends, site rankings, the Kotter List (PAX who haven't posted in 30+ days), reach-out lists, specific PAX histories, day-of-week breakdowns, and city/site comparisons.
+                content: `Bedrock Data AI answers questions about F3 workout attendance data: post counts, Q counts, FNG counts, trends, AO rankings, Kotter List, reach-out lists, PAX histories, and site comparisons.
 
 A leader just asked: "${question}"
 
-Generate exactly 3 short follow-up questions they might ask next — questions that Bedrock Data AI can actually answer using attendance data. Do NOT suggest questions about contact info, waivers, group chats, scheduling, or anything outside of attendance data analysis.
+Generate exactly 3 natural follow-up questions they might ask next. Rules:
+- Must be answerable from attendance data — no contact info, waivers, scheduling, or off-topic
+- Complete and self-contained — no placeholder text like [name] or [date]
+- Conversational, not analytical-sounding
+- Vary phrasing and topic across the 3 questions
 
 Return ONLY a JSON array of 3 strings, no explanation.`,
               },

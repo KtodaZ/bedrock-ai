@@ -16,6 +16,7 @@ interface Message {
   suggestions?: string[];
   queryLog?: QueryLogEntry[];
   reasoningUsed?: string;
+  isError?: boolean;
 }
 
 interface Conversation {
@@ -27,6 +28,8 @@ interface Conversation {
 }
 
 const STORAGE_KEY = "bedrock-conversations";
+const SUGGESTIONS_KEY = "bedrock-suggestions";
+const SUGGESTIONS_TTL = 24 * 60 * 60 * 1000;
 
 const FALLBACK_SUGGESTIONS = [
   "Who is showing up the most in the last 30 days?",
@@ -36,6 +39,18 @@ const FALLBACK_SUGGESTIONS = [
   "How many FNGs have we had this month?",
   "Who needs a shout out to come back?",
 ];
+
+function loadCachedSuggestions(): string[] {
+  try {
+    const raw = localStorage.getItem(SUGGESTIONS_KEY);
+    if (!raw) return FALLBACK_SUGGESTIONS;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > SUGGESTIONS_TTL) return FALLBACK_SUGGESTIONS;
+    return data;
+  } catch {
+    return FALLBACK_SUGGESTIONS;
+  }
+}
 
 function loadConversations(): Conversation[] {
   try {
@@ -71,22 +86,31 @@ export default function Home() {
   const [phaseLabel, setPhaseLabel] = useState<string>("");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true
+  );
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [expandedQueries, setExpandedQueries] = useState<Set<number>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
-  const { data: suggestionsData, isLoading: suggestionsLoading } = useQuery({
+  const [cachedSuggestions, setCachedSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
+  useEffect(() => {
+    setCachedSuggestions(loadCachedSuggestions());
+  }, []);
+  const { data: suggestions = cachedSuggestions } = useQuery({
     queryKey: ["suggestions"],
     queryFn: async () => {
       const res = await fetch("/api/suggestions");
       if (!res.ok) throw new Error("Failed to fetch suggestions");
       const { suggestions } = await res.json();
+      try {
+        localStorage.setItem(SUGGESTIONS_KEY, JSON.stringify({ data: suggestions, ts: Date.now() }));
+      } catch {}
       return suggestions as string[];
     },
-    placeholderData: FALLBACK_SUGGESTIONS,
+    placeholderData: cachedSuggestions,
+    staleTime: SUGGESTIONS_TTL,
   });
-  const suggestions = suggestionsData ?? FALLBACK_SUGGESTIONS;
   const [reasoningLevel, setReasoningLevel] = useState<"auto" | "low" | "medium" | "high">("auto");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -199,6 +223,7 @@ export default function Home() {
             const errMsg: Message = {
               role: "assistant",
               content: `Error: ${event.message ?? "Something went wrong."}`,
+              isError: true,
             };
             const finalMessages = [...nextMessages, errMsg];
             setMessages(finalMessages);
@@ -207,7 +232,7 @@ export default function Home() {
         }
       }
     } catch {
-      const errMsg: Message = { role: "assistant", content: "Failed to reach the server. Try again." };
+      const errMsg: Message = { role: "assistant", content: "Failed to reach the server.", isError: true };
       const finalMessages = [...nextMessages, errMsg];
       setMessages(finalMessages);
       persistConversation(currentId, finalMessages);
@@ -469,15 +494,7 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl">
-                  {suggestionsLoading
-                    ? Array.from({ length: 6 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="h-12 rounded-xl border border-white/5"
-                          style={{ background: "rgba(255,255,255,0.02)", animation: `pulse 1.5s ease-in-out ${i * 0.1}s infinite` }}
-                        />
-                      ))
-                    : suggestions.map((q) => (
+                  {(suggestions ?? FALLBACK_SUGGESTIONS).map((q) => (
                     <button
                       key={q}
                       onClick={() => sendMessage(q)}
@@ -541,6 +558,12 @@ export default function Home() {
                         )}
                       </div>
                       {msg.role === "assistant" && (
+                        <div className="flex items-center gap-2">
+                        {msg.reasoningUsed && !msg.isError && (
+                          <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ color: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.04)" }}>
+                            {msg.reasoningUsed}
+                          </span>
+                        )}
                         <button
                           onClick={() => copyMessage(msg.content, i)}
                           className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all duration-150 cursor-pointer"
@@ -564,6 +587,23 @@ export default function Home() {
                             </>
                           )}
                         </button>
+                        </div>
+                      )}
+                      {msg.role === "assistant" && msg.isError && (
+                        <button
+                          onClick={() => {
+                            const lastUserMsg = [...messages].slice(0, i).reverse().find((m) => m.role === "user");
+                            if (lastUserMsg) sendMessage(lastUserMsg.content);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all cursor-pointer mt-1"
+                          style={{ background: "rgba(255,255,255,0.03)" }}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="1 4 1 10 7 10" />
+                            <path d="M3.51 15a9 9 0 1 0 .49-3.49" />
+                          </svg>
+                          Try again
+                        </button>
                       )}
                       {msg.role === "assistant" && msg.queryLog && msg.queryLog.length > 0 && (
                         <div className="mt-1">
@@ -583,7 +623,6 @@ export default function Home() {
                               <polyline points="9 18 15 12 9 6" />
                             </svg>
                             {msg.queryLog.length} {msg.queryLog.length === 1 ? "query" : "queries"}
-                            {msg.reasoningUsed && <span className="opacity-60">· {msg.reasoningUsed}</span>}
                           </button>
                           {expandedQueries.has(i) && (
                             <div className="mt-2 flex flex-col gap-2">

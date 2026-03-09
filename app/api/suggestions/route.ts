@@ -10,16 +10,18 @@ export async function GET() {
       input: [
         {
           role: "user",
-          content: `You are generating starter questions for Bedrock Data AI — an AI assistant for an F3 Nation workout group. F3 terminology: PAX = members, Q = workout leader, FNG = first-timer, Site = workout location, Kotter = someone who hasn't posted in 30+ days.
+          content: `Generate 6 questions an F3 site leader would type into Bedrock Data AI — an AI tool that analyzes F3 workout attendance data.
 
-Generate exactly 6 suggested questions a site leader would actually ask about their group's attendance data.
+F3 terms: PAX = members, Q = workout leader, FNG = first-timer, AO = workout location, Kotter List = PAX who haven't posted in 30+ days.
+
+The best questions surface actionable insights — trends, drops, who needs outreach, whether leadership is concentrated, which PAX are slipping away, how retention looks over time.
 
 Rules:
-- Write them conversationally, like a person asking — not like a data analyst
-- Keep them short and general (e.g. "Who's been showing up the most lately?" not "Which PAX had the highest post count?")
-- Cover a mix of: recent attendance, leadership/Q rotation, site activity, community health (Kotter List, FNGs, reach-outs)
-- Do NOT include specific names, dates, or numbers
-- Return ONLY a JSON array of 6 strings, no explanation, no markdown`,
+- Conversational but insightful — the kind of question a sharp leader actually wants answered
+- Under 15 words, one focused question per item
+- No placeholder text like [name] or [date]
+- Varied topics: mix retention, Q depth, FNG conversion, AO health, Kotter trends, attendance patterns
+- Return ONLY a JSON array of 6 strings, nothing else`,
         },
       ],
     });
@@ -35,12 +37,12 @@ Rules:
     console.error(err);
     return NextResponse.json({
       suggestions: [
-        "Who is showing up the most in the last 30 days?",
-        "Which site has the most posts this year?",
-        "Who has led the most Qs overall?",
+        "Who's been showing up the most lately?",
+        "Which site is most active this year?",
+        "Who's led the most Qs?",
         "Give me the Kotter List",
-        "How many FNGs have we had this month?",
-        "Who needs a shout out to come back?",
+        "How many FNGs this month?",
+        "Who needs a shout out?",
       ],
     });
   }
