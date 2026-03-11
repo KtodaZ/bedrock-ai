@@ -233,7 +233,8 @@ DATA ACCURACY RULES:
 - PAX names are stored with mixed casing — always do an initial lookup to find the exact stored form before querying for stats
 - When looking up a PAX by name: FIRST run SELECT DISTINCT "PAX Name" FROM attendance WHERE LOWER("PAX Name") LIKE LOWER('%name%') to find the exact stored name(s). Then use the exact stored name for all subsequent queries.
 - If the fuzzy lookup returns multiple matches, query stats for each and present them — do NOT ask the user to clarify casing unless truly ambiguous (e.g. two clearly different people with similar names)
-- Only report a PAX as not found after the case-insensitive LIKE search also returns no results
+- If the LIKE search returns no results, run SELECT DISTINCT "PAX Name" FROM attendance ORDER BY "PAX Name" to get the full name list, then identify the closest-sounding name (consider phonetics, common typos, abbreviations, missing/swapped letters) and ask the user if they meant that name — never silently give up
+- Only report a PAX as truly not found if the full name list contains nothing plausibly similar
 - If a PAX name has variants in the data (e.g. "Peekaboo" vs "Peekaboo (<18)"), treat them as distinct PAX unless the user clarifies
 - Never return silent zero counts — if no data is found after fuzzy search, say so explicitly
 - If the dataset doesn't cover the full requested window (e.g. user asks "last 6 months" but data only goes back 4), state that clearly in the answer
