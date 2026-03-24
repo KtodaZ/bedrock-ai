@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "How It Works — Bedrock Data AI",
-  description: "Technical deep dive into the Bedrock Data AI architecture",
+  description: "How Bedrock Data AI answers questions about F3 attendance",
 };
 
 export default function HowItWorksPage() {
@@ -39,7 +39,7 @@ export default function HowItWorksPage() {
             className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full mb-6"
             style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}
           >
-            Technical Deep Dive
+            Under the Hood
           </div>
           <h1
             className="text-3xl sm:text-4xl font-bold mb-4 bg-clip-text text-transparent leading-tight"
@@ -48,176 +48,119 @@ export default function HowItWorksPage() {
             How Bedrock Data AI Works
           </h1>
           <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-            A natural language interface over F3 workout attendance data — built on an agentic SQL loop, streaming SSE, and an in-memory SQLite database running inside a serverless function.
+            You type a question in plain English. A few seconds later you get a precise, data-backed answer. Here&apos;s what happens in between.
           </p>
         </div>
 
-        {/* Section: Architecture Overview */}
-        <Section title="Architecture Overview">
+        {/* Section: The Big Picture */}
+        <Section title="The Big Picture">
           <p>
-            Bedrock Data AI has no traditional backend service. Every query flows through a single Next.js API route deployed as a Vercel serverless function. That function fetches a Google Sheet CSV, loads it into an in-memory SQLite database, and runs an agentic loop where an AI model writes and executes SQL until it has a confident answer.
+            Bedrock Data AI is not a search engine and it&apos;s not a chatbot pulling answers from general knowledge. It&apos;s a purpose-built system that connects natural language questions directly to your actual attendance data — and only answers from what it can prove.
+          </p>
+          <p>
+            When you ask a question, the system fetches the latest data from the source Google Sheet, loads it into a temporary in-memory database, and hands it to an AI model that figures out how to query it. The model runs as many queries as it needs, checks its own work, and only then writes an answer.
           </p>
           <Diagram />
         </Section>
 
-        {/* Section: Data Pipeline */}
-        <Section title="Data Pipeline: Google Sheet → SQLite">
+        {/* Section: Where the Data Comes From */}
+        <Section title="Where the Data Comes From">
           <p>
-            The source of truth is a public Google Sheet with F3 workout attendance records. Rather than hitting the Sheets API, the function exports it as a plain CSV via Google&apos;s export URL. This is parsed with a custom CSV parser (to handle quoted fields and embedded commas) and loaded into a sql.js in-memory SQLite table called <Code>attendance</Code>.
+            The single source of truth is the F3 attendance Google Sheet. Rather than syncing to a separate database, the system fetches it fresh on each request — exported as a plain spreadsheet file directly from Google. This means the data you see in answers is never more than a few minutes stale.
           </p>
           <p>
-            The CSV has a quirk: two columns are both named &ldquo;Month&rdquo;. The loader auto-deduplicates headers, renaming the second to <Code>Month_1</Code>, so SQL queries always target a stable schema.
+            Once fetched, the spreadsheet is loaded into a lightweight in-memory database that lives only for the duration of the session. It&apos;s discarded after 10 minutes and rebuilt fresh on the next request. There&apos;s no persistent copy of your data stored on any server.
+          </p>
+        </Section>
+
+        {/* Section: How the AI Answers */}
+        <Section title="How the AI Actually Answers">
+          <p>
+            Most AI assistants generate answers by predicting what sounds right based on training. Bedrock does the opposite — the model is not allowed to guess. Instead, it is given one capability: the ability to query the database directly.
           </p>
           <p>
-            Both the raw CSV and the compiled SQLite database are cached in server memory for 10 minutes. Within that window, all concurrent requests share the same database object — no re-parsing, no re-compiling.
+            When you ask a question, the model figures out what queries would answer it, runs them, reads the real results, and decides if it has enough information. If not, it runs more queries. A typical question involves two to five round trips before the model is confident enough to write a response.
+          </p>
+          <p>
+            This approach eliminates a whole class of AI errors. The model can&apos;t invent attendance numbers, fabricate names, or misremember dates — because it never relied on memory in the first place. Every sentence in the answer traces back to a real query result you can inspect.
+          </p>
+          <p>
+            You can see this in action: each AI response shows the queries that were run underneath it.
           </p>
           <KeyValue items={[
-            ["Source", "Google Sheets public CSV export"],
-            ["SQL engine", "sql.js (SQLite compiled to WebAssembly)"],
-            ["Cache TTL", "10 minutes (in-memory, per serverless instance)"],
-            ["Table", "attendance — ~15 columns, one row per PAX per workout"],
+            ["Step 1", "Model reads your question and plans an approach"],
+            ["Step 2", "Model writes a database query and runs it"],
+            ["Step 3", "Model reads the results and decides what to query next"],
+            ["Step 4", "Model validates its answer with a cross-check query"],
+            ["Step 5", "Model writes the final answer from confirmed results only"],
           ]} />
         </Section>
 
-        {/* Section: Agentic SQL Loop */}
-        <Section title="The Agentic SQL Loop">
+        {/* Section: Real-Time Progress */}
+        <Section title="Real-Time Progress">
           <p>
-            The AI doesn&apos;t generate an answer from the question directly — it generates SQL, executes it, reads the results, and decides whether to keep querying or synthesize a final answer. This loop is the core of the system.
+            Because the process takes a few seconds, the UI streams status updates as work happens — &ldquo;Loading attendance data,&rdquo; &ldquo;Analyzing your question,&rdquo; &ldquo;Validating results&rdquo; — so you always know where things stand rather than staring at a spinner.
           </p>
           <p>
-            The model is given a single tool: <Code>run_sql</Code>. It can call this tool as many times as needed. Typical questions require 2–5 round trips:
-          </p>
-          <ol className="list-decimal list-inside space-y-2 text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
-            <li>An exploratory query to understand the data shape (e.g. distinct site names, date range)</li>
-            <li>A targeted query to answer the question</li>
-            <li>A validation query to cross-check the result</li>
-            <li>Optional follow-up queries for edge cases or totals</li>
-          </ol>
-          <p>
-            Because the model only sees actual SQL results — never the raw CSV — it can&apos;t hallucinate attendance numbers or fabricate names. Every claim in the answer is traceable to a real query result. Each SQL call is logged and shown in the UI under the assistant message.
-          </p>
-          <KeyValue items={[
-            ["Model", "gpt-5-mini (OpenAI Responses API)"],
-            ["Tool", "run_sql — executes arbitrary SELECT against the in-memory DB"],
-            ["Avg queries/question", "2–5 tool calls"],
-            ["Reasoning effort", "Configurable (Low / Medium / High) from the header dropdown"],
-          ]} />
-        </Section>
-
-        {/* Section: Streaming */}
-        <Section title="Streaming with Server-Sent Events">
-          <p>
-            Because the agentic loop takes several seconds, the API streams progress back to the client in real time using Server-Sent Events (SSE). The <Code>/api/chat</Code> route returns a <Code>ReadableStream</Code> and the frontend reads it incrementally.
-          </p>
-          <p>
-            Each event is a JSON object on a single line. The frontend parses these as they arrive and updates the UI — showing a phase label above the typing indicator during processing:
-          </p>
-          <CodeBlock>{`{ "type": "phase", "label": "Loading attendance data..." }
-{ "type": "phase", "label": "Analyzing your question..." }
-{ "type": "query", "index": 1, "reason": "...", "sql": "SELECT ..." }
-{ "type": "phase", "label": "Validating results..." }
-{ "type": "done", "answer": "...", "suggestions": [...] }`}</CodeBlock>
-          <p>
-            The <Code>query</Code> events are what populate the expandable SQL log under each assistant message. The <Code>done</Code> event carries both the final answer and three follow-up suggestion strings.
+            The AI&apos;s response begins appearing as soon as it&apos;s ready, and follow-up question suggestions are generated in parallel so they&apos;re waiting for you the moment the answer lands.
           </p>
         </Section>
 
-        {/* Section: Vercel Serverless Challenges */}
-        <Section title="Vercel Serverless: Challenges & Solutions">
+        {/* Section: Vercel Challenges */}
+        <Section title="Running This on Serverless Infrastructure">
           <p>
-            Running this on Vercel serverless functions introduced several non-obvious constraints that shaped the architecture.
+            Bedrock is hosted on Vercel, which runs each API request inside a short-lived serverless function — a small isolated process that spins up, handles the request, and disappears. This is very cost-efficient, but it introduced some real engineering challenges.
           </p>
 
-          <SubSection title="1. Bundling a WebAssembly binary">
+          <SubSection title="No persistent server">
             <p>
-              sql.js ships a <Code>.wasm</Code> file that must be present at runtime. Vercel&apos;s output file tracing doesn&apos;t automatically detect WASM files loaded via <Code>locateFile</Code> — they&apos;re invisible to static analysis. Without intervention, the function deploys without the binary and crashes at cold start.
-            </p>
-            <p>
-              The fix is an explicit opt-in in <Code>next.config.ts</Code>:
-            </p>
-            <CodeBlock>{`outputFileTracingIncludes: {
-  "/api/chat": ["./node_modules/sql.js/dist/**"],
-}`}</CodeBlock>
-            <p>
-              This tells Vercel&apos;s bundler to include everything in <Code>node_modules/sql.js/dist/</Code> in the deployment artifact for that route, regardless of whether it can statically trace the import.
+              Traditional servers stay running between requests, so you can keep a database loaded in memory. Serverless functions don&apos;t — each invocation may be a completely fresh process. The solution here is to cache the fetched spreadsheet and the in-memory database for 10 minutes within a warm instance. Requests that arrive within that window skip the fetch entirely. Cold instances rebuild it, which takes under a second.
             </p>
           </SubSection>
 
-          <SubSection title="2. No persistent memory between invocations">
+          <SubSection title="Running a real database engine inside a function">
             <p>
-              Serverless functions are stateless by design — each cold start is a fresh process. The 10-minute in-memory CSV and DB cache only works within a single warm instance. Under load, multiple instances may run simultaneously and each will independently fetch and parse the CSV.
-            </p>
-            <p>
-              This is an accepted trade-off: the Google Sheet is small (~a few thousand rows), the CSV fetch is fast, and the 10-minute TTL means any warm instance avoids redundant work. A production-scale version could use Vercel KV or an edge cache to share state across instances.
+              The database engine used here (SQLite) is normally a native binary. To run it inside a serverless function without special infrastructure, it&apos;s compiled to WebAssembly — a portable binary format that runs anywhere JavaScript runs. Getting Vercel to correctly bundle and deploy that WebAssembly file alongside the function code required explicit configuration; Vercel&apos;s automatic bundler doesn&apos;t detect it on its own.
             </p>
           </SubSection>
 
-          <SubSection title="3. Streaming from a serverless function">
+          <SubSection title="Keeping a stream open across multiple AI round trips">
             <p>
-              Node.js serverless functions on Vercel support <Code>ReadableStream</Code> responses, but there are subtleties. The stream must be kept alive across multiple async tool calls during the agentic loop — each SQL result from the model triggers a new write to the stream, and the stream must not close until the model signals it&apos;s done.
-            </p>
-            <p>
-              The implementation uses a <Code>TransformStream</Code> with a writer that stays open across all tool call iterations, only closing after the final <Code>done</Code> event is flushed.
+              Streaming status updates to the browser while the AI loop is still running — potentially making four or five database calls in sequence — means the server needs to hold an open connection to the browser the entire time. Serverless functions are designed for quick request-response cycles, not long-lived streams. Getting this to work reliably required careful management of the response stream so it stays open across every AI iteration and only closes after the final answer is flushed.
             </p>
           </SubSection>
 
-          <SubSection title="4. Function timeout limits">
+          <SubSection title="Function timeout pressure">
             <p>
-              Vercel&apos;s default serverless function timeout is 10 seconds (Hobby plan) or 60 seconds (Pro). Complex questions with high reasoning effort can approach this limit — each LLM call plus SQL round trip takes 2–8 seconds, and 4–5 iterations can add up.
-            </p>
-            <p>
-              Mitigation: Low reasoning mode is the default, which reduces per-call latency significantly. The model is also instructed to be efficient with its queries and avoid redundant tool calls.
+              Serverless functions have hard time limits. On Vercel&apos;s free tier that&apos;s 10 seconds; on the paid tier, 60 seconds. Complex questions with the reasoning level turned up high can approach these limits. The default reasoning level is set to Low for this reason — it&apos;s significantly faster while still being accurate for most questions. High reasoning is there for edge cases where you need the model to think harder.
             </p>
           </SubSection>
 
-          <SubSection title="5. Edge runtime vs. Node.js runtime">
+          <SubSection title="Can&apos;t use the fastest global runtime">
             <p>
-              Vercel offers an Edge runtime that is faster to cold-start and globally distributed — but it runs a restricted V8 isolate without Node.js APIs. sql.js requires Node.js (<Code>fs</Code>, <Code>Buffer</Code>, native WASM loading), so the chat route must explicitly opt into the Node.js runtime:
-            </p>
-            <CodeBlock>{`export const runtime = "nodejs";`}</CodeBlock>
-            <p>
-              This means the chat API runs in a standard Node.js Lambda, not at the edge. Cold starts are ~500ms–1s rather than ~50ms, but there&apos;s no alternative when you need WASM + filesystem access.
+              Vercel offers an &ldquo;Edge&rdquo; runtime that runs functions at data centers closest to each user, with near-zero cold start times. The catch: it&apos;s a stripped-down environment that doesn&apos;t support all Node.js capabilities — including the WebAssembly database engine used here. The chat API has to run in the standard Node.js runtime instead, which means slightly slower cold starts (~0.5–1 second vs. ~50ms) but full compatibility with everything the system needs.
             </p>
           </SubSection>
         </Section>
 
         {/* Section: Auth */}
-        <Section title="Authentication">
+        <Section title="Access Control">
           <p>
-            A lightweight password gate protects all routes via Next.js edge middleware. The correct password generates an HMAC-SHA256 signed token stored in an httpOnly cookie. The middleware verifies the signature on every request — no session store, no database, no JWTs.
+            Every route is protected by a password gate. When you enter the correct password, the server issues a cryptographically signed token stored in a secure browser cookie that JavaScript cannot read or tamper with. The signature is verified on every request using a secret key that lives only in the server environment.
           </p>
-          <KeyValue items={[
-            ["Algorithm", "HMAC-SHA256 (Web Crypto API)"],
-            ["Storage", "httpOnly cookie — not accessible to JavaScript"],
-            ["TTL", "1 year"],
-            ["Change password", "Update AUTH_PASSWORD env var and redeploy"],
-          ]} />
+          <p>
+            There&apos;s no user database, no session store, and no third-party auth service — just a signed token and a secret. The password can be changed by updating a single environment variable and redeploying.
+          </p>
         </Section>
 
         {/* Section: Conversation History */}
-        <Section title="Conversation History">
+        <Section title="Your Conversation History">
           <p>
-            Chat history is stored entirely in <Code>localStorage</Code> under <Code>bedrock-conversations</Code>. There is no server-side persistence — the backend is stateless and receives full conversation history with each request so the model has context for follow-up questions.
+            Past conversations are saved in your browser&apos;s local storage — they never leave your device. The server is stateless and has no record of previous sessions. When you continue a conversation, your full message history is sent along with the new question so the AI has the context it needs.
           </p>
           <p>
-            This keeps infrastructure simple and free, but means history is device-local and cleared if the user clears browser storage.
+            This keeps the architecture simple and avoids storing any personal data server-side, but it also means history is tied to the specific browser you used. Clearing your browser data will clear your conversation history.
           </p>
-        </Section>
-
-        {/* Section: Stack Summary */}
-        <Section title="Stack at a Glance">
-          <KeyValue items={[
-            ["Framework", "Next.js 16 (App Router, TypeScript)"],
-            ["Hosting", "Vercel (Node.js serverless functions)"],
-            ["AI — chat", "gpt-5-mini via OpenAI Responses API (tool use)"],
-            ["AI — suggestions", "gpt-4o-mini via OpenAI Chat Completions"],
-            ["SQL engine", "sql.js (SQLite compiled to WASM, server-side)"],
-            ["Data source", "Google Sheets public CSV export"],
-            ["Styling", "Tailwind CSS v4 + inline styles"],
-            ["State", "React useState + localStorage (client), in-memory cache (server)"],
-            ["Data fetching", "TanStack React Query (suggestions only)"],
-            ["Auth", "HMAC-SHA256 cookie via Next.js edge middleware"],
-          ]} />
         </Section>
 
         {/* Footer */}
@@ -263,36 +206,10 @@ function SubSection({ title, children }: { title: string; children: React.ReactN
       >
         {title}
       </h3>
-      <div className="space-y-3">
+      <div className="space-y-3 text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
         {children}
       </div>
     </div>
-  );
-}
-
-function Code({ children }: { children: React.ReactNode }) {
-  return (
-    <code
-      className="text-xs px-1.5 py-0.5 rounded font-mono"
-      style={{ background: "rgba(124,58,237,0.15)", color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.2)" }}
-    >
-      {children}
-    </code>
-  );
-}
-
-function CodeBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <pre
-      className="text-xs rounded-xl p-4 overflow-x-auto font-mono leading-relaxed my-4"
-      style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        color: "#a5b4fc",
-      }}
-    >
-      {children}
-    </pre>
   );
 }
 
@@ -305,14 +222,14 @@ function KeyValue({ items }: { items: [string, string][] }) {
       {items.map(([key, value], i) => (
         <div
           key={key}
-          className="flex gap-4 px-4 py-2.5 text-xs"
+          className="flex gap-4 px-4 py-3 text-xs"
           style={{
             background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
             borderTop: i > 0 ? "1px solid rgba(255,255,255,0.05)" : undefined,
           }}
         >
-          <span className="w-36 flex-shrink-0 font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>{key}</span>
-          <span style={{ color: "rgba(255,255,255,0.7)" }}>{value}</span>
+          <span className="w-16 flex-shrink-0 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>{key}</span>
+          <span style={{ color: "rgba(255,255,255,0.65)" }}>{value}</span>
         </div>
       ))}
     </div>
@@ -321,12 +238,12 @@ function KeyValue({ items }: { items: [string, string][] }) {
 
 function Diagram() {
   const steps = [
-    { label: "Google Sheet", sub: "public CSV export" },
-    { label: "CSV Parser", sub: "server-side, 10 min cache" },
-    { label: "sql.js (SQLite)", sub: "in-memory WASM DB" },
-    { label: "AI Agent Loop", sub: "gpt-5-mini + run_sql tool" },
-    { label: "Streaming SSE", sub: "phase → query → done events" },
-    { label: "Chat UI", sub: "Next.js frontend" },
+    { label: "Google Sheet", sub: "live attendance data" },
+    { label: "Data Loader", sub: "fetched & cached 10 min" },
+    { label: "In-Memory DB", sub: "temporary, per-request" },
+    { label: "AI Agent Loop", sub: "query → verify → repeat" },
+    { label: "Streaming Response", sub: "live progress updates" },
+    { label: "Chat UI", sub: "your browser" },
   ];
 
   return (
