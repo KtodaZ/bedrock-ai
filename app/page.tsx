@@ -730,8 +730,16 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <p className="text-center text-xs mt-2" style={{ color: "rgba(255,255,255,0.15)" }}>
-                Queries your live attendance data · Press Enter to send
+              <p className="text-center text-xs mt-2 flex items-center justify-center gap-2" style={{ color: "rgba(255,255,255,0.15)" }}>
+                <span>Queries your live attendance data · Press Enter to send</span>
+                <span style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
+                <a
+                  href="/how-it-works"
+                  className="transition-colors hover:text-white/40 underline underline-offset-2"
+                  style={{ color: "rgba(255,255,255,0.2)", textDecorationColor: "rgba(255,255,255,0.1)" }}
+                >
+                  How it works
+                </a>
               </p>
             </div>
           </div>
