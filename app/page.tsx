@@ -424,6 +424,28 @@ export default function Home() {
 
       {/* ── Main content ── */}
       <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden relative z-10">
+        {/* Bring-your-own-agent banner */}
+        <a
+          href="/connect"
+          className="flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2 text-xs border-b transition-colors group"
+          style={{
+            background: "linear-gradient(90deg, rgba(124,58,237,0.14), rgba(37,99,235,0.14))",
+            borderColor: "rgba(124,58,237,0.2)",
+            color: "rgba(255,255,255,0.6)",
+          }}
+        >
+          <span aria-hidden>🔌</span>
+          <span>
+            <span className="text-white/80 font-medium">Bring your own agent</span>
+            <span className="hidden sm:inline"> — connect ChatGPT or Claude to your attendance data via MCP</span>
+          </span>
+          <span className="inline-flex items-center gap-1 text-[#a78bfa] group-hover:gap-1.5 transition-all font-medium">
+            Connect
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </span>
+        </a>
         {/* Header */}
         <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5">
           <div className="flex items-center gap-3">

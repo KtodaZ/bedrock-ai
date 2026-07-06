@@ -39,8 +39,12 @@ async function verifyToken(token: string, secret: string): Promise<boolean> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow login page and auth API through
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/auth")) {
+  // Allow login page, auth API, and the MCP endpoint (token-authed on its own) through
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/mcp")
+  ) {
     return NextResponse.next();
   }
 
