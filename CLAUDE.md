@@ -59,6 +59,16 @@ Events sent by `/api/chat`:
 - `OPENAI_API_KEY` — OpenAI API key (never committed)
 - `AUTH_SECRET` — random base64 string used to HMAC-sign the auth cookie
 - `AUTH_PASSWORD` — the shared access password (currently "accelerate")
+- `MCP_TOKEN` — shared bearer token for the public MCP endpoint (`/api/mcp`). If unset, the MCP endpoint stays closed (401) and the `/connect` page shows a "not enabled" notice.
+
+## Bring Your Own Agent (MCP)
+- `/api/mcp` — a remote MCP server (Streamable HTTP / JSON-RPC, no SDK) so users can connect ChatGPT, Claude, or any MCP client to the attendance data
+- Auth: shared `MCP_TOKEN` via `Authorization: Bearer <token>` **or** `?key=<token>` (some connector UIs only accept a URL)
+- Exposed tools (all read-only): `get_schema` (schema + F3 terminology + analytical rules), `run_sql` (single SELECT/WITH only — writes/DDL/stacked statements rejected by `isReadOnlySelect`), `search_pax` (fuzzy PAX-name lookup)
+- The connecting agent does its own reasoning — the endpoint just serves data, so there is **no** OpenAI cost per external call
+- Bypasses the password middleware (has its own token auth); everything else stays gated
+- DB/CSV helpers shared with `/api/chat` via `lib/attendance-db.ts`
+- `/connect` — login-gated instructions page with the copy-paste URL/token and per-client (Claude / ChatGPT / config-file) steps; a banner at the top of the chat UI links to it
 
 ## Cost Profile (per chat query)
 - SQL queries run server-side (free)
