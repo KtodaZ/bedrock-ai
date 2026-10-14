@@ -10,7 +10,7 @@ const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "all", label: "All time" },
 ];
 
-const PERIOD_KEY = "bedrock-eh-period";
+const PERIOD_KEY = "bedrock-eh-period-v2";
 const PERIOD_EVENT = "bedrock-eh-period-change";
 
 function subscribePeriod(onChange: () => void) {
@@ -25,9 +25,9 @@ function subscribePeriod(onChange: () => void) {
 function readPeriod(): Period {
   try {
     const saved = localStorage.getItem(PERIOD_KEY);
-    return saved === "year" || saved === "all" ? saved : "month";
+    return saved === "month" || saved === "all" ? saved : "year";
   } catch {
-    return "month";
+    return "year";
   }
 }
 const FNG_PREVIEW = 10;
@@ -42,7 +42,7 @@ async function fetchChallenge(period: Period): Promise<ChallengeResult> {
 }
 
 export default function EhChallenge() {
-  const savedPeriod = useSyncExternalStore(subscribePeriod, readPeriod, () => "month" as Period);
+  const savedPeriod = useSyncExternalStore(subscribePeriod, readPeriod, () => "year" as Period);
   const [selectedPeriod, setSelectedPeriod] = useState<Period | null>(null);
   const period = selectedPeriod ?? savedPeriod;
   const [copied, setCopied] = useState(false);

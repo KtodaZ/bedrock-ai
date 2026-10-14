@@ -8,7 +8,7 @@ const PERIODS: Period[] = ["month", "year", "all"];
 
 export async function GET(req: NextRequest) {
   const param = req.nextUrl.searchParams.get("period") as Period | null;
-  const period = param && PERIODS.includes(param) ? param : "month";
+  const period = param && PERIODS.includes(param) ? param : "year";
   try {
     const [rows, ehLog] = await Promise.all([fetchAttendance(), fetchEhAttributions()]);
     return NextResponse.json(computeChallenge(rows, ehLog, period));

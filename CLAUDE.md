@@ -95,6 +95,7 @@ Events sent by `/api/chat`:
 ## EH Challenge
 - The home page has an EH Challenge tab; `/eh-challenge` is its public, shareable page.
 - Periods: this month, this year, all time, anchored to the latest attendance date. Only FNGs joining within the selected period count.
+- This year is the default; the saved-period key was reset when the default changed, and subsequent selections are remembered.
 - Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`.
 - The app reads the existing `Roster` tab (gid `437240319`) in F3 Bedrock Data, using `F3 Name` and `EH'er`.
 - Every nonblank EH'er entry in the Roster is treated as confirmed, using the recorded name. There is no separate review/status gate, Band inference, or EH Log override.
