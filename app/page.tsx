@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
+import EhChallenge from "./EhChallenge";
 
 interface QueryLogEntry {
   index: number;
@@ -89,6 +90,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : true
   );
+  const [tab, setTab] = useState<"chat" | "eh">("chat");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [expandedQueries, setExpandedQueries] = useState<Set<number>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -251,6 +253,7 @@ export default function Home() {
   }
 
   function startNewChat() {
+    setTab("chat");
     setMessages([]);
     setActiveId(null);
     setInput("");
@@ -259,6 +262,7 @@ export default function Home() {
   }
 
   function restoreConversation(convo: Conversation) {
+    setTab("chat");
     setMessages(convo.messages);
     setActiveId(convo.id);
     if (window.innerWidth < 768) setSidebarOpen(false);
@@ -461,13 +465,24 @@ export default function Home() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <span className="font-semibold text-white/80 tracking-tight text-sm">Bedrock Data AI</span>
-            <span className="hidden sm:inline text-xs text-white/25 border border-white/10 rounded-full px-2 py-0.5">
-              F3 Intelligence
-            </span>
+            <span className="hidden sm:inline font-semibold text-white/80 tracking-tight text-sm">Bedrock Data AI</span>
+            <div className="flex rounded-full p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
+              {([["chat", "Chat"], ["eh", "EH Challenge"]] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setTab(value)}
+                  className={`text-xs px-3 py-1 rounded-full transition-colors cursor-pointer ${
+                    tab === value ? "text-white" : "text-white/40 hover:text-white/70"
+                  }`}
+                  style={tab === value ? { background: "linear-gradient(135deg, #7c3aed, #2563eb)" } : undefined}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            {messages.length > 0 && (
+            {tab === "chat" && messages.length > 0 && (
               <button
                 onClick={startNewChat}
                 className="text-white/30 hover:text-white/60 transition-colors border border-white/10 rounded-full px-3 py-1.5 hover:border-white/20 cursor-pointer flex items-center gap-1.5"
@@ -479,27 +494,17 @@ export default function Home() {
                 <span className="hidden sm:inline text-xs">New chat</span>
               </button>
             )}
-            <select
-              value={reasoningLevel}
-              onChange={(e) => setReasoningLevel(e.target.value as "auto" | "low" | "medium" | "high")}
-              className="text-xs rounded-lg px-2 py-1.5 border border-white/10 bg-transparent text-white/40 hover:text-white/60 hover:border-white/20 transition-colors cursor-pointer outline-none"
-              style={{ background: "rgba(255,255,255,0.03)" }}
-              title="Reasoning level"
-            >
-              <option value="auto" style={{ background: "#0f0f1a" }}>Auto</option>
-              <option value="low" style={{ background: "#0f0f1a" }}>Low</option>
-              <option value="medium" style={{ background: "#0f0f1a" }}>Medium</option>
-              <option value="high" style={{ background: "#0f0f1a" }}>High</option>
-            </select>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-white/30">Live data</span>
+              <span className="hidden sm:inline text-xs text-white/30">Live data</span>
             </div>
           </div>
         </header>
 
+        {tab === "eh" && <EhChallenge />}
+
         {/* Chat area */}
-        <main className="flex-1 overflow-y-auto flex flex-col">
+        <main className={`flex-1 overflow-y-auto flex-col ${tab === "chat" ? "flex" : "hidden"}`}>
           <div className="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 py-6 gap-6">
             {messages.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-8 py-16">
@@ -720,7 +725,7 @@ export default function Home() {
                   style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(37,99,235,0.5))" }}
                 >
                   <div
-                    className="relative rounded-2xl flex items-end gap-3 px-4 py-3"
+                    className="relative rounded-2xl flex flex-col px-4 pt-3 pb-2"
                     style={{ background: "#0f0f1a" }}
                   >
                     <textarea
@@ -730,7 +735,7 @@ export default function Home() {
                       onKeyDown={handleKeyDown}
                       placeholder="Ask about workouts, attendance, leaders..."
                       rows={1}
-                      className="flex-1 bg-transparent placeholder-white/20 text-sm resize-none outline-none leading-relaxed max-h-32 overflow-y-auto scrollbar-thin"
+                      className="flex-1 bg-transparent placeholder-white/20 text-sm resize-none outline-none leading-relaxed max-h-32 overflow-y-auto scrollbar-thin w-full"
                       style={{ minHeight: "24px", color: "rgba(255,255,255,0.9)" }}
                       onInput={(e) => {
                         const t = e.target as HTMLTextAreaElement;
@@ -738,17 +743,31 @@ export default function Home() {
                         t.style.height = `${Math.min(t.scrollHeight, 128)}px`;
                       }}
                     />
-                    <button
-                      onClick={() => sendMessage(input)}
-                      disabled={!input.trim() || loading}
-                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
-                      style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                      </svg>
-                    </button>
+                    <div className="flex items-center justify-between mt-2">
+                      <select
+                        value={reasoningLevel}
+                        onChange={(e) => setReasoningLevel(e.target.value as "auto" | "low" | "medium" | "high")}
+                        className="text-xs rounded-lg px-2 py-1 border border-white/8 bg-transparent text-white/30 hover:text-white/50 hover:border-white/15 transition-colors cursor-pointer outline-none"
+                        style={{ background: "rgba(255,255,255,0.03)" }}
+                        title="Reasoning level"
+                      >
+                        <option value="auto" style={{ background: "#0f0f1a" }}>Auto</option>
+                        <option value="low" style={{ background: "#0f0f1a" }}>Low</option>
+                        <option value="medium" style={{ background: "#0f0f1a" }}>Medium</option>
+                        <option value="high" style={{ background: "#0f0f1a" }}>High</option>
+                      </select>
+                      <button
+                        onClick={() => sendMessage(input)}
+                        disabled={!input.trim() || loading}
+                        className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
+                        style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="22" y1="2" x2="11" y2="13" />
+                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
