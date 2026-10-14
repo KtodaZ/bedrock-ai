@@ -96,11 +96,10 @@ Events sent by `/api/chat`:
 - The home page has an EH Challenge tab; `/eh-challenge` is its public, shareable page.
 - Periods: this month, this year, all time, anchored to the latest attendance date. Only FNGs joining within the selected period count.
 - Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`.
-- The app reads the `EH Log` tab (gid `126718209`) in F3 Bedrock Data. `EH_LOG_CSV_URL` optionally overrides it.
-- Columns: `PAX Name`, `EH'd By`, `First Post`, `First Site`, `Status`, `Source URL`, `Candidate EH'er`, `Notes`. Only `Confirmed` rows credit points; uncertain candidates stay unassigned. A legacy two-column CSV without Status remains supported.
-- The initial log uses existing roster/intake attributions and first-FNG attendance dates. Band evidence and ambiguous matches are recorded with source links for review.
-- `EH'd By` has a strict dropdown using roster names to prevent spelling variants. Band-confirmed parent invitations credit the parent's F3 name, not a `2.0` child descriptor.
-- EH Log changes refresh within the one-minute server cache; attendance retains its separate ten-minute cache.
+- The app reads the existing `Roster` tab (gid `437240319`) in F3 Bedrock Data, using `F3 Name` and `EH'er`.
+- Every nonblank EH'er entry in the Roster is treated as confirmed, using the recorded name. There is no separate review/status gate, Band inference, or EH Log override.
+- The added EH Log tab is unused and retained without further edits. Sheet updates continue in the familiar Roster tab.
+- Roster changes refresh within the one-minute server cache; attendance retains its separate ten-minute cache.
 - The component includes a region goal, weekly points, FNG milestones, and Copy for Band.
 
 ## Conversation History

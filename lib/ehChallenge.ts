@@ -60,9 +60,6 @@ export interface EhLogEntry {
   ehBy: string;
 }
 
-// Who EH'd whom. Rows from the EH_LOG_CSV_URL sheet tab are merged on top of these.
-export const EH_LOG: EhLogEntry[] = [];
-
 const RESURRECTION_GAP_DAYS = 180;
 
 // ── Scoring ──────────────────────────────────────────────────────────────────

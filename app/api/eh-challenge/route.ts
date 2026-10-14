@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchAttendance, fetchEhLogCSV } from "@/lib/sheet";
-import { computeChallenge, EH_LOG, type EhLogEntry, type Period } from "@/lib/ehChallenge";
+import { fetchAttendance, fetchEhAttributions } from "@/lib/sheet";
+import { computeChallenge, type Period } from "@/lib/ehChallenge";
 
 export const runtime = "nodejs";
 
@@ -10,13 +10,7 @@ export async function GET(req: NextRequest) {
   const param = req.nextUrl.searchParams.get("period") as Period | null;
   const period = param && PERIODS.includes(param) ? param : "month";
   try {
-    const [rows, sheetLog] = await Promise.all([fetchAttendance(), fetchEhLogCSV()]);
-    const ehLog: EhLogEntry[] = [
-      ...EH_LOG,
-      ...sheetLog
-        .filter((r) => !("Status" in r) || r["Status"].trim().toLowerCase() === "confirmed")
-        .map((r) => ({ pax: r["PAX Name"] ?? "", ehBy: r["EH'd By"] ?? "" })),
-    ];
+    const [rows, ehLog] = await Promise.all([fetchAttendance(), fetchEhAttributions()]);
     return NextResponse.json(computeChallenge(rows, ehLog, period));
   } catch (err) {
     console.error("[eh-challenge]", err);

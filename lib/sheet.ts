@@ -1,7 +1,8 @@
 import { fetchCSV } from "./attendance-db";
+import type { EhLogEntry } from "./ehChallenge";
 
 const CACHE_TTL_MS = 60 * 1000; // EH attributions are edited live in the sheet.
-const EH_LOG_CSV_URL = "https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/export?format=csv&gid=126718209";
+const ROSTER_CSV_URL = "https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/export?format=csv&gid=437240319";
 
 const csvCache = new Map<string, { data: string; fetchedAt: number }>();
 
@@ -90,8 +91,14 @@ export async function fetchAttendance(): Promise<AttendanceRow[]> {
   return rows;
 }
 
-/** EH Log tab, with an optional CSV URL override for another source. */
-export async function fetchEhLogCSV(): Promise<Record<string, string>[]> {
-  const url = process.env.EH_LOG_CSV_URL || EH_LOG_CSV_URL;
-  return parseCSV(await fetchCachedCSV(url));
+/** Existing Roster entries are authoritative; a recorded EH'er needs no separate confirmation. */
+export async function fetchEhAttributions(): Promise<EhLogEntry[]> {
+  const csv = await fetchCachedCSV(ROSTER_CSV_URL);
+  const headers = parseCSVLine(csv.split("\n", 1)[0]);
+  if (!headers.includes("F3 Name") || !headers.includes("EH'er")) {
+    throw new Error("Roster is missing the F3 Name or EH'er column");
+  }
+  return parseCSV(csv)
+    .map((row) => ({ pax: row["F3 Name"].trim(), ehBy: row["EH'er"].trim() }))
+    .filter((entry) => entry.pax && entry.ehBy);
 }
