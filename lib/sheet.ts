@@ -1,6 +1,6 @@
 import { fetchCSV } from "./attendance-db";
 
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 1000; // EH attributions are edited live in the sheet.
 const EH_LOG_CSV_URL = "https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/export?format=csv&gid=126718209";
 
 const csvCache = new Map<string, { data: string; fetchedAt: number }>();
