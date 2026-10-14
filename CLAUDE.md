@@ -18,7 +18,7 @@ Columns: `PAX Name`, `Site Name`, `FNG`, `Post`, `Q`, `QS`, `QS-Q`, `Date`, `Mon
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router, TypeScript)
 - **Styling:** Tailwind CSS — dark theme, gradients, premium look
-- **AI (chat):** `gpt-6-astra` via OpenAI Responses API with configurable reasoning effort
+- **AI (chat):** `gpt-6.1-sol` via OpenAI Responses API with configurable reasoning effort
 - **AI (suggestions):** `gpt-4o-mini` via OpenAI Chat Completions API
 - **SQL engine:** sql.js (SQLite WASM, server-side only, Node.js runtime)
 - **Data fetching:** TanStack React Query for home page suggestions with retry + fallback
@@ -26,7 +26,7 @@ Columns: `PAX Name`, `Site Name`, `FNG`, `Post`, `Q`, `QS`, `QS-Q`, `Date`, `Mon
 
 ## AI Architecture (Agentic SQL Loop)
 - CSV → in-memory SQLite DB (built once per cache cycle, reused across requests)
-- Agentic model calls (gpt-6-astra, Responses API) with `run_sql` tool
+- Agentic model calls (gpt-6.1-sol, Responses API) with `run_sql` tool
 - Model calls `run_sql` as many times as needed (typically 2–5 queries per question)
 - Each call: model generates SQL → executes against sql.js → results returned to model
 - Model synthesizes final answer from all query results
@@ -72,7 +72,7 @@ Events sent by `/api/chat`:
 
 ## Cost Profile (per chat query)
 - SQL queries run server-side (free)
-- Model: `gpt-6-astra`, multiple tool calls per question (no full CSV sent)
+- Model: `gpt-6.1-sol`, multiple tool calls per question (no full CSV sent)
 - Suggestions: `gpt-4o-mini` ~negligible
 - Chat costs depend on input, output, reasoning tokens, and the number of tool rounds.
 
