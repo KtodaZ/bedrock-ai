@@ -39,8 +39,12 @@ async function verifyToken(token: string, secret: string): Promise<boolean> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow login page, auth API, and the MCP endpoint (token-authed on its own) through
+  // The leaderboard is public; AI routes retain the password gate.
+  // The MCP endpoint verifies its own bearer token.
   if (
+    pathname === "/eh-challenge" ||
+    pathname === "/api/eh-challenge" ||
+    pathname === "/how-it-works" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mcp")

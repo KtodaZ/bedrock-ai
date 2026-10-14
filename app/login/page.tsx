@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -69,6 +70,9 @@ export default function LoginPage() {
             Bedrock AI
           </h1>
           <p className="text-white/30 text-sm mt-1">Enter your access code to continue</p>
+          <Link href="/eh-challenge" className="text-violet-300 hover:text-violet-200 text-sm mt-4 underline underline-offset-4">
+            View the EH Challenge leaderboard
+          </Link>
         </div>
 
         {/* Form */}

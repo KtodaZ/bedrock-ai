@@ -18,7 +18,7 @@ Columns: `PAX Name`, `Site Name`, `FNG`, `Post`, `Q`, `QS`, `QS-Q`, `Date`, `Mon
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router, TypeScript)
 - **Styling:** Tailwind CSS — dark theme, gradients, premium look
-- **AI (chat):** `gpt-5-mini` via OpenAI Responses API with configurable reasoning effort
+- **AI (chat):** `gpt-6-astra` via OpenAI Responses API with configurable reasoning effort
 - **AI (suggestions):** `gpt-4o-mini` via OpenAI Chat Completions API
 - **SQL engine:** sql.js (SQLite WASM, server-side only, Node.js runtime)
 - **Data fetching:** TanStack React Query for home page suggestions with retry + fallback
@@ -26,7 +26,7 @@ Columns: `PAX Name`, `Site Name`, `FNG`, `Post`, `Q`, `QS`, `QS-Q`, `Date`, `Mon
 
 ## AI Architecture (Agentic SQL Loop)
 - CSV → in-memory SQLite DB (built once per cache cycle, reused across requests)
-- Single model call (gpt-5-mini, Responses API) with `run_sql` tool
+- Agentic model calls (gpt-6-astra, Responses API) with `run_sql` tool
 - Model calls `run_sql` as many times as needed (typically 2–5 queries per question)
 - Each call: model generates SQL → executes against sql.js → results returned to model
 - Model synthesizes final answer from all query results
@@ -72,9 +72,9 @@ Events sent by `/api/chat`:
 
 ## Cost Profile (per chat query)
 - SQL queries run server-side (free)
-- Model: `gpt-5-mini`, 2–5 tool calls, typically ~5–20k tokens total (no full CSV sent)
+- Model: `gpt-6-astra`, multiple tool calls per question (no full CSV sent)
 - Suggestions: `gpt-4o-mini` ~negligible
-- Much cheaper than previous full-CSV approach (~$0.038/query uncached)
+- Chat costs depend on input, output, reasoning tokens, and the number of tool rounds.
 
 ## Design
 - Dark background (`#07070f`), gradient accents (purple `#7c3aed` / blue `#2563eb`), glassy cards
@@ -84,12 +84,20 @@ Events sent by `/api/chat`:
 - Reasoning level dropdown in header (Low/Medium/High Reasoning)
 
 ## Authentication
-- Password gate on every route via `middleware.ts` (Next.js edge middleware)
+- Password gate protects chat, AI suggestions, and connector setup via `middleware.ts`.
+- `/eh-challenge`, `/api/eh-challenge`, and `/how-it-works` are public. The leaderboard uses attendance data directly and makes no AI calls.
 - Correct password → `POST /api/auth` → HMAC-SHA256 signed token → httpOnly cookie (`bedrock-auth`, 1-year TTL)
 - Middleware verifies the HMAC on every request; bad/missing cookie redirects to `/login`
 - Login page at `app/login/page.tsx` — matches app dark theme, fullscreen takeover
 - Cookie is httpOnly + secure in production — not accessible to JS, can't be forged via DevTools
 - To change password: update `AUTH_PASSWORD` env var and redeploy (no code change needed)
+
+## EH Challenge
+- The home page has an EH Challenge tab; `/eh-challenge` is its public, shareable page.
+- Periods: this month, this year, all time, anchored to the latest attendance date. Only FNGs joining within the selected period count.
+- Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`.
+- Optional `EH_LOG_CSV_URL` reads a CSV with `PAX Name` and `EH'd By` columns. Without recorded EH'ers, standings are empty and FNG points are unassigned.
+- The component includes a region goal, weekly points, FNG milestones, and Copy for Band.
 
 ## Conversation History
 - Stored in `localStorage` under key `bedrock-conversations` (array of `Conversation` objects)

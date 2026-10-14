@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
         // Agentic loop — model calls run_sql as many times as needed
         while (true) {
           const response = await openai.responses.create({
-            model: "gpt-5.1",
+            model: "gpt-6-astra",
             reasoning: { effort: reasoningLevel },
             input,
             tools: [RUN_SQL_TOOL],
