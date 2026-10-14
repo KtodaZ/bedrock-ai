@@ -96,7 +96,9 @@ Events sent by `/api/chat`:
 - The home page has an EH Challenge tab; `/eh-challenge` is its public, shareable page.
 - Periods: this month, this year, all time, anchored to the latest attendance date. Only FNGs joining within the selected period count.
 - Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`.
-- Optional `EH_LOG_CSV_URL` reads a CSV with `PAX Name` and `EH'd By` columns. Without recorded EH'ers, standings are empty and FNG points are unassigned.
+- The app reads the `EH Log` tab (gid `126718209`) in F3 Bedrock Data. `EH_LOG_CSV_URL` optionally overrides it.
+- Columns: `PAX Name`, `EH'd By`, `First Post`, `First Site`, `Status`, `Source URL`, `Candidate EH'er`, `Notes`. Only `Confirmed` rows credit points; uncertain candidates stay unassigned. A legacy two-column CSV without Status remains supported.
+- The initial log uses existing roster/intake attributions and first-FNG attendance dates. Band evidence and ambiguous matches are recorded with source links for review.
 - The component includes a region goal, weekly points, FNG milestones, and Copy for Band.
 
 ## Conversation History

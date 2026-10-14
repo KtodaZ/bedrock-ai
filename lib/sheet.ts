@@ -1,6 +1,7 @@
 import { fetchCSV } from "./attendance-db";
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const EH_LOG_CSV_URL = "https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/export?format=csv&gid=126718209";
 
 const csvCache = new Map<string, { data: string; fetchedAt: number }>();
 
@@ -89,9 +90,8 @@ export async function fetchAttendance(): Promise<AttendanceRow[]> {
   return rows;
 }
 
-/** Optional EH log: a published CSV (e.g. an "EH Log" sheet tab) with "PAX Name" and "EH'd By" columns. */
+/** EH Log tab, with an optional CSV URL override for another source. */
 export async function fetchEhLogCSV(): Promise<Record<string, string>[]> {
-  const url = process.env.EH_LOG_CSV_URL;
-  if (!url) return [];
+  const url = process.env.EH_LOG_CSV_URL || EH_LOG_CSV_URL;
   return parseCSV(await fetchCachedCSV(url));
 }

@@ -13,7 +13,9 @@ export async function GET(req: NextRequest) {
     const [rows, sheetLog] = await Promise.all([fetchAttendance(), fetchEhLogCSV()]);
     const ehLog: EhLogEntry[] = [
       ...EH_LOG,
-      ...sheetLog.map((r) => ({ pax: r["PAX Name"] ?? "", ehBy: r["EH'd By"] ?? "" })),
+      ...sheetLog
+        .filter((r) => !("Status" in r) || r["Status"].trim().toLowerCase() === "confirmed")
+        .map((r) => ({ pax: r["PAX Name"] ?? "", ehBy: r["EH'd By"] ?? "" })),
     ];
     return NextResponse.json(computeChallenge(rows, ehLog, period));
   } catch (err) {
