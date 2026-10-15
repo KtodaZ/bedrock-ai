@@ -17,19 +17,19 @@ const profiles = loadTS('lib/ehProfile.ts', { './ehChallenge': scoring });
 const post = (pax, date, fng = false) => ({ pax, date, fng, post: true, site: 'Test' });
 
 test('Resurrection credits the recorded bring-back person, never guesses the original EH’er', () => {
-  const rows = [post('Returnee', '2026-01-01'), post('Returnee', '2026-10-19'), post('Returnee', '2026-10-22')];
+  const rows = [post('Returnee', '2026-01-01'), post('Returnee', '2026-11-16'), post('Returnee', '2026-11-19')];
   const original = [{ pax: 'Returnee', ehBy: 'Original' }];
   assert.equal(scoring.computeChallenge(rows, original, 'year').leaderboard.length, 0);
-  const record = { pax: 'Returnee', broughtBy: 'Rescuer', date: '2026-10-19' };
+  const record = { pax: 'Returnee', broughtBy: 'Rescuer', date: '2026-11-16' };
   const result = scoring.computeChallenge(rows, original, 'year', [record, record]);
   assert.deepEqual(result.leaderboard.map((p) => [p.name, p.total]), [['Rescuer', 5]]);
-  for (const date of ['2026-10-20', '2026-10-22']) {
+  for (const date of ['2026-11-17', '2026-11-19']) {
     assert.equal(scoring.computeChallenge(rows, original, 'year', [{ ...record, date }]).leaderboard.length, 0);
   }
 });
 
 test('Family Tree credits the first-time inviter once, separately from upstream referrals', () => {
-  const rows = [post('First Inviter', '2026-10-01', true), post('Alex', '2026-10-26', true), post('Ben', '2026-10-26', true)];
+  const rows = [post('First Inviter', '2026-10-01', true), post('Alex', '2026-11-09', true), post('Ben', '2026-11-09', true)];
   const entries = [{ pax: 'First Inviter', ehBy: 'Grand' }, { pax: 'Alex', ehBy: 'First Inviter' }, { pax: 'Ben', ehBy: 'First Inviter' }];
   const result = scoring.computeChallenge(rows, entries, 'year');
   assert.equal(result.leaderboard.find((p) => p.name === 'First Inviter').breakdown.themes, 5);

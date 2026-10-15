@@ -97,7 +97,7 @@ Events sent by `/api/chat`:
 - The home page has an EH Challenge tab; `/eh-challenge` is its public, shareable page.
 - Periods: this month, this year, all time, anchored to the latest attendance date. Only FNGs joining within the selected period count.
 - This year is the default; the saved-period key was reset when the default changed, and subsequent selections are remembered.
-- Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`. Family Tree gives a one-time bonus to the person inviting his first recorded FNG, separately from upstream referral points.
+- The 2026 opening schedule has no October events: Free for All Nov 2–8 (regular scoring), Family Tree Nov 9–15, Resurrection Nov 16–22. Theme dates/bonuses live in `lib/ehChallenge.ts`. Family Tree gives a one-time bonus to the person inviting his first recorded FNG, separately from upstream referral points.
 - Resurrection credits the person recorded in Roster G (`Brought back by`), with the return workout in H (`Return date`). Both are required; the date must match attendance after at least 180 days away and fall inside the themed window. Original EH credit is not reused. G has strict validation against Roster F3 names; H is a validated date.
 - Search filters EH’ers by name and FNGs by name/EH’er while preserving standings rank. Public person pages at `/eh-challenge/person/<encoded-name>?period=year` show points breakdown, invited FNGs, recorded milestones, next-step suggestions, and badges. Badges do not add points and use the selected period’s cohort.
 - Run scoring/profile regression checks with `node --test scripts/test-eh-challenge.cjs`.

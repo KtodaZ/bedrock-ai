@@ -15,6 +15,7 @@ export const POINTS = {
 export const REGION_FNG_GOAL = 50;
 
 type ThemeKind =
+  | "open" // standard scoring without a themed bonus
   | "fng" // any FNG whose first post falls in the window
   | "familyTree" // a PAX EHs his first-ever FNG in the window
   | "resurrection"; // a logged PAX returns after 180+ days away
@@ -30,19 +31,27 @@ export interface Theme {
 
 export const THEMES: Theme[] = [
   {
-    name: "Resurrection Week",
-    start: "2026-10-19",
-    end: "2026-10-25",
-    description: "Bring back a former PAX who's been absent for at least 6 months",
-    kind: "resurrection",
-    bonus: 5,
+    name: "Free for All",
+    start: "2026-11-02",
+    end: "2026-11-08",
+    description: "Bring any new guy to a Bedrock workout.",
+    kind: "open",
+    bonus: 0,
   },
   {
     name: "Family Tree",
-    start: "2026-10-26",
-    end: "2026-11-01",
+    start: "2026-11-09",
+    end: "2026-11-15",
     description: "Get an existing PAX to EH his first FNG",
     kind: "familyTree",
+    bonus: 5,
+  },
+  {
+    name: "Resurrection Week",
+    start: "2026-11-16",
+    end: "2026-11-22",
+    description: "Bring a former PAX back after at least 180 days away",
+    kind: "resurrection",
     bonus: 5,
   },
   {
@@ -230,6 +239,7 @@ export function computeChallenge(
   }
 
   for (const t of THEMES) {
+    if (t.kind === "open") continue;
     const from = t.start > start ? t.start : start;
     const to = t.end < asOf ? t.end : asOf;
     if (from > to) continue;
