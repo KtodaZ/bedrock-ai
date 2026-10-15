@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { buildBandText, formatDay, sortLeaderboard, type ChallengeResult, type LeaderboardSort, type Period } from "@/lib/ehChallenge";
-import Link from "next/link";
+import PointsGuide from "./PointsGuide";
 
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "month", label: "This month" },
@@ -99,7 +99,6 @@ export default function EhChallenge() {
             <p className="text-xs text-white/35 mt-1">
               {data ? `${formatDay(data.start)} – ${formatDay(data.asOf)} · latest data ${formatDay(data.asOf)}` : "Loading…"}
             </p>
-            <Link href="/eh-challenge/points" className="inline-flex items-center min-h-10 text-xs text-violet-300 hover:text-violet-200 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-violet-400">How points work</Link>
           </div>
           <div className="flex rounded-xl p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
             {PERIOD_OPTIONS.map((o) => (
@@ -160,6 +159,14 @@ export default function EhChallenge() {
                 )}
               </div>
             </div>
+
+            <details className="group">
+              <summary className="flex items-center justify-between min-h-11 px-4 py-2 rounded-xl border border-white/10 text-sm text-violet-200 cursor-pointer hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-violet-400 list-none [&::-webkit-details-marker]:hidden">
+                How it works
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="w-5 h-5 group-open:rotate-180"><path d="m5 7 5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </summary>
+              <div className="mt-3"><PointsGuide /></div>
+            </details>
 
             <section className="rounded-2xl overflow-hidden" style={card}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">

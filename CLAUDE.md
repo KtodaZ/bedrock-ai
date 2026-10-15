@@ -102,7 +102,7 @@ Events sent by `/api/chat`:
 - The added EH Log tab is unused and retained without further edits. Sheet updates continue in the familiar Roster tab.
 - Roster changes refresh within the one-minute server cache; attendance retains its separate ten-minute cache.
 - The component includes a region goal, weekly points, FNG milestones, and Copy for Band. Points/FNG sorting also controls the copied Band standings.
-- The public `/eh-challenge/points` infographic illustrates workout milestones, retention, and referrals; it is linked from the leaderboard header rather than embedded above the standings.
+- The public `/eh-challenge/points` infographic illustrates workout milestones, retention, and referrals; it also appears inside a “How it works” expandable section on the leaderboard, closed by default.
 - The app has a custom B favicon (SVG, ICO, and Apple icon), available publicly.
 - `data.f3bedrock.com` is attached to the `f3-bedrock-ai` Vercel project. DNS is pending the domain owner adding a DNS-only CNAME for `data` to `b12e7fd92aae3ebc.vercel-dns-017.com`; keep existing nameservers.
 
