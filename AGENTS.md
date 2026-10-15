@@ -24,6 +24,16 @@ Read [README.md](README.md) for the product and local setup, [docs/architecture.
 | Connector instructions and public help | `app/connect/page.tsx`, `app/how-it-works/page.tsx` |
 | SQLite WebAssembly deployment bundle | `next.config.ts` |
 
+## Spreadsheet edits require explicit permission
+
+Never edit a spreadsheet without the user's explicit permission for the specific changes. This includes the F3 Bedrock Data Google Sheet, Excel workbooks, and any replacement or connected spreadsheet, whether accessed through a browser, connector, API, script, or automation.
+
+- Reading, inspecting, and preparing proposed changes are allowed without write permission.
+- Before any unapproved write, show the proposed changes and ask for explicit approval. Identify the spreadsheet, affected tabs/ranges, and what will change. If the user has already explicitly authorized those exact changes in the current task, proceed only within that scope.
+- Writes include cell values, formulas, formatting, validation, rows/columns, tabs, sharing permissions, and deletions. Edit access, available credentials, or a general request to fix the app does not grant permission to change a spreadsheet.
+- EH correction submissions remain review records; they are not permission to update the source sheet. Do not add automatic spreadsheet writes or a background process that bypasses this rule.
+- If permission is missing or ambiguous, continue read-only work and leave the spreadsheet unchanged until the user approves.
+
 ## Rules to preserve
 
 - The existing Google Sheet is authoritative. Read its attendance and Roster tabs; do not introduce an EH Log dependency or a separate source for standings.
