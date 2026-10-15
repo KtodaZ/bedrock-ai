@@ -29,6 +29,7 @@ interface Conversation {
 }
 
 const STORAGE_KEY = "bedrock-conversations";
+const AGENT_BANNER_DISMISSED_KEY = "bedrock-agent-banner-dismissed";
 const SUGGESTIONS_KEY = "bedrock-suggestions";
 const SUGGESTIONS_TTL = 24 * 60 * 60 * 1000;
 
@@ -94,6 +95,21 @@ export default function Home() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [expandedQueries, setExpandedQueries] = useState<Set<number>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [agentBannerVisible, setAgentBannerVisible] = useState(false);
+  useEffect(() => {
+    try {
+      setAgentBannerVisible(localStorage.getItem(AGENT_BANNER_DISMISSED_KEY) !== "true");
+    } catch {
+      setAgentBannerVisible(true);
+    }
+  }, []);
+
+  function dismissAgentBanner() {
+    setAgentBannerVisible(false);
+    try {
+      localStorage.setItem(AGENT_BANNER_DISMISSED_KEY, "true");
+    } catch {}
+  }
   const settingsRef = useRef<HTMLDivElement>(null);
   const [cachedSuggestions, setCachedSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
   useEffect(() => {
@@ -384,6 +400,28 @@ export default function Home() {
           ))
         )}
       </div>
+      <div className="flex-shrink-0 border-t border-white/10 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <a
+          href="/connect"
+          className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-[#a78bfa]"
+        >
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 3v4m6-4v4M7 7h10v3a5 5 0 0 1-10 0V7Zm5 8v6" />
+          </svg>
+          Bring your own agent
+        </a>
+        <a
+          href="https://github.com/KtodaZ/bedrock-ai"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-[#a78bfa]"
+        >
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-12-2 20" />
+          </svg>
+          View source on GitHub
+        </a>
+      </div>
     </>
   );
 
@@ -433,27 +471,40 @@ export default function Home() {
       {/* ── Main content ── */}
       <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden relative z-10">
         {/* Bring-your-own-agent banner */}
-        <a
-          href="/connect"
-          className="flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2 text-xs border-b transition-colors group"
-          style={{
-            background: "linear-gradient(90deg, rgba(124,58,237,0.14), rgba(37,99,235,0.14))",
-            borderColor: "rgba(124,58,237,0.2)",
-            color: "rgba(255,255,255,0.6)",
-          }}
-        >
-          <span aria-hidden>🔌</span>
-          <span>
-            <span className="text-white/80 font-medium">Bring your own agent</span>
-            <span className="hidden sm:inline"> — connect ChatGPT or Claude to your attendance data via MCP</span>
-          </span>
-          <span className="inline-flex items-center gap-1 text-[#a78bfa] group-hover:gap-1.5 transition-all font-medium">
-            Connect
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </span>
-        </a>
+        {agentBannerVisible && (
+          <div
+            className="flex-shrink-0 flex items-center text-xs border-b pl-4 pr-1"
+            style={{
+              background: "linear-gradient(90deg, rgba(124,58,237,0.14), rgba(37,99,235,0.14))",
+              borderColor: "rgba(124,58,237,0.2)",
+              color: "rgba(255,255,255,0.6)",
+            }}
+          >
+            <a href="/connect" className="group flex min-h-11 flex-1 items-center justify-center gap-2 py-2 focus-visible:outline-2 focus-visible:outline-[#a78bfa]">
+              <span aria-hidden>🔌</span>
+              <span>
+                <span className="text-white/80 font-medium">Bring your own agent</span>
+                <span className="hidden sm:inline"> — connect ChatGPT or Claude to your attendance data via MCP</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[#a78bfa] group-hover:gap-1.5 transition-all font-medium">
+                Connect
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </span>
+            </a>
+            <button
+              type="button"
+              onClick={dismissAgentBanner}
+              aria-label="Dismiss bring your own agent banner"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-white/60 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-[#a78bfa] cursor-pointer"
+            >
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="m6 6 12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+        )}
         {/* Header */}
         <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5">
           <div className="flex items-center gap-3">
