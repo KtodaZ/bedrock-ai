@@ -104,7 +104,7 @@ Events sent by `/api/chat`:
 - The component includes a region goal, weekly points, FNG milestones, and Copy for Band. Points/FNG sorting also controls the copied Band standings.
 - The public `/eh-challenge/points` infographic illustrates workout milestones, retention, and referrals; it also appears inside a “How it works” expandable section on the leaderboard, closed by default.
 - The app has a custom B favicon (SVG, ICO, and Apple icon), available publicly.
-- `data.f3bedrock.com` is attached to the `f3-bedrock-ai` Vercel project. DNS is pending the domain owner adding a DNS-only CNAME for `data` to `b12e7fd92aae3ebc.vercel-dns-017.com`; keep existing nameservers.
+- `data.f3bedrock.com` is live on the `f3-bedrock-ai` Vercel project. The DNS-only CNAME targets `b12e7fd92aae3ebc.vercel-dns-017.com`; existing Cloudflare nameservers remain. HTTPS certificate issued and public leaderboard/API verified October 14, 2026. Public challenge URL: `https://data.f3bedrock.com/eh-challenge`.
 
 ## Conversation History
 - Stored in `localStorage` under key `bedrock-conversations` (array of `Conversation` objects)
