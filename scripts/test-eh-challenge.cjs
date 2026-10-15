@@ -133,3 +133,13 @@ test('Period parsing preserves the year default and API supports explicit challe
     assert.deepEqual([body.period, body.regionFngs, body.goal], [period, count, goal]);
   }
 });
+
+
+test('Missing-today notice follows the Pacific calendar day, not UTC or the challenge end date', () => {
+  const beforeMidnight = new Date('2026-10-16T06:59:00Z');
+  const afterMidnight = new Date('2026-10-16T07:01:00Z');
+  assert.equal(scoring.attendanceIsBehindToday('2026-10-14', beforeMidnight), true);
+  assert.equal(scoring.attendanceIsBehindToday('2026-10-15', beforeMidnight), false);
+  assert.equal(scoring.attendanceIsBehindToday('2026-10-15', afterMidnight), true);
+  assert.equal(scoring.attendanceIsBehindToday('2026-10-16', afterMidnight), false);
+});

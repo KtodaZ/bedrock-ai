@@ -67,7 +67,7 @@ The source is [F3 Bedrock Data](https://docs.google.com/spreadsheets/d/11fIBnwzc
 | Sites | Named CSV export (`sheet=Sites`) | `lib/dataExplorerSource.ts` | Current active AO names/cities and coverage denominator |
 | Roster | `437240319` | `lib/sheet.ts` | Bedrock eligibility, EH credit, return credit, canonical correction names |
 
-Attendance is exported as CSV and cached in server memory for 10 minutes. SQLite is also reused for 10 minutes per warm instance. Roster CSV has its own one-minute cache. These are per-instance caches, not a shared synchronization service. The browser's challenge query is stale after five minutes and does not poll automatically; a sheet edit need not appear immediately in an already-open page.
+Attendance is exported as CSV and cached in server memory for 10 minutes. SQLite is also reused for 10 minutes per warm instance. Roster CSV has its own one-minute cache. These are per-instance caches, not a shared synchronization service. The EH views show “Today's data has not been logged by Commz Q” when `sourceAsOf` is earlier than the current Pacific calendar day. This notice uses source freshness rather than the challenge scoring cutoff; it clears when today’s source data is loaded. The browser's challenge query is stale after five minutes and does not poll automatically; a sheet edit need not appear immediately in an already-open page.
 
 `getDatabase()` loads CSV into SQLite through sql.js/WebAssembly. Dates become ISO `YYYY-MM-DD`; numeric flags become integers; blank fields become null. Unparseable dates and years outside 2020–2030 are skipped. Duplicate column headers are renamed; the second `Month` becomes `Month_1`.
 

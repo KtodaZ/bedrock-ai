@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { buildBandText, formatDay, sortLeaderboard, type LeaderboardSort, type Period, PERIODS, PERIOD_LABELS, parsePeriod } from "@/lib/ehChallenge";
+import { attendanceIsBehindToday, buildBandText, formatDay, sortLeaderboard, type LeaderboardSort, type Period, PERIODS, PERIOD_LABELS, parsePeriod } from "@/lib/ehChallenge";
 import { fetchChallenge } from "@/lib/challenge-client";
 import { matchesPerson, normalizePerson, personURL } from "@/lib/ehProfile";
 import PointsGuide from "./PointsGuide";
@@ -136,7 +136,7 @@ export default function EhChallenge() {
             <p className="text-sm text-white/75 leading-relaxed">
               {scoring ? "Challenge points count FNGs joining Oct 15–Dec 31, 2026, and their workouts through Dec 31. Earlier FNGs stay in the stats views." : "FNG stats show who invited whom. Competition points are kept in the 2026 Challenge view."}
             </p>
-            {scoring && data.sourceAsOf < data.start && <p role="status" className="text-sm text-violet-200">The attendance feed ends {formatDay(data.sourceAsOf)}. Challenge standings will appear once Oct 15 or later workouts are recorded.</p>}
+            {attendanceIsBehindToday(data.sourceAsOf) && <p role="status" className="text-sm text-violet-200">Today&apos;s data has not been logged by Commz Q</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="rounded-2xl p-4" style={card}>
                 <div className="text-xs text-white/65">{scoring ? "Challenge FNGs" : period === "year" ? "Annual FNG goal" : "Region FNGs"}</div>

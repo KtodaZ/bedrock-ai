@@ -11,6 +11,16 @@ export const PERIODS: Period[] = ["year", "challenge", "month", "all"];
 export function parsePeriod(value: string | null | undefined): Period {
   return PERIODS.includes(value as Period) ? value as Period : "year";
 }
+// Bedrock's calendar day is Pacific time, regardless of the visitor's timezone.
+export function attendanceIsBehindToday(sourceAsOf: string, now = new Date()): boolean {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)!.value;
+  const today = `${part("year")}-${part("month")}-${part("day")}`;
+  return sourceAsOf < today;
+}
+
 export const CHALLENGE_START = "2026-10-15";
 export const CHALLENGE_END = "2026-12-31";
 
