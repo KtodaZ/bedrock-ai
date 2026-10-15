@@ -426,7 +426,7 @@ export default function Home() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#07070f" }}>
+    <div className="flex h-dvh overflow-hidden" style={{ background: "#07070f" }}>
       {/* Ambient glows */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full opacity-20"
@@ -559,286 +559,290 @@ export default function Home() {
         {tab === "eh" && <EhChallenge />}
 
         {/* Chat area */}
-        <main className={`flex-1 overflow-y-auto flex-col ${tab === "chat" ? "flex" : "hidden"}`}>
-          <div className="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 py-6 gap-6">
-            {messages.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-8 py-16">
-                <div className="text-center">
-                  <h1
-                    className="text-4xl font-bold mb-3 bg-clip-text text-transparent"
-                    style={{ backgroundImage: "linear-gradient(135deg, #a78bfa, #60a5fa, #f0f0ff)" }}
-                  >
-                    Bedrock Data AI
-                  </h1>
-                  <p className="text-white/40 text-sm">
-                    Ask about your F3 workout attendance
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl">
-                  {(suggestions ?? FALLBACK_SUGGESTIONS).map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => sendMessage(q)}
-                      className="text-left text-sm px-4 py-3 rounded-xl border border-white/8 text-white/60 hover:text-white/90 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-200 cursor-pointer"
-                      style={{ background: "rgba(255,255,255,0.02)" }}
+        <main className={`flex-1 min-h-0 overflow-hidden flex-col ${tab === "chat" ? "flex" : "hidden"}`}>
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <div className="min-h-full flex flex-col max-w-3xl w-full mx-auto px-4 py-1 sm:py-6">
+              {messages.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 sm:gap-8 sm:py-8">
+                  <div className="text-center">
+                    <h1
+                      className="text-3xl sm:text-4xl font-bold mb-2 sm:mb-3 bg-clip-text text-transparent"
+                      style={{ backgroundImage: "linear-gradient(135deg, #a78bfa, #60a5fa, #f0f0ff)" }}
                     >
-                      {q}
-                    </button>
-                  ))}
-                </div>
+                      Bedrock Data AI
+                    </h1>
+                    <p className="text-white/40 text-sm">
+                      Ask about your F3 workout attendance
+                    </p>
+                  </div>
 
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4 pb-2">
-                {messages.map((msg, i) => (
-                  <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {msg.role === "assistant" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl">
+                    {(suggestions ?? FALLBACK_SUGGESTIONS).map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => sendMessage(q)}
+                        className="min-h-11 text-left text-sm px-4 py-2 sm:py-3 rounded-xl border border-white/8 text-white/60 hover:text-white/90 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-200 cursor-pointer"
+                        style={{ background: "rgba(255,255,255,0.02)" }}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4 pb-2">
+                  {messages.map((msg, i) => (
+                    <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                      {msg.role === "assistant" && (
+                        <div
+                          className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
+                          style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
+                        >
+                          B
+                        </div>
+                      )}
+                      <div className={`max-w-[80%] flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                        <div
+                          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                            msg.role === "user" ? "rounded-tr-sm" : "rounded-tl-sm"
+                          }`}
+                          style={
+                            msg.role === "user"
+                              ? { background: "linear-gradient(135deg, #7c3aed, #4f46e5)", color: "white" }
+                              : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.85)" }
+                          }
+                        >
+                          {msg.role === "assistant" ? (
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                                ul: ({ children }) => <ul className="mb-3 last:mb-0 space-y-1 pl-1">{children}</ul>,
+                                ol: ({ children }) => <ol className="mb-3 last:mb-0 space-y-1 pl-1 list-decimal list-inside">{children}</ol>,
+                                li: ({ children }) => (
+                                  <li className="flex gap-2 items-start">
+                                    <span className="mt-1.5 w-1 h-1 rounded-full bg-violet-400/70 flex-shrink-0" />
+                                    <span>{children}</span>
+                                  </li>
+                                ),
+                                strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                                em: ({ children }) => <em className="italic text-white/60">{children}</em>,
+                                h1: ({ children }) => <h1 className="text-base font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h1>,
+                                h2: ({ children }) => <h2 className="text-sm font-bold text-white/90 mt-3 mb-1.5 first:mt-0">{children}</h2>,
+                                h3: ({ children }) => <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wide mt-3 mb-1.5 first:mt-0">{children}</h3>,
+                                code: ({ children }) => <code className="bg-white/10 rounded px-1 text-xs font-mono">{children}</code>,
+                                hr: () => <hr className="border-white/8 my-3" />,
+                              }}
+                            >
+                              {msg.content}
+                            </ReactMarkdown>
+                          ) : (
+                            msg.content
+                          )}
+                        </div>
+                        {msg.role === "assistant" && (
+                          <div className="flex items-center gap-2">
+                          {msg.reasoningUsed && !msg.isError && (
+                            <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ color: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.04)" }}>
+                              {msg.reasoningUsed}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => copyMessage(msg.content, i)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all duration-150 cursor-pointer"
+                            style={{ color: copiedIndex === i ? "rgba(52,211,153,0.8)" : "rgba(255,255,255,0.2)" }}
+                            title="Copy response"
+                          >
+                            {copiedIndex === i ? (
+                              <>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                                Copy
+                              </>
+                            )}
+                          </button>
+                          </div>
+                        )}
+                        {msg.role === "assistant" && msg.isError && (
+                          <button
+                            onClick={() => {
+                              const lastUserMsg = [...messages].slice(0, i).reverse().find((m) => m.role === "user");
+                              if (lastUserMsg) sendMessage(lastUserMsg.content);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all cursor-pointer mt-1"
+                            style={{ background: "rgba(255,255,255,0.03)" }}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="1 4 1 10 7 10" />
+                              <path d="M3.51 15a9 9 0 1 0 .49-3.49" />
+                            </svg>
+                            Try again
+                          </button>
+                        )}
+                        {msg.role === "assistant" && msg.queryLog && msg.queryLog.length > 0 && (
+                          <div className="mt-1">
+                            <button
+                              onClick={() => setExpandedQueries((prev) => {
+                                const next = new Set(prev);
+                                next.has(i) ? next.delete(i) : next.add(i);
+                                return next;
+                              })}
+                              className="flex items-center gap-1.5 text-[11px] transition-colors cursor-pointer"
+                              style={{ color: "rgba(255,255,255,0.2)" }}
+                            >
+                              <svg
+                                width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                                style={{ transform: expandedQueries.has(i) ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
+                              >
+                                <polyline points="9 18 15 12 9 6" />
+                              </svg>
+                              {msg.queryLog.length} {msg.queryLog.length === 1 ? "query" : "queries"}
+                            </button>
+                            {expandedQueries.has(i) && (
+                              <div className="mt-2 flex flex-col gap-2">
+                                {msg.queryLog.map((q) => (
+                                  <div key={q.index} className="rounded-lg px-3 py-2.5 text-[11px] font-mono" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                    {q.reason && (
+                                      <p className="text-white/35 mb-1.5 font-sans text-[10px] uppercase tracking-wide">{q.reason}</p>
+                                    )}
+                                    <p className="text-violet-300/70 leading-relaxed whitespace-pre-wrap break-all">{q.sql}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && i === messages.length - 1 && (
+                          <div className="flex flex-col gap-1.5 mt-1">
+                            {msg.suggestions.map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => sendMessage(s)}
+                                className="text-left text-xs px-3 py-2 rounded-xl border border-white/8 text-white/50 hover:text-white/80 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all duration-150 cursor-pointer"
+                                style={{ background: "rgba(255,255,255,0.02)" }}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {loading && (
+                    <div className="flex gap-3 justify-start">
                       <div
                         className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
                         style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
                       >
                         B
                       </div>
-                    )}
-                    <div className={`max-w-[80%] flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                      <div
-                        className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                          msg.role === "user" ? "rounded-tr-sm" : "rounded-tl-sm"
-                        }`}
-                        style={
-                          msg.role === "user"
-                            ? { background: "linear-gradient(135deg, #7c3aed, #4f46e5)", color: "white" }
-                            : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.85)" }
-                        }
-                      >
-                        {msg.role === "assistant" ? (
-                          <ReactMarkdown
-                            components={{
-                              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                              ul: ({ children }) => <ul className="mb-3 last:mb-0 space-y-1 pl-1">{children}</ul>,
-                              ol: ({ children }) => <ol className="mb-3 last:mb-0 space-y-1 pl-1 list-decimal list-inside">{children}</ol>,
-                              li: ({ children }) => (
-                                <li className="flex gap-2 items-start">
-                                  <span className="mt-1.5 w-1 h-1 rounded-full bg-violet-400/70 flex-shrink-0" />
-                                  <span>{children}</span>
-                                </li>
-                              ),
-                              strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-                              em: ({ children }) => <em className="italic text-white/60">{children}</em>,
-                              h1: ({ children }) => <h1 className="text-base font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h1>,
-                              h2: ({ children }) => <h2 className="text-sm font-bold text-white/90 mt-3 mb-1.5 first:mt-0">{children}</h2>,
-                              h3: ({ children }) => <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wide mt-3 mb-1.5 first:mt-0">{children}</h3>,
-                              code: ({ children }) => <code className="bg-white/10 rounded px-1 text-xs font-mono">{children}</code>,
-                              hr: () => <hr className="border-white/8 my-3" />,
-                            }}
-                          >
-                            {msg.content}
-                          </ReactMarkdown>
-                        ) : (
-                          msg.content
+                      <div className="flex flex-col gap-1.5">
+                        {phaseLabel && (
+                          <p className="text-xs text-white/35 italic pl-1">{phaseLabel}</p>
                         )}
-                      </div>
-                      {msg.role === "assistant" && (
-                        <div className="flex items-center gap-2">
-                        {msg.reasoningUsed && !msg.isError && (
-                          <span className="text-[11px] px-1.5 py-0.5 rounded" style={{ color: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.04)" }}>
-                            {msg.reasoningUsed}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => copyMessage(msg.content, i)}
-                          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-all duration-150 cursor-pointer"
-                          style={{ color: copiedIndex === i ? "rgba(52,211,153,0.8)" : "rgba(255,255,255,0.2)" }}
-                          title="Copy response"
+                        <div
+                          className="rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1"
+                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
                         >
-                          {copiedIndex === i ? (
-                            <>
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                              </svg>
-                              Copy
-                            </>
-                          )}
-                        </button>
-                        </div>
-                      )}
-                      {msg.role === "assistant" && msg.isError && (
-                        <button
-                          onClick={() => {
-                            const lastUserMsg = [...messages].slice(0, i).reverse().find((m) => m.role === "user");
-                            if (lastUserMsg) sendMessage(lastUserMsg.content);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all cursor-pointer mt-1"
-                          style={{ background: "rgba(255,255,255,0.03)" }}
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="1 4 1 10 7 10" />
-                            <path d="M3.51 15a9 9 0 1 0 .49-3.49" />
-                          </svg>
-                          Try again
-                        </button>
-                      )}
-                      {msg.role === "assistant" && msg.queryLog && msg.queryLog.length > 0 && (
-                        <div className="mt-1">
-                          <button
-                            onClick={() => setExpandedQueries((prev) => {
-                              const next = new Set(prev);
-                              next.has(i) ? next.delete(i) : next.add(i);
-                              return next;
-                            })}
-                            className="flex items-center gap-1.5 text-[11px] transition-colors cursor-pointer"
-                            style={{ color: "rgba(255,255,255,0.2)" }}
-                          >
-                            <svg
-                              width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                              style={{ transform: expandedQueries.has(i) ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
-                            >
-                              <polyline points="9 18 15 12 9 6" />
-                            </svg>
-                            {msg.queryLog.length} {msg.queryLog.length === 1 ? "query" : "queries"}
-                          </button>
-                          {expandedQueries.has(i) && (
-                            <div className="mt-2 flex flex-col gap-2">
-                              {msg.queryLog.map((q) => (
-                                <div key={q.index} className="rounded-lg px-3 py-2.5 text-[11px] font-mono" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                                  {q.reason && (
-                                    <p className="text-white/35 mb-1.5 font-sans text-[10px] uppercase tracking-wide">{q.reason}</p>
-                                  )}
-                                  <p className="text-violet-300/70 leading-relaxed whitespace-pre-wrap break-all">{q.sql}</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {msg.role === "assistant" && msg.suggestions && msg.suggestions.length > 0 && i === messages.length - 1 && (
-                        <div className="flex flex-col gap-1.5 mt-1">
-                          {msg.suggestions.map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => sendMessage(s)}
-                              className="text-left text-xs px-3 py-2 rounded-xl border border-white/8 text-white/50 hover:text-white/80 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all duration-150 cursor-pointer"
-                              style={{ background: "rgba(255,255,255,0.02)" }}
-                            >
-                              {s}
-                            </button>
+                          {[0, 1, 2].map((i) => (
+                            <div
+                              key={i}
+                              className="w-1.5 h-1.5 rounded-full bg-violet-400"
+                              style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                            />
                           ))}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {loading && (
-                  <div className="flex gap-3 justify-start">
-                    <div
-                      className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
-                      style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
-                    >
-                      B
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      {phaseLabel && (
-                        <p className="text-xs text-white/35 italic pl-1">{phaseLabel}</p>
-                      )}
-                      <div
-                        className="rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                      >
-                        {[0, 1, 2].map((i) => (
-                          <div
-                            key={i}
-                            className="w-1.5 h-1.5 rounded-full bg-violet-400"
-                            style={{ animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
-                          />
-                        ))}
                       </div>
                     </div>
-                  </div>
-                )}
-                <div ref={bottomRef} />
-              </div>
-            )}
+                  )}
+                  <div ref={bottomRef} />
+                </div>
+              )}
+            </div>
+          </div>
 
-            {/* Input */}
-            <div
-              className="sticky bottom-0 pb-4 pt-2"
-              style={{ background: "linear-gradient(to top, #07070f 80%, transparent)" }}
-            >
-              <div className="relative">
+          {/* Input */}
+          <div
+            className="flex-shrink-0 max-w-3xl w-full mx-auto px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-6"
+            style={{ background: "linear-gradient(to top, #07070f 80%, transparent)" }}
+          >
+            <div className="relative">
+              <div
+                className="relative rounded-2xl p-px"
+                style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(37,99,235,0.5))" }}
+              >
                 <div
-                  className="relative rounded-2xl p-px"
-                  style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(37,99,235,0.5))" }}
+                  className="relative rounded-2xl flex flex-col px-4 pt-3 pb-2"
+                  style={{ background: "#0f0f1a" }}
                 >
-                  <div
-                    className="relative rounded-2xl flex flex-col px-4 pt-3 pb-2"
-                    style={{ background: "#0f0f1a" }}
-                  >
-                    <textarea
-                      maxLength={2000}
-                      ref={inputRef}
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Ask about workouts, attendance, leaders..."
-                      rows={1}
-                      className="flex-1 bg-transparent placeholder-white/20 text-sm resize-none outline-none leading-relaxed max-h-32 overflow-y-auto scrollbar-thin w-full"
-                      style={{ minHeight: "24px", color: "rgba(255,255,255,0.9)" }}
-                      onInput={(e) => {
-                        const t = e.target as HTMLTextAreaElement;
-                        t.style.height = "auto";
-                        t.style.height = `${Math.min(t.scrollHeight, 128)}px`;
-                      }}
-                    />
-                    <div className="flex items-center justify-between mt-2">
-                      <select
-                        value={reasoningLevel}
-                        onChange={(e) => setReasoningLevel(e.target.value as "auto" | "low" | "medium" | "high")}
-                        className="text-xs rounded-lg px-2 py-1 border border-white/8 bg-transparent text-white/30 hover:text-white/50 hover:border-white/15 transition-colors cursor-pointer outline-none"
-                        style={{ background: "rgba(255,255,255,0.03)" }}
-                        title="Reasoning level"
-                      >
-                        <option value="auto" style={{ background: "#0f0f1a" }}>Auto</option>
-                        <option value="low" style={{ background: "#0f0f1a" }}>Low</option>
-                        <option value="medium" style={{ background: "#0f0f1a" }}>Medium</option>
-                        <option value="high" style={{ background: "#0f0f1a" }}>High</option>
-                      </select>
-                      <button
-                        onClick={() => sendMessage(input)}
-                        disabled={!input.trim() || loading}
-                        className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
-                        style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="22" y1="2" x2="11" y2="13" />
-                          <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                        </svg>
-                      </button>
-                    </div>
+                  <textarea
+                    maxLength={2000}
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask about workouts, attendance, leaders..."
+                    aria-label="Message"
+                    rows={1}
+                    className="flex-1 bg-transparent placeholder-white/20 text-base sm:text-sm resize-none outline-none leading-relaxed max-h-32 overflow-y-auto scrollbar-thin w-full"
+                    style={{ minHeight: "24px", color: "rgba(255,255,255,0.9)" }}
+                    onInput={(e) => {
+                      const t = e.target as HTMLTextAreaElement;
+                      t.style.height = "auto";
+                      t.style.height = `${Math.min(t.scrollHeight, 128)}px`;
+                    }}
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <select
+                      value={reasoningLevel}
+                      onChange={(e) => setReasoningLevel(e.target.value as "auto" | "low" | "medium" | "high")}
+                      className="text-xs rounded-lg px-2 py-1 border border-white/8 bg-transparent text-white/30 hover:text-white/50 hover:border-white/15 transition-colors cursor-pointer outline-none"
+                      style={{ background: "rgba(255,255,255,0.03)" }}
+                      title="Reasoning level"
+                    >
+                      <option value="auto" style={{ background: "#0f0f1a" }}>Auto</option>
+                      <option value="low" style={{ background: "#0f0f1a" }}>Low</option>
+                      <option value="medium" style={{ background: "#0f0f1a" }}>Medium</option>
+                      <option value="high" style={{ background: "#0f0f1a" }}>High</option>
+                    </select>
+                    <button
+                      aria-label="Send message"
+                      onClick={() => sendMessage(input)}
+                      disabled={!input.trim() || loading}
+                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
+                      style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13" />
+                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
-              <p className="text-center text-xs mt-2 flex items-center justify-center gap-2" style={{ color: "rgba(255,255,255,0.15)" }}>
-                <span>Queries your live attendance data · Press Enter to send</span>
-                <span style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
-                <a
-                  href="/how-it-works"
-                  className="transition-colors hover:text-white/40 underline underline-offset-2"
-                  style={{ color: "rgba(255,255,255,0.2)", textDecorationColor: "rgba(255,255,255,0.1)" }}
-                >
-                  How it works
-                </a>
-              </p>
             </div>
+            <p className="text-center text-xs mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1" style={{ color: "rgba(255,255,255,0.15)" }}>
+              <span className="hidden sm:inline">Queries your live attendance data · Press Enter to send</span>
+              <span className="hidden sm:inline" style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
+              <a
+                href="/how-it-works"
+                className="transition-colors hover:text-white/40 underline underline-offset-2"
+                style={{ color: "rgba(255,255,255,0.2)", textDecorationColor: "rgba(255,255,255,0.1)" }}
+              >
+                How it works
+              </a>
+            </p>
           </div>
         </main>
       </div>
