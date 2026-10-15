@@ -21,14 +21,18 @@ async function createToken(secret: string): Promise<string> {
 }
 
 export async function POST(req: Request) {
-  const { password } = await req.json();
-  const passwords = [process.env.AUTH_PASSWORD, process.env.AUTH_PASSWORD_SECONDARY].filter(Boolean);
+  let body: unknown;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Enter your access code" }, { status: 400 }); }
+  const password = body && typeof body === "object" && "password" in body ? body.password : undefined;
+  const passwords = [process.env.AUTH_PASSWORD, process.env.AUTH_PASSWORD_SECONDARY]
+    .map((value) => value?.trim().toLowerCase())
+    .filter((value): value is string => !!value);
   const secret = process.env.AUTH_SECRET;
 
   if (!secret || passwords.length === 0) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
-  if (typeof password !== "string" || !passwords.includes(password)) {
+  if (typeof password !== "string" || !passwords.includes(password.trim().toLowerCase())) {
     return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
   }
 

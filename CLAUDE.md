@@ -59,7 +59,7 @@ Events sent by `/api/chat`:
 - `OPENAI_API_KEY` — OpenAI API key (never committed)
 - `AUTH_SECRET` — random base64 string used to HMAC-sign the auth cookie
 - `AUTH_PASSWORD` — the shared access password, managed in Vercel; do not store it in source. Login hint: Impossible’s “real” F3 name.
-- `AUTH_PASSWORD_SECONDARY` — an optional second accepted password; the original password remains valid.
+- `AUTH_PASSWORD_SECONDARY` — an optional second accepted password; the original password remains valid. Both passwords are case insensitive and ignore leading/trailing spaces.
 - `MCP_TOKEN` — shared bearer token for the public MCP endpoint (`/api/mcp`). If unset, the MCP endpoint stays closed (401) and the `/connect` page shows a "not enabled" notice.
 
 ## Bring Your Own Agent (MCP)

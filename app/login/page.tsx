@@ -29,6 +29,7 @@ export default function LoginPage() {
 
     if (res.ok) {
       router.replace("/");
+      router.refresh();
     } else {
       setError(true);
       setLoading(false);
@@ -113,6 +114,9 @@ export default function LoginPage() {
                 aria-label="Access code"
                 aria-describedby="password-hint"
                 autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="flex-1 bg-transparent text-sm outline-none"
                 style={{
                   color: "rgba(255,255,255,0.9)",
