@@ -104,6 +104,18 @@ async function fetchRoster(): Promise<Record<string, string>[]> {
   return parseCSV(csv);
 }
 
+export interface EhRosterPerson { name: string; ehBy: string | null }
+
+/** Public EH fields only; never return the intake form's personal information. */
+export async function fetchEhRoster(): Promise<EhRosterPerson[]> {
+  const people = new Map<string, EhRosterPerson>();
+  for (const row of await fetchRoster()) {
+    const name = row["F3 Name"].trim();
+    if (name) people.set(normalizeName(name), { name, ehBy: row["EH'er"].trim() || null });
+  }
+  return [...people.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** Existing Roster entries are authoritative; a recorded EH'er needs no separate confirmation. */
 export async function fetchEhAttributions(): Promise<EhLogEntry[]> {
   return (await fetchRoster())

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchChallenge } from "@/lib/challenge-client";
 import { buildPersonProfile, nextMilestone, personURL } from "@/lib/ehProfile";
 import { formatDay, type FngEntry, type Period } from "@/lib/ehChallenge";
+import EhCorrectionForm from "./EhCorrectionForm";
 
 const periodLabel = { month: "This month", year: "This year", all: "All time" };
 const focus = "rounded focus-visible:outline-2 focus-visible:outline-violet-400 focus-visible:outline-offset-4";
@@ -50,6 +51,8 @@ export default function PersonDetail({ name, period }: { name: string; period: P
       <p className="text-xs text-white/65 mt-4">{breakdown.workouts} workout pts · {breakdown.referrals} referral pts · {breakdown.themes} theme pts{standing?.week ? ` · +${standing.week} this week` : ""}</p>
     </header>
 
+    <div className="mt-5"><EhCorrectionForm pax={profile.name} /></div>
+
     <section aria-labelledby="next-steps-heading" className="mt-7">
       <h2 id="next-steps-heading" className="text-lg font-semibold text-white">Next steps</h2>
       <p className="text-sm text-white/65 mt-1">A few invitations that could turn into the next milestone.</p>
@@ -74,7 +77,7 @@ export default function PersonDetail({ name, period }: { name: string; period: P
       <h2 id="own-workouts-heading" className="text-lg font-semibold text-white">First workouts in Bedrock</h2>
       <p className="text-sm text-white/80 mt-3">Joined {new Date(`${ownFng.firstPost}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })} · {ownFng.posts} workouts · {ownFng.points} workout points{ownFng.ehBy ? <> credited to <Link className={`text-violet-300 underline ${focus}`} href={personURL(ownFng.ehBy, period)}>{ownFng.ehBy}</Link></> : " awaiting an EH’er"}.</p>
       <Milestone fng={ownFng} />
-      {!ownFng.ehBy && <p className="mt-3 text-sm text-amber-200">Ask the sheet maintainer to add the EH&apos;er to this person&apos;s Roster entry so those points can be credited.</p>}
+      {!ownFng.ehBy && <p className="mt-3 text-sm text-amber-200">Know who invited him? Use “Suggest an EH correction” above to send the name for maintainer review.</p>}
     </section>}
 
     <section aria-labelledby="recruits-heading" className="mt-7 border-t border-white/10 pt-6">

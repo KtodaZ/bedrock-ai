@@ -7,6 +7,7 @@ import { buildBandText, formatDay, sortLeaderboard, type LeaderboardSort, type P
 import { fetchChallenge } from "@/lib/challenge-client";
 import { matchesPerson, normalizePerson, personURL } from "@/lib/ehProfile";
 import PointsGuide from "./PointsGuide";
+import EhCorrectionForm from "./EhCorrectionForm";
 
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "month", label: "This month" },
@@ -151,7 +152,7 @@ export default function EhChallenge() {
                     </div>
                     <div className="text-base font-semibold text-white/90 mt-1">{theme.name}</div>
                     <div className="text-xs text-white/50 mt-1">
-                      {theme.description} · <span className="text-violet-300/80">+{theme.bonus} pts</span>
+                      {theme.description} · <span className="text-violet-300/80">{theme.bonus ? `+${theme.bonus} pts` : "Regular EH scoring"}</span>
                     </div>
                   </>
                 ) : (
@@ -177,6 +178,8 @@ export default function EhChallenge() {
               </div>
               <p id="eh-search-help" className="text-xs text-white/65 mt-2" aria-live="polite">{search.trim() ? `${leaderboard.length} EH’er${leaderboard.length === 1 ? "" : "s"} · ${fngs.length} FNG${fngs.length === 1 ? "" : "s"} match in this period.` : "Tap a name to see milestones, badges, and next steps."}</p>
             </div>
+
+            <EhCorrectionForm />
 
             <section className="rounded-2xl overflow-hidden" style={card}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">

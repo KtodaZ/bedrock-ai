@@ -16,7 +16,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
-    "sql.js": "^1.14.1"
+    "sql.js": "^1.14.1",
+    "@vercel/blob": "^2.8.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
