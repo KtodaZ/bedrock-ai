@@ -4,6 +4,8 @@ Read [architecture.md](architecture.md) for data and scoring behavior. This guid
 
 ## Spreadsheet write permission
 
+The F3 Bedrock Data spreadsheet is not ours; another person owns and maintains it. Treat it as someone else's working system. Preserve the maintainer's familiar tabs and workflow, keep any approved edits narrowly scoped, and avoid unsolicited cleanup, reformatting, or restructuring. Prefer adapting the app to the existing sheet over changing the sheet for the app.
+
 Treat Google Sheets and Excel workbooks as read-only unless the user explicitly authorizes the specific edits. Before an unapproved write, present the spreadsheet, affected tabs/ranges, and proposed changes for approval. Credentials and edit access are not permission. This applies to data, formulas, formatting, validation, structure, sharing, and deletion through any tool or automation. Existing explicit approval covers only its stated scope. See [AGENTS.md](../AGENTS.md#spreadsheet-edits-require-explicit-permission).
 
 EH correction submissions do not authorize source-sheet edits. Save them for maintainer review; never apply them automatically.

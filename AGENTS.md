@@ -26,6 +26,8 @@ Read [README.md](README.md) for the product and local setup, [docs/architecture.
 
 ## Spreadsheet edits require explicit permission
 
+The F3 Bedrock Data spreadsheet is not ours; another person owns and maintains it. Treat it as someone else's working system. Preserve the maintainer's familiar tabs and workflow, keep any approved edits narrowly scoped, and avoid unsolicited cleanup, reformatting, or restructuring. Prefer adapting the app to the existing sheet over changing the sheet for the app.
+
 Never edit a spreadsheet without the user's explicit permission for the specific changes. This includes the F3 Bedrock Data Google Sheet, Excel workbooks, and any replacement or connected spreadsheet, whether accessed through a browser, connector, API, script, or automation.
 
 - Reading, inspecting, and preparing proposed changes are allowed without write permission.
