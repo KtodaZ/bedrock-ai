@@ -4,6 +4,12 @@ F3 Bedrock attendance questions, the EH Challenge leaderboard, and a read-only M
 
 Live app: https://data.f3bedrock.com
 
+## Developer and agent documentation
+
+- [AGENTS.md](AGENTS.md): where to start, implementation map, and rules to preserve.
+- [Architecture](docs/architecture.md): sheet schema, chat lifecycle, EH scoring, corrections, MCP, and storage boundaries.
+- [Operations](docs/operations.md): environment variables, Blob setup, deployment, verification, and troubleshooting.
+
 ## How it works
 
 Ask a question about F3 attendance in plain English. Bedrock loads the attendance sheet into an in-memory SQLite database, lets the AI query it, and returns an answer with the SQL underneath. You can inspect the queries when you want to check a number.
