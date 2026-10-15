@@ -45,7 +45,7 @@ The explorer reads the same attendance and Roster tabs plus the existing Sites t
 
 ### Chats and stored data
 
-Saved chats live in your browser’s local storage. Clearing browser data removes them. When you ask a follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.
+Chats and unsent drafts save in your browser’s local storage, and the last open chat resumes when you return. Questions keep running while you visit “How it works,” connector help, or other pages through the app’s links. Switching chats keeps each answer with its original conversation. A full reload or browser closure can interrupt a request; the saved chat shows the interruption without automatically retrying or using more quota. Clearing browser data removes local chats and drafts. When you ask a follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.
 
 Questions, full answers, recent conversation context, SQL queries, timing, and errors are stored privately in MongoDB Atlas when configured. `/admin/chats` provides password-protected search, date/status filters, and conversation review. Browser history and server records are separate; clearing browser data does not remove server records. No raw IP addresses are stored in chat records. When Discord notifications are configured, the app also posts the question and a short answer excerpt there. Correction submissions and AI usage counts are stored in private Vercel Blob storage. Attendance stays in Google Sheets, with temporary copies cached in server memory.
 

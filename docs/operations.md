@@ -108,6 +108,7 @@ npm run build
 | Test script | Coverage |
 | --- | --- |
 | `scripts/test-ai-rate-limit.cjs` | Per-IP/daily limits, concurrent reservations, storage failure, rejecting before OpenAI, bounded mock chat calls, free homepage suggestions |
+| `scripts/test-chat-session.cjs` | Immediate saves, active-chat/draft restoration, background and parallel completion, deletion races, interrupted streams, storage failures, legacy history |
 | `scripts/test-data-explorer.cjs` | Public data fields/exclusions, CSV parsing, active Sites, combined filters, PAX/Qsource counts, inactivity thresholds, streaks, shared workouts, URL filters, and safe exports |
 | `scripts/test-eh-challenge.cjs` | Resurrection recipient, Family Tree versus referrals, profile milestones/badges |
 | `scripts/test-eh-corrections.cjs` | Canonical names, validation, concurrent durable writes, idempotent retries, delivery failures, endpoint rejection |
@@ -131,7 +132,7 @@ These tests use mocks and synthetic records. They do not prove current sheet con
 | MCP GET returns 405 | HTTP method | Expected; POST JSON-RPC to call tools. |
 | Data explorer returns 503 | Attendance/Roster/Sites CSV access | The explorer needs the existing Sites tab as well as attendance and Roster. Retry after confirming all three are publicly readable; it never uses AI or writes the sheet. |
 | SQL route cannot load WASM | `next.config.ts`, deployed sql.js files, Node runtime | Check the affected route's actual bundle and runtime. |
-| Saved browser chat disappeared | Browser localStorage | Browser history is separate from private MongoDB logs; clearing browser data removes the local copy. |
+| Saved browser chat disappeared | Browser localStorage (`bedrock-conversations`, `bedrock-chat-session`) | The last open chat and per-chat drafts restore automatically. In-app links keep requests running. Reload/closure can interrupt a request; its question is preserved with a retry message. Storage failures show a warning. Browser history is separate from private MongoDB logs; clearing browser data removes the local copy. |
 
 Questions and SQL details are logged on the server. When configured, chat also sends questions and answer excerpts to Discord. Correction history is publicly served even though its backing Blob is private. Keep these facts in privacy copy; do not describe the whole app as device-only or all stored content as private.
 

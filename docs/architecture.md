@@ -29,7 +29,7 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 
 ## Routes and UI ownership
 
-`app/page.tsx` owns the chat state, saved conversations, desktop/mobile sidebar, and the home page's Chat/EH/Data tab switch. `/eh-challenge` renders the same leaderboard component on a shareable route. `app/providers.tsx` creates the browser QueryClient. Styling uses `app/globals.css` and Tailwind classes: dark background `#07070f`, purple/blue accents, and the existing mobile sidebar overlay.
+`app/page.tsx` owns the desktop/mobile sidebar and the home page's Chat/EH/Data tab switch. The root `app/ChatSessionProvider.tsx` owns a `lib/chatSession.ts` session across client navigation, including requests, saved conversations, active chat, per-chat drafts, and reasoning preference. `/eh-challenge` renders the same leaderboard component on a shareable route. `app/providers.tsx` creates the browser QueryClient. Styling uses `app/globals.css` and Tailwind classes: dark background `#07070f`, purple/blue accents, and the existing mobile sidebar overlay.
 
 | Route | Handler/component | Contract |
 | --- | --- | --- |
@@ -102,7 +102,7 @@ AO coverage uses current active Sites (`Active` status text or Y), not all histo
 
 ## Chat request lifecycle
 
-`app/page.tsx` posts `{ question, conversationId, history, reasoningLevel }` to `/api/chat`.
+`lib/chatSession.ts`, through the root chat provider, posts `{ question, conversationId, history, reasoningLevel }` to `/api/chat`. It saves the question and pending state before fetching. Client navigation keeps the session and SSE reader alive; switching chats cannot redirect an answer into another conversation. Deleting a chat aborts its local request and ignores late events, but does not delete server logs or refund quota. Reloading restores the active chat and drafts, converts a saved pending request into an interruption message, and never automatically retries. A stream ending without a terminal event becomes a saved error.
 
 1. Validate the request: question 1–2,000 characters, last 12 history messages with valid roles and at most 16,000 content characters, body at most 32,000 characters (plus a preliminary Content-Length check).
 2. Reserve quota using `lib/aiRateLimit.ts`, before any OpenAI call. An accepted reservation counts even if the later question fails; there is no refund step.
@@ -185,7 +185,7 @@ Chat Discord notifications use a different, process-local, best-effort queue. Th
 | MCP POST | Private shared token | No | Uses attendance memory cache |
 | Saved chats | This browser | Follow-ups send recent context | Browser localStorage |
 
-`bedrock-conversations` stores chats; `bedrock-suggestions` caches homepage questions; `bedrock-eh-period-v2` stores the period; `bedrock-agent-banner-dismissed` remembers banner dismissal. The menu retains connector and GitHub links. Clearing browser storage clears these preferences and saved chats.
+`bedrock-conversations` stores chats and pending state; `bedrock-chat-session` stores the active chat, drafts, and reasoning preference; `bedrock-suggestions` caches homepage questions; `bedrock-eh-period-v2` stores the period; `bedrock-agent-banner-dismissed` remembers banner dismissal. The menu retains connector and GitHub links. Clearing browser storage clears these preferences and saved chats.
 
 MCP supports JSON-RPC initialization, ping, tool listing/calls, and batches over HTTP POST. Tools are `get_schema`, `run_sql`, and `search_pax`. Auth accepts an exact shared `MCP_TOKEN` in a Bearer header or `?key=`. Missing configuration keeps POST closed with 401. GET returns 405; OPTIONS returns 204. This is a small custom implementation, without user accounts, OAuth, or server-pushed SSE sessions. The public `/connect` page contains placeholders only.
 

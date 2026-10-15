@@ -1,35 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
 import EhChallenge from "./EhChallenge";
 import DataExplorer from "./DataExplorer";
 
-interface QueryLogEntry {
-  index: number;
-  reason: string;
-  sql: string;
-}
+import Link from "next/link";
+import { useChatSession } from "./ChatSessionProvider";
+import type { Conversation } from "../lib/chatSession";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  suggestions?: string[];
-  queryLog?: QueryLogEntry[];
-  reasoningUsed?: string;
-  isError?: boolean;
-}
-
-interface Conversation {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-const STORAGE_KEY = "bedrock-conversations";
 const AGENT_BANNER_DISMISSED_KEY = "bedrock-agent-banner-dismissed";
 const SUGGESTIONS_KEY = "bedrock-suggestions";
 const SUGGESTIONS_TTL = 24 * 60 * 60 * 1000;
@@ -55,21 +35,6 @@ function loadCachedSuggestions(): string[] {
   }
 }
 
-function loadConversations(): Conversation[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveConversations(convos: Conversation[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(convos));
-  } catch {}
-}
-
 function formatDate(ts: number): string {
   const d = new Date(ts);
   const now = new Date();
@@ -81,17 +46,22 @@ function formatDate(ts: number): string {
 }
 
 const SIDEBAR_WIDTH = 260;
+const desktopQuery = "(min-width: 768px)";
+function subscribeViewport(listener: () => void) {
+  const media = window.matchMedia(desktopQuery);
+  media.addEventListener("change", listener);
+  return () => media.removeEventListener("change", listener);
+}
+
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [phaseLabel, setPhaseLabel] = useState<string>("");
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth >= 768 : true
-  );
+  const { session, messages, input, loading, phaseLabel, conversations, activeId, reasoningLevel, ready, storageError } = useChatSession();
+  const setInput = session.setInput;
+  const setReasoningLevel = session.setReasoningLevel;
+  const sendMessage = (question: string) => session.sendMessage(question);
+  const desktop = useSyncExternalStore(subscribeViewport, () => window.matchMedia(desktopQuery).matches, () => false);
+  const [sidebarOverride, setSidebarOpen] = useState<boolean | null>(null);
+  const sidebarOpen = sidebarOverride ?? desktop;
   const [tab, setTab] = useState<"chat" | "eh" | "data">("chat");
   useEffect(() => {
     const initialTab = new URLSearchParams(window.location.search).get("tab");
@@ -134,13 +104,8 @@ export default function Home() {
     placeholderData: cachedSuggestions,
     staleTime: SUGGESTIONS_TTL,
   });
-  const [reasoningLevel, setReasoningLevel] = useState<"auto" | "low" | "medium" | "high">("auto");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setConversations(loadConversations());
-  }, []);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -158,119 +123,6 @@ export default function Home() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const persistConversation = useCallback((id: string, msgs: Message[]) => {
-    setConversations((prev) => {
-      const existing = prev.find((c) => c.id === id);
-      let updated: Conversation[];
-      if (existing) {
-        updated = prev.map((c) =>
-          c.id === id ? { ...c, messages: msgs, updatedAt: Date.now() } : c
-        );
-      } else {
-        const title =
-          msgs.find((m) => m.role === "user")?.content.slice(0, 60) ??
-          "New conversation";
-        updated = [{ id, title, messages: msgs, createdAt: Date.now(), updatedAt: Date.now() }, ...prev];
-      }
-      saveConversations(updated);
-      return updated;
-    });
-  }, []);
-
-  async function sendMessage(question: string) {
-    if (!question.trim() || loading) return;
-
-    const currentId = activeId ?? crypto.randomUUID();
-    if (!activeId) setActiveId(currentId);
-
-    const userMsg: Message = { role: "user", content: question };
-    const nextMessages = [...messages, userMsg];
-    setMessages(nextMessages);
-    setInput("");
-    setLoading(true);
-    setPhaseLabel("Starting...");
-    const queryLog: QueryLogEntry[] = [];
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          conversationId: currentId,
-          history: messages.map((m) => ({ role: m.role, content: m.content })),
-          reasoningLevel,
-        }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => null);
-        throw new Error(error?.error ?? (res.status === 429 ? "Too many requests. Please try again in a minute." : "AI questions are temporarily unavailable."));
-      }
-      if (!res.body) throw new Error("The server returned an empty response. Please try again.");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // Parse complete SSE messages (delimited by double newline)
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
-
-        for (const part of parts) {
-          const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
-          if (!dataLine) continue;
-          let event: { type: string; label?: string; answer?: string; suggestions?: string[]; message?: string; index?: number; reason?: string; sql?: string; reasoningLevel?: string };
-          try {
-            event = JSON.parse(dataLine.slice(6));
-          } catch {
-            continue;
-          }
-
-          if (event.type === "phase" && event.label) {
-            setPhaseLabel(event.label);
-          } else if (event.type === "query") {
-            queryLog.push({ index: event.index!, reason: event.reason!, sql: event.sql! });
-          } else if (event.type === "done") {
-            const assistantMsg: Message = {
-              role: "assistant",
-              content: event.answer ?? "No answer returned.",
-              suggestions: event.suggestions ?? [],
-              queryLog: [...queryLog],
-              reasoningUsed: event.reasoningLevel,
-            };
-            const finalMessages = [...nextMessages, assistantMsg];
-            setMessages(finalMessages);
-            persistConversation(currentId, finalMessages);
-          } else if (event.type === "error") {
-            const errMsg: Message = {
-              role: "assistant",
-              content: `Error: ${event.message ?? "Something went wrong."}`,
-              isError: true,
-            };
-            const finalMessages = [...nextMessages, errMsg];
-            setMessages(finalMessages);
-            persistConversation(currentId, finalMessages);
-          }
-        }
-      }
-    } catch (err) {
-      const errMsg: Message = { role: "assistant", content: err instanceof Error ? err.message : "Failed to reach the server.", isError: true };
-      const finalMessages = [...nextMessages, errMsg];
-      setMessages(finalMessages);
-      persistConversation(currentId, finalMessages);
-    } finally {
-      setLoading(false);
-      setPhaseLabel("");
-      inputRef.current?.focus();
-    }
-  }
-
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -281,9 +133,7 @@ export default function Home() {
   function startNewChat() {
     setTab("chat");
     window.history.replaceState(null, "", "/");
-    setMessages([]);
-    setActiveId(null);
-    setInput("");
+    session.startNewChat();
     if (window.innerWidth < 768) setSidebarOpen(false);
     setTimeout(() => inputRef.current?.focus(), 50);
   }
@@ -291,8 +141,7 @@ export default function Home() {
   function restoreConversation(convo: Conversation) {
     setTab("chat");
     window.history.replaceState(null, "", "/");
-    setMessages(convo.messages);
-    setActiveId(convo.id);
+    session.restoreConversation(convo.id);
     if (window.innerWidth < 768) setSidebarOpen(false);
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
   }
@@ -320,15 +169,7 @@ export default function Home() {
 
   function deleteConversation(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    setConversations((prev) => {
-      const updated = prev.filter((c) => c.id !== id);
-      saveConversations(updated);
-      return updated;
-    });
-    if (activeId === id) {
-      setMessages([]);
-      setActiveId(null);
-    }
+    session.deleteConversation(id);
   }
 
   const sidebarContent = (
@@ -392,7 +233,7 @@ export default function Home() {
             >
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-white/60 truncate leading-snug">{convo.title}</p>
-                <p className="text-[10px] text-white/25 mt-0.5">{formatDate(convo.updatedAt)}</p>
+                <p className="text-[10px] text-white/50 mt-0.5">{convo.pending ? "Working…" : formatDate(convo.updatedAt)}</p>
               </div>
               <button
                 onClick={(e) => deleteConversation(convo.id, e)}
@@ -409,7 +250,7 @@ export default function Home() {
         )}
       </div>
       <div className="flex-shrink-0 border-t border-white/10 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <a
+        <Link
           href="/connect"
           className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-[#a78bfa]"
         >
@@ -417,7 +258,7 @@ export default function Home() {
             <path d="M9 3v4m6-4v4M7 7h10v3a5 5 0 0 1-10 0V7Zm5 8v6" />
           </svg>
           Bring your own agent
-        </a>
+        </Link>
         <a
           href="https://github.com/KtodaZ/bedrock-ai"
           target="_blank"
@@ -488,7 +329,7 @@ export default function Home() {
               color: "rgba(255,255,255,0.6)",
             }}
           >
-            <a href="/connect" className="group flex min-h-11 flex-1 items-center justify-center gap-2 py-2 focus-visible:outline-2 focus-visible:outline-[#a78bfa]">
+            <Link href="/connect" className="group flex min-h-11 flex-1 items-center justify-center gap-2 py-2 focus-visible:outline-2 focus-visible:outline-[#a78bfa]">
               <span aria-hidden>🔌</span>
               <span>
                 <span className="text-white/80 font-medium">Bring your own agent</span>
@@ -500,7 +341,7 @@ export default function Home() {
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </span>
-            </a>
+            </Link>
             <button
               type="button"
               onClick={dismissAgentBanner}
@@ -518,7 +359,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             {/* Toggle button */}
             <button
-              onClick={() => setSidebarOpen((o) => !o)}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               className="text-white/30 hover:text-white/70 transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/5"
               title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
             >
@@ -790,6 +631,11 @@ export default function Home() {
             className="flex-shrink-0 max-w-3xl w-full mx-auto px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-6"
             style={{ background: "linear-gradient(to top, #07070f 80%, transparent)" }}
           >
+            {storageError && (
+              <p role="status" className="mb-2 text-xs text-amber-200">
+                Chats could not be saved in this browser. Keep this page open to retain your conversation.
+              </p>
+            )}
             <div className="relative">
               <div
                 className="relative rounded-2xl p-px"
@@ -832,7 +678,7 @@ export default function Home() {
                     <button
                       aria-label="Send message"
                       onClick={() => sendMessage(input)}
-                      disabled={!input.trim() || loading}
+                      disabled={!ready || !input.trim() || loading}
                       className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 cursor-pointer"
                       style={{ background: "linear-gradient(135deg, #7c3aed, #2563eb)" }}
                     >
@@ -848,13 +694,13 @@ export default function Home() {
             <p className="text-center text-xs mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1" style={{ color: "rgba(255,255,255,0.15)" }}>
               <span className="hidden sm:inline">Queries your live attendance data · Press Enter to send</span>
               <span className="hidden sm:inline" style={{ color: "rgba(255,255,255,0.1)" }}>·</span>
-              <a
+              <Link
                 href="/how-it-works"
                 className="transition-colors hover:text-white/40 underline underline-offset-2"
                 style={{ color: "rgba(255,255,255,0.2)", textDecorationColor: "rgba(255,255,255,0.1)" }}
               >
                 How it works
-              </a>
+              </Link>
             </p>
           </div>
         </main>

@@ -127,7 +127,7 @@ export default function HowItWorksPage() {
 
         <Section title="Your conversation history">
           <p>
-            Saved chats live in this browser&apos;s local storage. Clearing browser data removes them. When you ask a
+            Chats and drafts save in this browser and reopen when you return. Questions keep running while you visit other pages through the app&apos;s links. Reloading or closing the browser can interrupt a request; your question stays saved. Clearing browser data removes local chats. When you ask a
             follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.
           </p>
           <p>
