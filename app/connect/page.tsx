@@ -13,8 +13,8 @@ export default async function ConnectPage() {
   const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
   const origin = `${proto}://${host}`;
 
-  const token = process.env.MCP_TOKEN ?? "";
-  const configured = token.length > 0;
+  const token = "<MCP_TOKEN>";
+  const configured = Boolean(process.env.MCP_TOKEN);
   const mcpUrl = `${origin}/api/mcp`;
   const mcpUrlWithKey = configured ? `${mcpUrl}?key=${token}` : mcpUrl;
 
@@ -86,17 +86,17 @@ export default async function ConnectPage() {
             >
               <strong>Not enabled yet.</strong> An admin needs to set the{" "}
               <code className="px-1 py-0.5 rounded bg-white/10">MCP_TOKEN</code> environment variable (any long random
-              string) and redeploy. Once set, the connection URL and token appear here automatically.
+              string) and redeploy. Ask the site maintainer to enable the connector.
             </div>
           )}
 
           <Field label="Server URL" value={mcpUrl} />
-          <Field label="Access token" value={configured ? token : "<set MCP_TOKEN to generate>"} mono blur={configured} copyable={configured} />
+          <Field label="Access token" value="Get your private key from the site maintainer" copyable={false} />
 
           <p className="text-sm mt-5 mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>
-            Easiest option — a single URL with the token built in, for connector fields that only accept a URL:
+            Ask the site maintainer for a connector key, then replace &lt;MCP_TOKEN&gt; in this URL with your key:
           </p>
-          <Field label="URL with token" value={mcpUrlWithKey} mono blur={configured} copyable={configured} />
+          <Field label="URL with token" value={mcpUrlWithKey} mono copyable={false} />
           <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.3)" }}>
             Treat this like a password — anyone with it can read your attendance data. Share it only with people you
             trust.

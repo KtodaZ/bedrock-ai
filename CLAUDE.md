@@ -19,7 +19,7 @@ Columns: `PAX Name`, `Site Name`, `FNG`, `Post`, `Q`, `QS`, `QS-Q`, `Date`, `Mon
 - **Framework:** Next.js 16 (App Router, TypeScript)
 - **Styling:** Tailwind CSS — dark theme, gradients, premium look
 - **AI (chat):** `gpt-6.1-sol` via OpenAI Responses API with configurable reasoning effort
-- **AI (suggestions):** `gpt-4o-mini` via OpenAI Chat Completions API
+- **AI (suggestions):** Homepage suggestions are static/free; follow-ups use `gpt-5-mini` via Responses API
 - **SQL engine:** sql.js (SQLite WASM, server-side only, Node.js runtime)
 - **Data fetching:** TanStack React Query for home page suggestions with retry + fallback
 - **Hosting:** Vercel
@@ -27,17 +27,17 @@ Columns: `PAX Name`, `Site Name`, `FNG`, `Post`, `Q`, `QS`, `QS-Q`, `Date`, `Mon
 ## AI Architecture (Agentic SQL Loop)
 - CSV → in-memory SQLite DB (built once per cache cycle, reused across requests)
 - Agentic model calls (gpt-6.1-sol, Responses API) with `run_sql` tool
-- Model calls `run_sql` as many times as needed (typically 2–5 queries per question)
+- Model gets at most six rounds (last round disables tools), capped at 6,000 output tokens per round
 - Each call: model generates SQL → executes against sql.js → results returned to model
 - Model synthesizes final answer from all query results
 - Streaming SSE response reports progress phases to frontend
-- Follow-up suggestions generated in parallel via gpt-4o-mini (Chat Completions, no SQL needed)
+- Follow-up suggestions use gpt-5-mini (Responses, max 1,024 output tokens); the reasoning classifier uses gpt-5-nano (max 512)
 
 ## Key Design Decisions
 - **Agentic SQL loop eliminates hallucination** — model only answers from exact SQL results
 - **sql.js (WASM) for server-side SQLite** — works in Vercel Node.js runtime; `locateFile` points to `node_modules/sql.js/dist`
 - **`outputFileTracingIncludes`** in next.config.ts ensures WASM file is included in Vercel bundle
-- **No tools/function calling on suggestions** — gpt-4o-mini uses Chat Completions (not Responses API)
+- **Free homepage suggestions** — curated suggestions avoid paid calls on page loads
 - **Streaming SSE** — API returns ReadableStream with phase events, then final `done` event
 - **DB cached** in server memory for 10 minutes (same TTL as CSV cache)
 
@@ -57,9 +57,7 @@ Events sent by `/api/chat`:
 
 ## Environment Variables
 - `OPENAI_API_KEY` — OpenAI API key (never committed)
-- `AUTH_SECRET` — random base64 string used to HMAC-sign the auth cookie
-- `AUTH_PASSWORD` — the shared access password, managed in Vercel; do not store it in source. Login hint: Impossible’s “real” F3 name.
-- `AUTH_PASSWORD_SECONDARY` — an optional second accepted password; the original password remains valid. Both passwords are case insensitive and ignore leading/trailing spaces.
+- `AUTH_SECRET` — server-only HMAC key for hashing client IPs in usage tracking; keep configured even though passwords are removed.
 - `MCP_TOKEN` — shared bearer token for the public MCP endpoint (`/api/mcp`). If unset, the MCP endpoint stays closed (401) and the `/connect` page shows a "not enabled" notice.
 
 ## Bring Your Own Agent (MCP)
@@ -67,14 +65,14 @@ Events sent by `/api/chat`:
 - Auth: shared `MCP_TOKEN` via `Authorization: Bearer <token>` **or** `?key=<token>` (some connector UIs only accept a URL)
 - Exposed tools (all read-only): `get_schema` (schema + F3 terminology + analytical rules), `run_sql` (single SELECT/WITH only — writes/DDL/stacked statements rejected by `isReadOnlySelect`), `search_pax` (fuzzy PAX-name lookup)
 - The connecting agent does its own reasoning — the endpoint just serves data, so there is **no** OpenAI cost per external call
-- Bypasses the password middleware (has its own token auth); everything else stays gated
+- Token authentication is required independently of the public app
 - DB/CSV helpers shared with `/api/chat` via `lib/attendance-db.ts`
-- `/connect` — login-gated instructions page with the copy-paste URL/token and per-client (Claude / ChatGPT / config-file) steps; a banner at the top of the chat UI links to it
+- `/connect` — public instructions page with placeholder tokens only; never render the actual MCP_TOKEN and per-client (Claude / ChatGPT / config-file) steps; a banner at the top of the chat UI links to it
 
 ## Cost Profile (per chat query)
 - SQL queries run server-side (free)
 - Model: `gpt-6.1-sol`, multiple tool calls per question (no full CSV sent)
-- Suggestions: `gpt-4o-mini` ~negligible
+- Homepage suggestions: no paid calls; post-answer follow-ups: bounded gpt-5-mini call
 - Chat costs depend on input, output, reasoning tokens, and the number of tool rounds.
 
 ## Design
@@ -84,14 +82,14 @@ Events sent by `/api/chat`:
 - Phase label shown above typing indicator during AI processing
 - Reasoning level dropdown in header (Low/Medium/High Reasoning)
 
-## Authentication
-- Password gate protects chat, AI suggestions, and connector setup via `middleware.ts`.
-- `/eh-challenge`, `/api/eh-challenge`, and `/how-it-works` are public. The leaderboard uses attendance data directly and makes no AI calls.
-- Correct password → `POST /api/auth` → HMAC-SHA256 signed token → httpOnly cookie (`bedrock-auth`, 1-year TTL)
-- Middleware verifies the HMAC on every request; bad/missing cookie redirects to `/login`
-- Login page at `app/login/page.tsx` — matches app dark theme, fullscreen takeover
-- Cookie is httpOnly + secure in production — not accessible to JS, can't be forged via DevTools
-- To change password: update `AUTH_PASSWORD` env var and redeploy (no code change needed)
+## Public access and bot limits
+- No password middleware. `/login` redirects to `/`; the old `/api/auth` endpoint returns 410.
+- Native Vercel Firewall rule `protect-api` matches `^/api/(chat|eh-corrections)$`: fixed window, 5 requests per 60 seconds per IP, excess 429. Published on project `f3-bedrock-ai`. These edge counters are regional.
+- Before any OpenAI call, `lib/aiRateLimit.ts` reserves one question atomically in private Blob `ai-rate-limit/usage.json`: 5 per minute per hashed IP and 100 total questions per UTC day. Conditional ETag writes protect the daily cap across servers/regions. Tracking failure rejects with 503, never an in-memory fallback.
+- Initial usage document (only create when absent): `{"version":1,"day":"YYYY-MM-DD","total":0,"clients":{}}`. Uses existing BLOB_READ_WRITE_TOKEN. Never reset an existing production counter. Optional AI_RATE_LIMIT_BLOB_PATH isolates tests.
+- Chat validation bounds questions to 2,000 characters, history to the last 12 messages / 16,000 characters, request body to 32,000 characters. Model requests have bounded rounds, output tokens, timeouts, and no SDK retries.
+- HTTP errors are shown by the chat UI before attempting to read SSE. EH standings and page views do not consume the AI quota.
+- Run `node --test scripts/test-ai-rate-limit.cjs` for limits, concurrency, fail-closed behavior, and no-paid-call rejection checks.
 
 ## EH Challenge
 - The home page has an EH Challenge tab; `/eh-challenge` is its public, shareable page.

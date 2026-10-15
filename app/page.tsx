@@ -181,6 +181,10 @@ export default function Home() {
         }),
       });
 
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.error ?? (res.status === 429 ? "Too many requests. Please try again in a minute." : "AI questions are temporarily unavailable."));
+      }
       if (!res.body) throw new Error("No response body");
 
       const reader = res.body.getReader();
@@ -233,8 +237,8 @@ export default function Home() {
           }
         }
       }
-    } catch {
-      const errMsg: Message = { role: "assistant", content: "Failed to reach the server.", isError: true };
+    } catch (err) {
+      const errMsg: Message = { role: "assistant", content: err instanceof Error ? err.message : "Failed to reach the server.", isError: true };
       const finalMessages = [...nextMessages, errMsg];
       setMessages(finalMessages);
       persistConversation(currentId, finalMessages);
@@ -729,6 +733,7 @@ export default function Home() {
                     style={{ background: "#0f0f1a" }}
                   >
                     <textarea
+                      maxLength={2000}
                       ref={inputRef}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}

@@ -146,10 +146,10 @@ export default function HowItWorksPage() {
         {/* Section: Auth */}
         <Section title="Access Control">
           <p>
-            Every route is protected by a password gate. When you enter the correct password, the server issues a cryptographically signed token stored in a secure browser cookie that JavaScript cannot read or tamper with. The signature is verified on every request using a secret key that lives only in the server environment.
+            The app and EH leaderboard are open without a password. AI questions are limited to 5 per minute per IP address and 100 per day across the site, resetting at midnight UTC. Loading the homepage or viewing the leaderboard does not make paid AI requests.
           </p>
           <p>
-            There&apos;s no user database, no session store, and no third-party auth service — just a signed token and a secret. The password can be changed by updating a single environment variable and redeploying.
+            Request limits are shared across servers, and each AI question has a bounded number of analysis rounds. If usage tracking is unavailable, AI questions pause until it recovers. External AI connectors still require a private key from the site maintainer.
           </p>
         </Section>
 

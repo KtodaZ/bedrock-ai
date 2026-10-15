@@ -1,49 +1,5 @@
 import { NextResponse } from "next/server";
 
-function uint8ArrayToBase64url(arr: Uint8Array): string {
-  let binary = "";
-  arr.forEach((b) => (binary += String.fromCharCode(b)));
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-}
-
-async function createToken(secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const payload = "authenticated";
-  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
-  return `${payload}.${uint8ArrayToBase64url(new Uint8Array(sig))}`;
-}
-
-export async function POST(req: Request) {
-  let body: unknown;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "Enter your access code" }, { status: 400 }); }
-  const password = body && typeof body === "object" && "password" in body ? body.password : undefined;
-  const passwords = [process.env.AUTH_PASSWORD, process.env.AUTH_PASSWORD_SECONDARY]
-    .map((value) => value?.trim().toLowerCase())
-    .filter((value): value is string => !!value);
-  const secret = process.env.AUTH_SECRET;
-
-  if (!secret || passwords.length === 0) {
-    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
-  }
-  if (typeof password !== "string" || !passwords.includes(password.trim().toLowerCase())) {
-    return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
-  }
-
-  const token = await createToken(secret);
-  const res = NextResponse.json({ ok: true });
-  res.cookies.set("bedrock-auth", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 365, // 1 year
-    path: "/",
-  });
-  return res;
+export async function POST() {
+  return NextResponse.json({ error: "Passwords are no longer required. Open the homepage to continue." }, { status: 410 });
 }

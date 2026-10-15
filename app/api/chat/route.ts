@@ -1,8 +1,10 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { fetchCSV, getDatabase, runSQL } from "@/lib/attendance-db";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { reserveAiRequest } from "@/lib/aiRateLimit";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 0, timeout: 60_000 });
 
 type HistoryMessage = { role: "user" | "assistant"; content: string };
 
@@ -140,6 +142,7 @@ async function classifyReasoning(question: string): Promise<"low" | "medium" | "
   try {
     const res = await openai.responses.create({
       model: "gpt-5-nano",
+      max_output_tokens: 512,
       input: [
         {
           role: "user",
@@ -202,6 +205,24 @@ function notifyDiscord(content: string) {
 }
 
 export async function POST(req: NextRequest) {
+  if (Number(req.headers.get("content-length")) > 32_000) return NextResponse.json({ error: "Question is too long." }, { status: 413 });
+  let body;
+  try {
+    const raw = await req.text();
+    if (raw.length > 32_000) return NextResponse.json({ error: "Question is too long." }, { status: 413 });
+    body = JSON.parse(raw);
+  } catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }
+  if (!body || typeof body.question !== "string" || !body.question.trim() || body.question.length > 2000 || (body.history !== undefined && !Array.isArray(body.history))) {
+    return NextResponse.json({ error: "Enter a question of up to 2,000 characters." }, { status: 400 });
+  }
+  const question: string = body.question.trim();
+  const history: HistoryMessage[] = (body.history ?? []).slice(-12);
+  if (history.some((m: HistoryMessage) => !m || !["user", "assistant"].includes(m.role) || typeof m.content !== "string") || history.reduce((n, m) => n + m.content.length, 0) > 16000) {
+    return NextResponse.json({ error: "This conversation is too long. Please start a new chat." }, { status: 400 });
+  }
+  const clientLevel: "auto" | "low" | "medium" | "high" = ["low", "medium", "high"].includes(body.reasoningLevel) ? body.reasoningLevel : "auto";
+  const limit = await reserveAiRequest(req.headers);
+  if (!limit.allowed) return NextResponse.json({ error: limit.message }, { status: limit.status, headers: { "Retry-After": String(limit.retryAfter), "Cache-Control": "no-store" } });
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -211,18 +232,6 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        const {
-          question,
-          history = [],
-          reasoningLevel: clientLevel = "auto",
-        }: { question: string; history: HistoryMessage[]; reasoningLevel?: "auto" | "low" | "medium" | "high" } =
-          await req.json();
-
-        if (!question?.trim()) {
-          send({ type: "error", message: "No question provided" });
-          return;
-        }
-
         const reasoningLevel =
           clientLevel === "auto" ? await classifyReasoning(question) : clientLevel;
         const startTime = Date.now();
@@ -249,13 +258,15 @@ export async function POST(req: NextRequest) {
         let finalAnswer = "";
         let queryBatch = 0;
 
-        // Agentic loop — model calls run_sql as many times as needed
-        while (true) {
+        // Bound paid work, even if the model keeps requesting tools.
+        for (let round = 0; round < 6; round++) {
           const response = await openai.responses.create({
             model: "gpt-6.1-sol",
+            max_output_tokens: 6000,
             reasoning: { effort: reasoningLevel },
             input,
             tools: [RUN_SQL_TOOL],
+            ...(round === 5 ? { tool_choice: "none" as const } : {}),
           });
 
           const toolCalls = response.output.filter((o) => o.type === "function_call") as OpenAI.Responses.ResponseFunctionToolCallItem[];
@@ -292,16 +303,19 @@ export async function POST(req: NextRequest) {
             input.push({
               type: "function_call_output",
               call_id: call.call_id,
-              output: result,
+              output: result.slice(0, 24000),
             } as OpenAI.Responses.ResponseInputItem.FunctionCallOutput);
           }
         }
+
+        if (!finalAnswer) throw new Error("This question needs more analysis than one request allows. Try a narrower question.");
 
         // Generate follow-up suggestions (lightweight, no CSV needed)
         let suggestions: string[] = [];
         try {
           const suggestionsRes = await openai.responses.create({
             model: "gpt-5-mini",
+            max_output_tokens: 1024,
             input: [
               {
                 role: "user",
