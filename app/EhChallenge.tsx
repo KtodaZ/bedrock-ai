@@ -2,7 +2,8 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { formatDay, POINTS, type ChallengeResult, type Period } from "@/lib/ehChallenge";
+import { buildBandText, formatDay, sortLeaderboard, type ChallengeResult, type LeaderboardSort, type Period } from "@/lib/ehChallenge";
+import Link from "next/link";
 
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "month", label: "This month" },
@@ -46,7 +47,9 @@ export default function EhChallenge() {
   const [selectedPeriod, setSelectedPeriod] = useState<Period | null>(null);
   const period = selectedPeriod ?? savedPeriod;
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const [showAllFngs, setShowAllFngs] = useState(false);
+  const [sort, setSort] = useState<LeaderboardSort>("points");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["eh-challenge", period],
@@ -65,16 +68,22 @@ export default function EhChallenge() {
     }
   }
 
-  function copyForBand() {
+  async function copyForBand() {
     if (!data) return;
-    navigator.clipboard.writeText(data.bandText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopyFailed(false);
+    try {
+      await navigator.clipboard.writeText(buildBandText(data, sort));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopyFailed(true);
+    }
   }
 
   const theme = data?.themes.find((t) => t.status === "active") ?? data?.themes.find((t) => t.status === "upcoming");
   const goalPct = data ? Math.min(100, (data.regionFngs / data.goal) * 100) : 0;
   const unassigned = data?.fngs.filter((f) => !f.ehBy).length ?? 0;
+  const leaderboard = sortLeaderboard(data?.leaderboard ?? [], sort);
 
   return (
     <main className="flex-1 overflow-y-auto">
@@ -90,6 +99,7 @@ export default function EhChallenge() {
             <p className="text-xs text-white/35 mt-1">
               {data ? `${formatDay(data.start)} – ${formatDay(data.asOf)} · latest data ${formatDay(data.asOf)}` : "Loading…"}
             </p>
+            <Link href="/eh-challenge/points" className="inline-flex items-center min-h-10 text-xs text-violet-300 hover:text-violet-200 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-violet-400">See the points infographic</Link>
           </div>
           <div className="flex rounded-xl p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
             {PERIOD_OPTIONS.map((o) => (
@@ -158,8 +168,23 @@ export default function EhChallenge() {
                   onClick={copyForBand}
                   className="text-xs text-white/50 hover:text-white/90 border border-white/10 hover:border-white/25 rounded-full px-3 py-1 transition-colors cursor-pointer"
                 >
-                  {copied ? "Copied!" : "Copy for Band"}
+                  {copied ? "Copied!" : copyFailed ? "Retry copy" : "Copy for Band"}
                 </button>
+              </div>
+              <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5">
+                <span className="text-xs text-white/65">Sort by</span>
+                <div className="flex gap-1" role="group" aria-label="Leaderboard sort">
+                  {([["points", "Points"], ["fngs", "FNGs"]] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      onClick={() => { setSort(value); setCopied(false); }}
+                      aria-pressed={sort === value}
+                      className={`min-h-10 px-4 rounded-lg text-xs font-medium cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-violet-400 ${sort === value ? "bg-violet-500/20 text-violet-200" : "text-white/65 hover:bg-white/5 hover:text-white"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
               {data.leaderboard.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-white/40 text-center">
@@ -167,7 +192,7 @@ export default function EhChallenge() {
                 </p>
               ) : (
                 <ol>
-                  {data.leaderboard.map((e, i) => (
+                  {leaderboard.map((e, i) => (
                     <li key={e.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
                       <span
                         className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
@@ -181,10 +206,10 @@ export default function EhChallenge() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-white/85 truncate">{e.name}</div>
-                        <div className="text-xs text-white/35">{e.fngs} FNG{e.fngs === 1 ? "" : "s"}</div>
+                        <div className="text-xs text-white/50">{sort === "points" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}` : `${e.total} pts`}</div>
                       </div>
                       {e.week > 0 && <span className="text-xs text-emerald-400/80">+{e.week} this week</span>}
-                      <span className="text-sm font-semibold text-white/90 w-14 text-right">{e.total} pts</span>
+                      <span className="text-sm font-semibold text-white/90 w-16 text-right tabular-nums">{sort === "points" ? `${e.total} pts` : `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}`}</span>
                     </li>
                   ))}
                 </ol>
@@ -236,16 +261,6 @@ export default function EhChallenge() {
               )}
             </section>
 
-            <details className="rounded-2xl px-4 py-3 text-xs text-white/50" style={card}>
-              <summary className="cursor-pointer text-white/70 text-sm">How points work</summary>
-              <ul className="mt-2 flex flex-col gap-1 list-disc pl-4">
-                <li>FNG&apos;s 1st post: {POINTS.firstPost} pts to whoever EH&apos;d him</li>
-                <li>2nd post: {POINTS.secondPost} pts · 5th post: {POINTS.fifthPost} pts</li>
-                <li>Every post after the 5th: {POINTS.afterFifth} pt</li>
-                <li>FNG EHs another FNG: he earns that FNG&apos;s points, and his own EH&apos;er gets a {POINTS.referral} pt referral bonus</li>
-                <li>Themed weeks add bonus points</li>
-              </ul>
-            </details>
           </>
         )}
       </div>

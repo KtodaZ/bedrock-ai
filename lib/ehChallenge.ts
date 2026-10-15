@@ -71,6 +71,14 @@ export interface LeaderboardEntry {
   fngs: number;
 }
 
+export type LeaderboardSort = "points" | "fngs";
+
+export function sortLeaderboard(entries: LeaderboardEntry[], sort: LeaderboardSort = "points"): LeaderboardEntry[] {
+  return [...entries].sort((a, b) =>
+    (sort === "fngs" ? b.fngs - a.fngs : 0) || b.total - a.total || b.week - a.week || a.name.localeCompare(b.name)
+  );
+}
+
 export interface FngEntry {
   name: string;
   ehBy: string | null;
@@ -130,6 +138,12 @@ function postPoints(n: number): number {
   if (n === 5) return POINTS.fifthPost;
   if (n > 5) return POINTS.afterFifth;
   return 0;
+}
+
+export function pointsForPosts(posts: number): number {
+  let total = 0;
+  for (let post = 1; post <= posts; post++) total += postPoints(post);
+  return total;
 }
 
 export function computeChallenge(
@@ -243,9 +257,7 @@ export function computeChallenge(
     const ehr = ehByKey.get(key);
     if (ehr) entry(ehr).fngs++;
   }
-  const leaderboard = [...board.values()].sort(
-    (a, b) => b.total - a.total || b.week - a.week || a.name.localeCompare(b.name)
-  );
+  const leaderboard = sortLeaderboard([...board.values()]);
 
   const themes: ThemeStatus[] = THEMES.map((t) => ({
     ...t,
@@ -268,18 +280,19 @@ export function computeChallenge(
   return { ...result, bandText: buildBandText(result) };
 }
 
-function buildBandText(r: Omit<ChallengeResult, "bandText">): string {
+export function buildBandText(r: Omit<ChallengeResult, "bandText">, sort: LeaderboardSort = "points"): string {
   const lines = [
-    `🏆 EH Challenge Leaderboard`,
+    `🏆 EH Challenge Leaderboard${sort === "fngs" ? " · Most FNGs" : ""}`,
     `${formatDay(r.start)} – ${formatDay(r.asOf)} · week of ${formatDay(r.weekStart)}`,
     "",
   ];
   if (r.leaderboard.length === 0) {
     lines.push("No points on the board yet. Go EH somebody!");
   } else {
-    r.leaderboard.slice(0, 10).forEach((e, i) => {
+    sortLeaderboard(r.leaderboard, sort).slice(0, 10).forEach((e, i) => {
       const week = e.week ? ` (+${e.week} this week)` : "";
-      lines.push(`${i + 1}. ${e.name} — ${e.total} pts${week}`);
+      const score = sort === "fngs" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"} · ${e.total} pts` : `${e.total} pts`;
+      lines.push(`${i + 1}. ${e.name} — ${score}${week}`);
     });
   }
   const theme = r.themes.find((t) => t.status === "active") ?? r.themes.find((t) => t.status === "upcoming");

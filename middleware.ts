@@ -43,8 +43,11 @@ export async function middleware(request: NextRequest) {
   // The MCP endpoint verifies its own bearer token.
   if (
     pathname === "/eh-challenge" ||
+    pathname === "/eh-challenge/points" ||
     pathname === "/api/eh-challenge" ||
     pathname === "/how-it-works" ||
+    pathname === "/icon.svg" ||
+    pathname === "/apple-icon.png" ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mcp")

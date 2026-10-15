@@ -97,11 +97,14 @@ Events sent by `/api/chat`:
 - Periods: this month, this year, all time, anchored to the latest attendance date. Only FNGs joining within the selected period count.
 - This year is the default; the saved-period key was reset when the default changed, and subsequent selections are remembered.
 - Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`.
-- The app reads the existing `Roster` tab (gid `437240319`) in F3 Bedrock Data, using `F3 Name` and `EH'er`.
+- The app reads the existing `Roster` tab (gid `437240319`) in F3 Bedrock Data, using `F3 Name`, `Region`, and `EH'er`. Attendance FNG marks count only when the matching Roster Region is Bedrock; visiting PAX and blank/missing regions do not count. Attendance itself is retained.
 - Every nonblank EH'er entry in the Roster is treated as confirmed, using the recorded name. There is no separate review/status gate, Band inference, or EH Log override.
 - The added EH Log tab is unused and retained without further edits. Sheet updates continue in the familiar Roster tab.
 - Roster changes refresh within the one-minute server cache; attendance retains its separate ten-minute cache.
-- The component includes a region goal, weekly points, FNG milestones, and Copy for Band.
+- The component includes a region goal, weekly points, FNG milestones, and Copy for Band. Points/FNG sorting also controls the copied Band standings.
+- The public `/eh-challenge/points` infographic illustrates workout milestones, retention, and referrals; it is linked from the leaderboard header rather than embedded above the standings.
+- The app has a custom B favicon (SVG, ICO, and Apple icon), available publicly.
+- `data.f3bedrock.com` is attached to the `f3-bedrock-ai` Vercel project. DNS is pending the domain owner adding a DNS-only CNAME for `data` to `b12e7fd92aae3ebc.vercel-dns-017.com`; keep existing nameservers.
 
 ## Conversation History
 - Stored in `localStorage` under key `bedrock-conversations` (array of `Conversation` objects)

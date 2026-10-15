@@ -75,15 +75,17 @@ function toISO(raw: string): string | null {
 }
 
 export async function fetchAttendance(): Promise<AttendanceRow[]> {
+  const [attendanceCSV, roster] = await Promise.all([fetchCSV(), fetchRoster()]);
+  const bedrockPax = new Set(roster.filter((r) => r.Region.trim().toLowerCase() === "bedrock").map((r) => normalizeName(r["F3 Name"])));
   const rows: AttendanceRow[] = [];
-  for (const r of parseCSV(await fetchCSV())) {
+  for (const r of parseCSV(attendanceCSV)) {
     const date = toISO(r["Date"] ?? "");
     const pax = (r["PAX Name"] ?? "").trim();
     if (!date || !pax) continue;
     rows.push({
       pax,
       site: (r["Site Name"] ?? "").trim(),
-      fng: r["FNG"] === "1",
+      fng: r["FNG"] === "1" && bedrockPax.has(normalizeName(pax)),
       post: r["Post"] === "1",
       date,
     });
@@ -91,14 +93,20 @@ export async function fetchAttendance(): Promise<AttendanceRow[]> {
   return rows;
 }
 
-/** Existing Roster entries are authoritative; a recorded EH'er needs no separate confirmation. */
-export async function fetchEhAttributions(): Promise<EhLogEntry[]> {
+const normalizeName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
+
+async function fetchRoster(): Promise<Record<string, string>[]> {
   const csv = await fetchCachedCSV(ROSTER_CSV_URL);
   const headers = parseCSVLine(csv.split("\n", 1)[0]);
-  if (!headers.includes("F3 Name") || !headers.includes("EH'er")) {
-    throw new Error("Roster is missing the F3 Name or EH'er column");
+  if (!["F3 Name", "EH'er", "Region"].every((header) => headers.includes(header))) {
+    throw new Error("Roster is missing the F3 Name, EH'er, or Region column");
   }
-  return parseCSV(csv)
+  return parseCSV(csv);
+}
+
+/** Existing Roster entries are authoritative; a recorded EH'er needs no separate confirmation. */
+export async function fetchEhAttributions(): Promise<EhLogEntry[]> {
+  return (await fetchRoster())
     .map((row) => ({ pax: row["F3 Name"].trim(), ehBy: row["EH'er"].trim() }))
     .filter((entry) => entry.pax && entry.ehBy);
 }
