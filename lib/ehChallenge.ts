@@ -7,9 +7,9 @@ export type Period = "year" | "challenge";
 export const PERIOD_LABELS: Record<Period, string> = {
   challenge: "2026 Challenge", year: "This Year",
 };
-export const PERIODS: Period[] = ["year", "challenge"];
+export const PERIODS: Period[] = ["challenge", "year"];
 export function parsePeriod(value: string | null | undefined): Period {
-  return PERIODS.includes(value as Period) ? value as Period : "year";
+  return PERIODS.includes(value as Period) ? value as Period : "challenge";
 }
 // Bedrock's calendar day is Pacific time, regardless of the visitor's timezone.
 export function attendanceIsBehindToday(sourceAsOf: string, now = new Date()): boolean {

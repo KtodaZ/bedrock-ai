@@ -110,10 +110,11 @@ test('Double Down earns only normal first-post points and upstream referral rema
   assert.match(scoring.buildBandText(referral, 'fngs'), /2026 EH Challenge.*Most FNGs/);
 });
 
-test('Period parsing preserves the year default and API supports explicit challenge requests', async () => {
+test('Challenge is first and the default while explicit annual requests still work', async () => {
   assert.equal(scoring.parsePeriod('challenge'), 'challenge');
-  assert.deepEqual(scoring.PERIODS, ['year', 'challenge']);
-  for (const value of [null, undefined, '', 'bad', 'month', 'all']) assert.equal(scoring.parsePeriod(value), 'year');
+  assert.deepEqual(scoring.PERIODS, ['challenge', 'year']);
+  assert.equal(scoring.parsePeriod('year'), 'year');
+  for (const value of [null, undefined, '', 'bad', 'month', 'all']) assert.equal(scoring.parsePeriod(value), 'challenge');
   const api = loadTS('app/api/eh-challenge/route.ts', {
     '@/lib/ehChallenge': scoring,
     '@/lib/sheet': {
@@ -122,7 +123,7 @@ test('Period parsing preserves the year default and API supports explicit challe
       fetchResurrectionAttributions: async () => [],
     },
   });
-  for (const [query, period, count, goal] of [['', 'year', 2, 100], ['?period=challenge', 'challenge', 1, 50], ['?period=month', 'year', 2, 100], ['?period=all', 'year', 2, 100]]) {
+  for (const [query, period, count, goal] of [['', 'challenge', 1, 50], ['?period=year', 'year', 2, 100], ['?period=challenge', 'challenge', 1, 50], ['?period=month', 'challenge', 1, 50], ['?period=all', 'challenge', 1, 50]]) {
     const response = await api.GET({ nextUrl: new URL('https://example.test/api/eh-challenge' + query) });
     assert.equal(response.status, 200);
     const body = await response.json();

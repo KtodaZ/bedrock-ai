@@ -46,7 +46,7 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 | `/eh-challenge/corrections` | `app/EhCorrectionHistory.tsx` | Public submission history |
 | `POST /api/chat` | `app/api/chat/route.ts` | JSON input, SSE success, JSON validation/quota errors |
 | `GET /api/suggestions` | `app/api/suggestions/route.ts` | Static homepage questions |
-| `GET /api/eh-challenge?period=challenge\|year` | `app/api/eh-challenge/route.ts` | Computed `ChallengeResult`; invalid/missing period defaults to year |
+| `GET /api/eh-challenge?period=challenge\|year` | `app/api/eh-challenge/route.ts` | Computed `ChallengeResult`; invalid/missing period defaults to challenge |
 | `GET, POST /api/eh-corrections` | `app/api/eh-corrections/route.ts` | Roster names / save-and-notify submission |
 | `GET /api/eh-corrections/history` | `app/api/eh-corrections/history/route.ts` | Public review history with current-Roster comparison |
 | `/admin/chats` | `app/admin/chats` | Password-protected search and review of private chat records |
@@ -141,13 +141,13 @@ Homepage `/api/suggestions` returns six static questions with CDN caching and ma
 
 ## EH scoring
 
-`/api/eh-challenge` fetches attendance, EH attributions, and return attributions, then calls the pure `computeChallenge()` function in `lib/ehChallenge.ts`. The API and person pages default to `year`; the UI remembers later period choices. `parsePeriod()` in `lib/ehChallenge.ts` accepts only `year` and `challenge`; legacy `month`/`all` links and saved preferences fall back to `year`. Shared links may specify `?period=challenge`; profiles and the return link preserve that selection.
+`/api/eh-challenge` fetches attendance, EH attributions, and return attributions, then calls the pure `computeChallenge()` function in `lib/ehChallenge.ts`. The API and person pages default to `challenge`, which is listed first; the UI remembers later period choices. `parsePeriod()` in `lib/ehChallenge.ts` accepts only `year` and `challenge`; legacy `month`/`all` links and saved preferences fall back to `challenge`. Shared links may specify `?period=challenge`; profiles and the return link preserve that selection.
 
 A challenge FNG needs an attendance FNG flag and a matching Roster name whose trimmed, case-insensitive `Region` is Bedrock. Missing/blank/other regions do not qualify. The rest of attendance remains available. Names are compared after trimming, lowercasing, and collapsing whitespace; this is not typo correction.
 
 For each PAX, the earliest eligible FNG date defines when he joined. `challenge` selects FNGs joining Oct 15–Dec 31, 2026, inclusive; earlier FNGs cannot earn competition points from later attendance. Its `asOf` is capped at Dec 31 so later workouts and referrals cannot count. `sourceAsOf` always reports the latest parsed attendance date, including rows without a post; `end` reports Dec 31 for the challenge. Before opening day the challenge cohort is empty. Workouts are distinct post dates from the FNG's first date through `asOf`; multiple posts on the same date count once.
 
-This Year contains invitation/retention stats with `scoringEnabled: false`: point totals, breakdowns, and unassigned points are zero. This view does not display point badges, score breakdowns, or a competition ranking. It selects FNGs joining in the year anchored to the latest attendance date. The year view remains the default. The point schedule below applies only to the explicit challenge view.
+This Year contains invitation/retention stats with `scoringEnabled: false`: point totals, breakdowns, and unassigned points are zero. This view does not display point badges, score breakdowns, or a competition ranking. It selects FNGs joining in the year anchored to the latest attendance date. 2026 Challenge is the default view. The point schedule below applies only to the explicit challenge view.
 
 | FNG workout | Points to recorded EH'er | Cumulative workout points |
 | --- | --- | --- |
@@ -201,7 +201,7 @@ Chat Discord notifications use a different, process-local, best-effort queue. Th
 | MCP POST | Private shared token | No | Uses attendance memory cache |
 | Saved chats | This browser | Follow-ups send recent context | Browser localStorage |
 
-`bedrock-conversations` stores chats and pending state; `bedrock-chat-session` stores the active chat, drafts, and reasoning preference; `bedrock-suggestions` caches homepage questions; `bedrock-eh-period-v2` stores the period (including `challenge`); `bedrock-agent-banner-dismissed` remembers banner dismissal. The menu retains connector and GitHub links. Clearing browser storage clears these preferences and saved chats.
+`bedrock-conversations` stores chats and pending state; `bedrock-chat-session` stores the active chat, drafts, and reasoning preference; `bedrock-suggestions` caches homepage questions; `bedrock-eh-period-v3` stores the period; its new key resets the old annual preference once so existing visitors receive the challenge default. Explicit `?period=year` links and subsequent choices are still honored; `bedrock-agent-banner-dismissed` remembers banner dismissal. The menu retains connector and GitHub links. Clearing browser storage clears these preferences and saved chats.
 
 MCP supports JSON-RPC initialization, ping, tool listing/calls, and batches over HTTP POST. Tools are `get_schema`, `run_sql`, and `search_pax`. Auth accepts an exact shared `MCP_TOKEN` in a Bearer header or `?key=`. Missing configuration keeps POST closed with 401. GET returns 405; OPTIONS returns 204. This is a small custom implementation, without user accounts, OAuth, or server-pushed SSE sessions. The public `/connect` page contains placeholders only.
 

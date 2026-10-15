@@ -11,7 +11,8 @@ import EhCorrectionForm from "./EhCorrectionForm";
 
 const PERIOD_OPTIONS = PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }));
 
-const PERIOD_KEY = "bedrock-eh-period-v2";
+// Reset the former annual default once; keep explicit links and new choices.
+const PERIOD_KEY = "bedrock-eh-period-v3";
 const PERIOD_EVENT = "bedrock-eh-period-change";
 
 function subscribePeriod(onChange: () => void) {
@@ -29,7 +30,7 @@ function readPeriod(): Period {
     if (linked) return parsePeriod(linked);
     return parsePeriod(localStorage.getItem(PERIOD_KEY));
   } catch {
-    return "year";
+    return "challenge";
   }
 }
 const FNG_PREVIEW = 10;
@@ -37,7 +38,7 @@ const FNG_PREVIEW = 10;
 const card = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" };
 
 export default function EhChallenge() {
-  const savedPeriod = useSyncExternalStore(subscribePeriod, readPeriod, () => "year" as Period);
+  const savedPeriod = useSyncExternalStore(subscribePeriod, readPeriod, () => "challenge" as Period);
   const [selectedPeriod, setSelectedPeriod] = useState<Period | null>(null);
   const period = selectedPeriod ?? savedPeriod;
   const [copied, setCopied] = useState(false);
