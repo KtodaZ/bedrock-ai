@@ -99,7 +99,7 @@ export default function EhChallenge() {
             <p className="text-xs text-white/35 mt-1">
               {data ? `${formatDay(data.start)} – ${formatDay(data.asOf)} · latest data ${formatDay(data.asOf)}` : "Loading…"}
             </p>
-            <Link href="/eh-challenge/points" className="inline-flex items-center min-h-10 text-xs text-violet-300 hover:text-violet-200 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-violet-400">See the points infographic</Link>
+            <Link href="/eh-challenge/points" className="inline-flex items-center min-h-10 text-xs text-violet-300 hover:text-violet-200 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-violet-400">How points work</Link>
           </div>
           <div className="flex rounded-xl p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
             {PERIOD_OPTIONS.map((o) => (
