@@ -45,6 +45,8 @@ The **Data** tab and [/data](https://data.f3bedrock.com/data) provide read-only 
 
 The explorer reads the same attendance and Roster tabs plus the existing Sites tab for active AOs. It makes no AI calls. Archived names and entries marked `(<18)` are excluded; contact and intake fields are never served. Dates and inactivity thresholds follow the latest attendance date. Open “How these numbers work” for calculation details.
 
+[Trends](https://data.f3bedrock.com/data/trends) shows turnout graphs, comparisons of up to four AOs, and a weekly attendance heatmap with links to the matching raw rows. [Milestones](https://data.f3bedrock.com/data/milestones) projects each PAX’s next hundred, highlights 500s and 1,000s, and lists recently reached milestones. Estimates use recent recorded attendance; totals cover this sheet rather than posts at other regions.
+
 ### Chats and stored data
 
 Chats and unsent drafts save in your browser’s local storage, and the last open chat resumes when you return. Questions keep running while you visit “How it works,” connector help, or other pages through the app’s links. Switching chats keeps each answer with its original conversation. A full reload or browser closure can interrupt a request; the saved chat shows the interruption without automatically retrying or using more quota. Clearing browser data removes local chats and drafts. When you ask a follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.

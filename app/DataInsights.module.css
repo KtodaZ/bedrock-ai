@@ -1,0 +1,609 @@
+.dataNav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 25px;
+  font-size: 13px;
+}
+.dataNav a {
+  color: #b4a6c6;
+  padding: 6px 0 9px;
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+  min-height: 36px;
+}
+.dataNav a:hover {
+  color: #e7d7ff;
+}
+.dataNav a[aria-current="page"] {
+  color: #e1cbff;
+  border-bottom-color: #b28bfa;
+}
+.dataNav a:focus-visible {
+  outline: 2px solid #bca0ff;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+.intro {
+  margin: 10px 0 0;
+  max-width: 70ch;
+  color: #baadce;
+  line-height: 1.6;
+}
+.controls {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 22px 0;
+}
+.controls > label {
+  flex: 1 1 145px;
+  min-width: 0;
+}
+.controls .searchLabel {
+  flex: 2 1 230px;
+}
+.controls > details {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.moreControls > summary,
+.compareControls > summary {
+  margin-top: 19px;
+}
+.moreControls > div {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+.compareControls > div {
+  padding-top: 14px;
+}
+.compareControls p {
+  color: #b4a6c6;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.compareControls fieldset {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-bottom: 12px;
+  border: 0;
+  scrollbar-color: #6b528e #14101f;
+}
+.compareControls fieldset label {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  min-height: 35px;
+}
+.compareControls input[type="checkbox"] {
+  height: 17px;
+  width: 17px;
+  flex: 0 0 17px;
+}
+.compareControls button {
+  font-size: 12px !important;
+}
+.modeTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 22px 0;
+}
+.modeTabs button {
+  background: transparent;
+  border-color: transparent;
+  color: #b9b0ce;
+}
+.modeTabs button[aria-pressed="true"] {
+  background: #302047;
+  border-color: #74539c;
+  color: #f0e8ff;
+}
+.resultHeading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 12px;
+}
+.resultHeading p {
+  color: #c3b5d3;
+  font-size: 13px;
+}
+.resultHeading strong {
+  color: #eee4ff;
+}
+.resultHeading > button {
+  font-size: 12px !important;
+}
+.note {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #b9adc9;
+  margin: 8px 0 14px;
+  max-width: 100ch;
+}
+.chartTitle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 16px;
+}
+.chartTitle h2 {
+  font-size: 18px !important;
+  line-height: 1.4 !important;
+  letter-spacing: -0.015em !important;
+  font-weight: 600;
+}
+.chartTitle p {
+  font-size: 12px;
+  color: #b5a5c8;
+}
+.forecastTimeline {
+  padding: 20px 0 18px;
+  border-block: 1px solid #30253e;
+}
+.forecastBars {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  height: 130px;
+  padding-top: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.forecastBars > button {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  border: none !important;
+  padding: 0 4px !important;
+  background: transparent !important;
+  border-radius: 4px;
+  gap: 4px !important;
+}
+.forecastBars > button:disabled {
+  opacity: 1 !important;
+}
+.forecastBars > button:hover:not(:disabled) {
+  outline: 1px solid #9c78c9;
+  outline-offset: 3px;
+}
+.forecastBars .selectedWeek {
+  outline: 2px solid #c8a2ff;
+  outline-offset: 3px;
+}
+.barCount {
+  height: 16px;
+  font-size: 11px;
+  color: #d4bbf5;
+}
+.barTrack {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid #493657;
+}
+.barFill {
+  display: block;
+  background: #986ccc;
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+}
+.barFill.fiveHundredBar {
+  background: #ba8d46;
+}
+.barFill.thousandBar {
+  background: #4eae8d;
+}
+.barLabel {
+  height: 18px;
+  font-size: 10px;
+  white-space: nowrap;
+  color: #baabca;
+}
+.milestoneBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  color: #d4b4ff;
+  background: #241a33;
+  border: 1px solid #513a6b;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.milestoneBadge > span {
+  font-size: 11px;
+  font-weight: 400;
+}
+.milestoneBadge.fiveHundred {
+  background: #2b2419;
+  color: #f0cd88;
+  border-color: #6c552c;
+}
+.milestoneBadge.thousand {
+  background: #112c24;
+  color: #a5e4c9;
+  border-color: #346550;
+}
+.goldText {
+  color: #f0cd88;
+}
+.greenText {
+  color: #a5e4c9;
+}
+.nameLink {
+  display: block;
+  color: #d3b4ff;
+  min-height: 28px;
+  line-height: 28px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.nameLink:hover {
+  color: #f0dfff;
+}
+.toGo {
+  font-weight: 600;
+}
+.estimateCell {
+  text-align: left !important;
+}
+.estimateCell strong {
+  display: block;
+  font-weight: 500;
+}
+.estimateCell small,
+.cellNote {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: #b4a3c8;
+}
+.textButton {
+  border: none !important;
+  background: none !important;
+  color: #c9a5fb !important;
+  padding-inline: 0 !important;
+  font-size: 12px !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 14px 0;
+  font-size: 12px;
+  color: #bdaacb;
+}
+.pager span {
+  margin-right: auto;
+}
+.pager button {
+  font-size: 12px !important;
+}
+.attendanceSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 42px;
+  border-block: 1px solid #30253e;
+  margin: 24px 0 28px;
+  padding: 20px 0;
+  font-variant-numeric: tabular-nums;
+}
+.attendanceSummary > div {
+  flex: 1;
+}
+.attendanceSummary dt {
+  color: #b6a6c8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.attendanceSummary dd {
+  margin-top: 7px;
+  color: #eee6ff;
+  font-size: 21px;
+  font-weight: 600;
+}
+.trendChart {
+  margin-top: 24px;
+}
+.chartScroll {
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #6b528e #14101f;
+}
+.lineChart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 18px;
+}
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  list-style: none;
+  margin-top: 14px;
+  font-size: 12px;
+  color: #d4c4e5;
+}
+.chartLegend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chartLegend span {
+  display: inline-block;
+  height: 3px;
+  width: 22px;
+  border-radius: 2px;
+}
+.weeklyNumbers {
+  color: #b7a8c9;
+  font-size: 12px;
+}
+.weeklyNumbers > div {
+  margin-top: 14px;
+}
+.heatSection {
+  padding-top: 25px;
+  margin-top: 28px;
+  border-top: 1px solid #30253e;
+}
+.heatLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 16px 0 12px;
+  color: #b5a7c4;
+  font-size: 11px;
+}
+.heatLegend i {
+  width: 17px;
+  height: 12px;
+  display: inline-block;
+}
+.heatScroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #30253e;
+  border-radius: 7px;
+  scrollbar-color: #6b528e #14101f;
+  scrollbar-width: thin;
+}
+.heatmap {
+  border-spacing: 3px;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+  font-size: 11px;
+}
+.heatmap th {
+  text-align: center;
+  color: #bcadce;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 57px;
+  padding: 8px 3px;
+}
+.heatmap td {
+  padding: 0;
+  min-width: 57px;
+  text-align: center;
+}
+.heatmap td > a,
+.noHeat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 35px;
+  border-radius: 3px;
+  color: #f1eaff;
+  text-decoration: none;
+}
+.heatmap td > a:hover {
+  outline: 1px solid #d0abff;
+  outline-offset: 1px;
+}
+.heatmap .heatPinned {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: #0d0b16;
+  min-width: 155px;
+  padding-left: 10px;
+}
+.noHeat {
+  color: #ac9aba;
+  background: #100c18;
+}
+.heat0 {
+  background: #231934;
+}
+.heat1 {
+  background: #38234f;
+}
+.heat2 {
+  background: #50316e;
+}
+.heat3 {
+  background: #66408c;
+}
+@media (max-width: 540px) {
+  .dataNav {
+    gap: 25px;
+    margin-bottom: 20px;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 10px;
+  }
+  .controls .searchLabel {
+    grid-column: 1 / -1;
+  }
+  .controls select,
+  .controls input[type="search"] {
+    font-size: 16px;
+  }
+  .controls > details {
+    grid-column: 1 / -1;
+  }
+  .moreControls > summary,
+  .compareControls > summary {
+    margin-top: 0;
+  }
+  .compareControls fieldset {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 10px;
+  }
+  .forecastTimeline {
+    padding-top: 16px;
+  }
+  .forecastBars {
+    gap: 4px;
+    height: 115px;
+  }
+  .forecastBars > button {
+    padding-inline: 1px !important;
+  }
+  .barLabel {
+    font-size: 9px;
+  }
+  .modeTabs {
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+  .modeTabs button {
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+  .attendanceSummary {
+    gap: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 20px 0 24px;
+  }
+  .attendanceSummary dd {
+    font-size: 20px;
+  }
+  .nameLink {
+    max-width: 120px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .heatmap .heatPinned {
+    min-width: 135px;
+    max-width: 135px;
+    white-space: normal;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dataNav *,
+  .forecastBars * {
+    transition: none !important;
+  }
+}
+
+.mobileResults {
+  display: none;
+}
+@media (max-width: 540px) {
+  .desktopResults {
+    display: none;
+  }
+  .mobileResults {
+    display: block;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #382b47;
+  }
+  .mobileResults > li {
+    padding: 16px 0;
+    border-bottom: 1px solid #30253e;
+  }
+  .mobileMilestoneHeading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  .mobileMilestoneHeading .nameLink {
+    max-width: none;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .mobilePostCount {
+    font-size: 12px;
+    color: #bfaed0;
+    margin-top: 7px;
+    font-variant-numeric: tabular-nums;
+  }
+  .mobilePostCount strong {
+    font-weight: 600;
+    color: #e3caff;
+  }
+  .mobileExpected {
+    font-size: 13px;
+    color: #ece1ff;
+    margin-top: 9px;
+  }
+  .mobileRange {
+    font-size: 11px;
+    line-height: 1.6;
+    color: #b6a3c9;
+    margin-top: 3px;
+  }
+  .trendControls > .metricLabel {
+    grid-column: auto;
+  }
+  .attendanceSummary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    padding-block: 16px;
+  }
+  .attendanceSummary dt {
+    font-size: 10px;
+  }
+  .attendanceSummary dd {
+    font-size: 19px;
+  }
+}
+
+.forecastDisclosure {
+  border-top: 1px solid #30253e;
+  margin-top: 14px;
+}
+.forecastDisclosure > summary {
+  font-size: 12px;
+}
+.forecastDisclosure .forecastTimeline {
+  margin-top: 10px;
+  border-top: 0;
+}
+
+@media (max-width: 540px) {
+  .milestoneControls > details {
+    grid-column: auto;
+  }
+  .milestoneControls .moreControls > summary {
+    margin-top: 19px;
+  }
+}

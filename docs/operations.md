@@ -109,6 +109,7 @@ npm run build
 | --- | --- |
 | `scripts/test-ai-rate-limit.cjs` | Per-IP/daily limits, concurrent reservations, storage failure, rejecting before OpenAI, bounded mock chat calls, free homepage suggestions |
 | `scripts/test-chat-session.cjs` | Immediate saves, active-chat/draft restoration, background and parallel completion, deletion races, interrupted streams, storage failures, legacy history |
+| `scripts/test-data-insights.cjs` | Milestone boundaries, pace/sample thresholds, exact reached dates, protected records, UTC weeks, weighted turnout, comparisons, gaps, and raw attendance links |
 | `scripts/test-data-explorer.cjs` | Public data fields/exclusions, CSV parsing, active Sites, combined filters, PAX/Qsource counts, inactivity thresholds, streaks, shared workouts, URL filters, and safe exports |
 | `scripts/test-eh-challenge.cjs` | Resurrection recipient, Family Tree versus referrals, profile milestones/badges |
 | `scripts/test-eh-corrections.cjs` | Canonical names, validation, concurrent durable writes, idempotent retries, delivery failures, endpoint rejection |

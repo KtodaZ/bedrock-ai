@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { useExplorerData } from "../lib/useExplorerData";
+import { nextPostMilestone } from "../lib/milestones";
+import DataSectionNav from "./DataSectionNav";
 import {
   companions,
   dataCSV,
@@ -164,16 +167,7 @@ function statColumns(view: DataView): Column[] {
 }
 
 export default function DataExplorer() {
-  const query = useQuery<ExplorerData>({
-    queryKey: ["attendance-explorer"],
-    queryFn: async () => {
-      const res = await fetch("/api/data");
-      if (!res.ok) throw new Error("Attendance data could not be loaded.");
-      return res.json();
-    },
-    staleTime: 5 * 60_000,
-    retry: 1,
-  });
+  const query = useExplorerData();
   return (
     <section className={styles.shell} aria-label="Attendance data explorer">
       {query.isPending ? (
@@ -377,6 +371,7 @@ function Explorer({
     <div ref={contentRef} className={styles.content}>
       <div className={styles.heading}>
         <div>
+          <DataSectionNav active="attendance" />
           <h1>Bedrock data</h1>
         </div>
         <div className={styles.actions}>
@@ -955,7 +950,7 @@ function PaxDetail({
     const next = new Date(Date.UTC(yearNum, monthNum - 1 + amount, 1));
     setMonth(next.toISOString().slice(0, 7));
   };
-  const nextMilestone = (Math.floor(posts.length / 100) + 1) * 100;
+  const nextMilestone = nextPostMilestone(posts.length);
   return (
     <div className={styles.profile}>
       <button className={styles.back} onClick={close}>
@@ -1195,6 +1190,7 @@ function PaxDetail({
       </section>
       <section className={styles.milestones}>
         <h3>100-post milestones</h3>
+        <Link className={styles.sourceLink} href={`/data/milestones?search=${encodeURIComponent(displayName)}&horizon=all`}>See milestone forecast</Link>
         <p>
           {number(nextMilestone - posts.length)} more posts to{" "}
           {number(nextMilestone)}.

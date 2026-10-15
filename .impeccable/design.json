@@ -129,6 +129,62 @@
           "oklch(84% 0.0399 179.08)",
           "oklch(95% 0.0399 179.08)"
         ]
+      },
+      "milestone": {
+        "role": "semantic",
+        "displayName": "Ordinary milestone"
+      },
+      "milestone-fill": {
+        "role": "semantic",
+        "displayName": "Ordinary milestone bar"
+      },
+      "milestone-gold": {
+        "role": "semantic",
+        "displayName": "500-post milestone text"
+      },
+      "milestone-gold-fill": {
+        "role": "semantic",
+        "displayName": "500-post milestone bar"
+      },
+      "milestone-gold-surface": {
+        "role": "semantic",
+        "displayName": "500-post milestone surface"
+      },
+      "milestone-gold-border": {
+        "role": "semantic",
+        "displayName": "500-post milestone border"
+      },
+      "milestone-green": {
+        "role": "semantic",
+        "displayName": "1,000-post milestone text"
+      },
+      "milestone-green-fill": {
+        "role": "semantic",
+        "displayName": "1,000-post milestone bar"
+      },
+      "milestone-green-surface": {
+        "role": "semantic",
+        "displayName": "1,000-post milestone surface"
+      },
+      "milestone-green-border": {
+        "role": "semantic",
+        "displayName": "1,000-post milestone border"
+      },
+      "comparison-lavender": {
+        "role": "semantic",
+        "displayName": "First AO comparison series"
+      },
+      "comparison-teal": {
+        "role": "semantic",
+        "displayName": "Second AO comparison series"
+      },
+      "comparison-amber": {
+        "role": "semantic",
+        "displayName": "Third AO comparison series"
+      },
+      "comparison-blue": {
+        "role": "semantic",
+        "displayName": "Fourth AO comparison series"
       }
     },
     "shadows": [
@@ -206,6 +262,21 @@
         "name": "The Pinned Name Rule",
         "body": "Keep wide tables horizontally scrollable and the first column sticky. On phones, its width is 145px and long names wrap; preserve the numeric columns rather than squeezing them into cards.",
         "section": "layout"
+      },
+      {
+        "name": "Attendance chart semantics",
+        "body": "Gold emphasizes 500-post multiples; green emphasizes 1,000-post multiples and takes precedence. AO comparisons use up to four named series in lavender, teal, amber, and blue. Small chart labels supplement legends and expandable numbers.",
+        "section": "colors"
+      },
+      {
+        "name": "Phone milestone hierarchy",
+        "body": "At 540px, milestone tables become divided lists: PAX and milestone, then posts remaining, expected week, and pace range. Other wide Data tables preserve pinned names.",
+        "section": "layout"
+      },
+      {
+        "name": "Insight disclosure",
+        "body": "Keep milestone search and time window visible; interval, region, sorting, and export use More options. The optional milestone timeline follows people and pagination in a closed disclosure. AO comparison selection, weekly numbers, and definitions also use native disclosure.",
+        "section": "components"
       }
     ],
     "dos": [

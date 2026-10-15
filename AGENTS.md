@@ -12,6 +12,8 @@ Read [README.md](README.md) for the product and local setup, [docs/architecture.
 | --- | --- |
 | Chat UI, saved chats, menu, banner | `app/page.tsx` |
 | Data tab, filters, attendance profiles | `app/DataExplorer.tsx`, `lib/dataExplorer.ts` |
+| Attendance graphs, AO comparisons, heatmap | `app/AttendanceTrends.tsx`, `lib/attendanceTrends.ts` |
+| Milestone forecasts and reached milestones | `app/Milestones.tsx`, `lib/milestones.ts` |
 | Public data snapshot and source fields | `app/api/data/route.ts`, `lib/dataExplorerSource.ts` |
 | AI model, prompts, tool loop, SSE events | `app/api/chat/route.ts` |
 | AI quota and paid-call rejection | `lib/aiRateLimit.ts` |
