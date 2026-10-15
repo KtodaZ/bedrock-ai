@@ -39,7 +39,7 @@ export default function HowItWorksPage() {
             className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full mb-6"
             style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}
           >
-            Under the Hood
+            How it works
           </div>
           <h1
             className="text-3xl sm:text-4xl font-bold mb-4 bg-clip-text text-transparent leading-tight"
@@ -48,118 +48,109 @@ export default function HowItWorksPage() {
             How Bedrock Data AI Works
           </h1>
           <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-            You type a question in plain English. A few seconds later you get a precise, data-backed answer. Here&apos;s what happens in between.
+            Ask about F3 attendance in plain English. Bedrock queries the attendance sheet and shows the results, along with the SQL it used.
           </p>
         </div>
 
-        {/* Section: The Big Picture */}
-        <Section title="The Big Picture">
+        <Section title="From question to answer">
           <p>
-            Bedrock Data AI is not a search engine and it&apos;s not a chatbot pulling answers from general knowledge. It&apos;s a purpose-built system that connects natural language questions directly to your actual attendance data — and only answers from what it can prove.
-          </p>
-          <p>
-            When you ask a question, the system fetches the latest data from the source Google Sheet, loads it into a temporary in-memory database, and hands it to an AI model that figures out how to query it. The model runs as many queries as it needs, checks its own work, and only then writes an answer.
+            Bedrock loads attendance records from Google Sheets into an in-memory SQLite database. The AI writes SQL,
+            reads the results, and can run more queries before answering. You can inspect those queries below each response.
           </p>
           <Diagram />
-        </Section>
-
-        {/* Section: Where the Data Comes From */}
-        <Section title="Where the Data Comes From">
           <p>
-            The single source of truth is the F3 attendance Google Sheet. Rather than syncing to a separate database, the system fetches it fresh on each request — exported as a plain spreadsheet file directly from Google. This means the data you see in answers is never more than a few minutes stale.
-          </p>
-          <p>
-            Once fetched, the spreadsheet is loaded into a lightweight in-memory database that lives only for the duration of the session. It&apos;s discarded after 10 minutes and rebuilt fresh on the next request. There&apos;s no persistent copy of your data stored on any server.
-          </p>
-        </Section>
-
-        {/* Section: How the AI Answers */}
-        <Section title="How the AI Actually Answers">
-          <p>
-            Most AI assistants generate answers by predicting what sounds right based on training. Bedrock does the opposite — the model is not allowed to guess. Instead, it is given one capability: the ability to query the database directly.
-          </p>
-          <p>
-            When you ask a question, the model figures out what queries would answer it, runs them, reads the real results, and decides if it has enough information. If not, it runs more queries. A typical question involves two to five round trips before the model is confident enough to write a response.
-          </p>
-          <p>
-            This approach eliminates a whole class of AI errors. The model can&apos;t invent attendance numbers, fabricate names, or misremember dates — because it never relied on memory in the first place. Every sentence in the answer traces back to a real query result you can inspect.
-          </p>
-          <p>
-            You can see this in action: each AI response shows the queries that were run underneath it.
+            The main model is gpt-6.1-sol. In Auto mode, a smaller model selects the reasoning level for your question.
+            You can also choose Low, Medium, or High yourself.
           </p>
           <KeyValue items={[
-            ["Step 1", "Model reads your question and plans an approach"],
-            ["Step 2", "Model writes a database query and runs it"],
-            ["Step 3", "Model reads the results and decides what to query next"],
-            ["Step 4", "Model validates its answer with a cross-check query"],
-            ["Step 5", "Model writes the final answer from confirmed results only"],
+            ["Step 1", "Load the attendance records"],
+            ["Step 2", "Write and run a SQL query"],
+            ["Step 3", "Read the results and query again if needed"],
+            ["Step 4", "Return an answer and show the queries"],
           ]} />
-        </Section>
-
-        {/* Section: Real-Time Progress */}
-        <Section title="Real-Time Progress">
           <p>
-            Because the process takes a few seconds, the UI streams status updates as work happens — &ldquo;Loading attendance data,&rdquo; &ldquo;Analyzing your question,&rdquo; &ldquo;Validating results&rdquo; — so you always know where things stand rather than staring at a spinner.
-          </p>
-          <p>
-            The AI&apos;s response begins appearing as soon as it&apos;s ready, and follow-up question suggestions are generated in parallel so they&apos;re waiting for you the moment the answer lands.
+            Query results give the model records to work from, but it can still make mistakes. Check the queries and
+            source sheet when a number looks wrong or an answer matters.
           </p>
         </Section>
 
-        {/* Section: Vercel Challenges */}
-        <Section title="Running This on Serverless Infrastructure">
+        <Section title="Where the data comes from">
           <p>
-            Bedrock is hosted on Vercel, which runs each API request inside a short-lived serverless function — a small isolated process that spins up, handles the request, and disappears. This is very cost-efficient, but it introduced some real engineering challenges.
-          </p>
-
-          <SubSection title="No persistent server">
-            <p>
-              Traditional servers stay running between requests, so you can keep a database loaded in memory. Serverless functions don&apos;t — each invocation may be a completely fresh process. The solution here is to cache the fetched spreadsheet and the in-memory database for 10 minutes within a warm instance. Requests that arrive within that window skip the fetch entirely. Cold instances rebuild it, which takes under a second.
-            </p>
-          </SubSection>
-
-          <SubSection title="Running a real database engine inside a function">
-            <p>
-              The database engine used here (SQLite) is normally a native binary. To run it inside a serverless function without special infrastructure, it&apos;s compiled to WebAssembly — a portable binary format that runs anywhere JavaScript runs. Getting Vercel to correctly bundle and deploy that WebAssembly file alongside the function code required explicit configuration; Vercel&apos;s automatic bundler doesn&apos;t detect it on its own.
-            </p>
-          </SubSection>
-
-          <SubSection title="Keeping a stream open across multiple AI round trips">
-            <p>
-              Streaming status updates to the browser while the AI loop is still running — potentially making four or five database calls in sequence — means the server needs to hold an open connection to the browser the entire time. Serverless functions are designed for quick request-response cycles, not long-lived streams. Getting this to work reliably required careful management of the response stream so it stays open across every AI iteration and only closes after the final answer is flushed.
-            </p>
-          </SubSection>
-
-          <SubSection title="Function timeout pressure">
-            <p>
-              Serverless functions have hard time limits. On Vercel&apos;s free tier that&apos;s 10 seconds; on the paid tier, 60 seconds. Complex questions with the reasoning level turned up high can approach these limits. The default reasoning level is set to Low for this reason — it&apos;s significantly faster while still being accurate for most questions. High reasoning is there for edge cases where you need the model to think harder.
-            </p>
-          </SubSection>
-
-          <SubSection title="Can&apos;t use the fastest global runtime">
-            <p>
-              Vercel offers an &ldquo;Edge&rdquo; runtime that runs functions at data centers closest to each user, with near-zero cold start times. The catch: it&apos;s a stripped-down environment that doesn&apos;t support all Node.js capabilities — including the WebAssembly database engine used here. The chat API has to run in the standard Node.js runtime instead, which means slightly slower cold starts (~0.5–1 second vs. ~50ms) but full compatibility with everything the system needs.
-            </p>
-          </SubSection>
-        </Section>
-
-        {/* Section: Auth */}
-        <Section title="Access Control">
-          <p>
-            The app and EH leaderboard are open without a password. AI questions are limited to 5 per minute per IP address and 100 per day across the site, resetting at midnight UTC. Loading the homepage or viewing the leaderboard does not make paid AI requests.
+            The existing F3 Bedrock Google Sheet is the source for attendance and EH credit. Attendance records and
+            the SQLite database are cached for up to 10 minutes in each running server instance. Roster data is cached
+            for one minute. A new server instance loads its own copy.
           </p>
           <p>
-            Request limits are shared across servers, and each AI question has a bounded number of analysis rounds. If usage tracking is unavailable, AI questions pause until it recovers. External AI connectors still require a private key from the site maintainer.
+            The app does not keep a separate permanent attendance database. Corrections and AI usage counts are
+            stored separately so review history and request limits survive server restarts.
           </p>
         </Section>
 
-        {/* Section: Conversation History */}
-        <Section title="Your Conversation History">
+        <Section title="What you see while it works">
           <p>
-            Past conversations are saved in your browser&apos;s local storage — they never leave your device. The server is stateless and has no record of previous sessions. When you continue a conversation, your full message history is sent along with the new question so the AI has the context it needs.
+            Status updates show when the app is loading data, querying it, or checking results. The response includes
+            the answer, the SQL queries, and suggested follow-up questions.
           </p>
           <p>
-            This keeps the architecture simple and avoids storing any personal data server-side, but it also means history is tied to the specific browser you used. Clearing your browser data will clear your conversation history.
+            Each question allows up to six model rounds. If it cannot finish within that limit, the app asks you to
+            narrow the question.
+          </p>
+        </Section>
+
+        <Section title="EH Challenge">
+          <p>
+            The leaderboard calculates points from recorded workouts and the EH&apos;er listed in the Roster. An FNG
+            counts only when attendance marks him as an FNG and his Roster region is Bedrock. The leaderboard opens
+            to this year; you can change the period, sort by points or FNGs, and search for a person.
+          </p>
+          <p>
+            Open a person&apos;s page for workout milestones, badges, and suggested next invitations. The EH Challenge&apos;s
+            &ldquo;How it works&rdquo; section explains the point values and referral bonus. Badges do not add points.
+          </p>
+          <p>
+            EH corrections are saved for maintainer review and posted to Discord. Names and notes appear in the
+            public correction history. A submission does not change standings; the maintainer must update the Roster.
+          </p>
+        </Section>
+
+        <Section title="Access and AI limits">
+          <p>
+            The app and leaderboard are open without a password. AI questions are limited to 5 per minute per IP
+            address and 100 per day across the site, resetting at midnight UTC. Homepage visits, suggested questions,
+            and leaderboard views do not make paid AI requests.
+          </p>
+          <p>
+            Usage counts are shared across servers. If usage tracking is unavailable, AI questions pause until it
+            recovers. Model rounds and output lengths are also capped to limit the cost of each question.
+          </p>
+        </Section>
+
+        <Section title="Your conversation history">
+          <p>
+            Saved chats live in this browser&apos;s local storage. Clearing browser data removes them. When you ask a
+            follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.
+          </p>
+          <p>
+            Questions are logged on the server. When Discord notifications are configured, the app also posts the
+            question and a short answer excerpt there. Correction submissions are stored for review separately from chats.
+          </p>
+        </Section>
+
+        <Section title="Bring your own agent">
+          <p>
+            Connect ChatGPT, Claude, or another MCP client to query the same attendance data. The connector provides
+            read-only tools for table information, SQL queries, and name searches. It requires a private key from the
+            site maintainer. Your chosen AI service handles the reasoning and its own charges.
+          </p>
+          <Link href="/connect" className="inline-flex min-h-11 items-center text-violet-300 underline underline-offset-4">
+            Set up your agent
+          </Link>
+        </Section>
+
+        <Section title="Hosting">
+          <p>
+            The app runs on Vercel using the Node.js runtime. SQLite runs through sql.js, which compiles the database
+            engine to WebAssembly. Warm server instances reuse cached data; cold instances load it again.
           </p>
         </Section>
 
@@ -197,22 +188,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mt-6">
-      <h3
-        className="text-sm font-semibold mb-3"
-        style={{ color: "rgba(255,255,255,0.75)" }}
-      >
-        {title}
-      </h3>
-      <div className="space-y-3 text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function KeyValue({ items }: { items: [string, string][] }) {
   return (
     <div
@@ -240,9 +215,9 @@ function Diagram() {
   const steps = [
     { label: "Google Sheet", sub: "live attendance data" },
     { label: "Data Loader", sub: "fetched & cached 10 min" },
-    { label: "In-Memory DB", sub: "temporary, per-request" },
-    { label: "AI Agent Loop", sub: "query → verify → repeat" },
-    { label: "Streaming Response", sub: "live progress updates" },
+    { label: "In-Memory DB", sub: "cached up to 10 min" },
+    { label: "AI Agent Loop", sub: "query → read → repeat" },
+    { label: "Response stream", sub: "live progress updates" },
     { label: "Chat UI", sub: "your browser" },
   ];
 

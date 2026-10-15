@@ -16,7 +16,7 @@ export default function PointsGuide() {
   return (
     <article className="rounded-3xl border border-violet-300/20 bg-[#101023] px-5 py-7 sm:px-10 sm:py-10 overflow-hidden">
       <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-white text-balance">Bring a guy.<br /><span className="text-violet-300">Build a habit.</span></h1>
-      <p className="text-sm sm:text-base text-violet-100/80 mt-4 max-w-lg">Your FNG&apos;s workouts earn you points. The invitation starts it; showing up keeps it growing.</p>
+      <p className="text-sm sm:text-base text-violet-100/80 mt-4 max-w-lg">Your FNG&apos;s workouts earn you points. Here&apos;s what each workout is worth.</p>
 
       <section aria-labelledby="milestones-title" className="mt-8">
         <h2 id="milestones-title" className="text-lg font-semibold text-white">The road from FNG to regular</h2>
@@ -43,7 +43,7 @@ export default function PointsGuide() {
       </section>
 
       <section aria-labelledby="referral-title" className="border-t border-violet-300/20 mt-8 pt-7">
-        <h2 id="referral-title" className="text-xl sm:text-2xl font-semibold text-white">Let the invitation travel.</h2>
+        <h2 id="referral-title" className="text-xl sm:text-2xl font-semibold text-white">When your FNG invites someone</h2>
         <div className="grid grid-cols-[1fr_24px_1fr_24px_1fr] gap-1 items-start text-center mt-6">
           {["You", "Alex", "Ben"].map((name, i) => <div key={name} className="contents"><div><Person className={`h-14 w-12 mx-auto ${i === 2 ? "text-sky-300" : "text-violet-300"}`} /><div className="font-semibold text-white mt-2">{name}</div><div className="text-xs text-violet-100/75 mt-1">{i === 0 ? `+${POINTS.referral} bonus` : i === 1 ? "Ben’s workout points" : "New FNG"}</div></div>{i < 2 && <svg viewBox="0 0 24 24" className="w-6 h-6 mt-4 text-violet-300" fill="none" aria-label="invites"><path d="M2 12h18m-7-7 7 7-7 7" stroke="currentColor" strokeWidth="2" /></svg>}</div>)}
         </div>

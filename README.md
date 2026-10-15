@@ -4,6 +4,49 @@ F3 Bedrock attendance questions, the EH Challenge leaderboard, and a read-only M
 
 Live app: https://data.f3bedrock.com
 
+## How it works
+
+Ask a question about F3 attendance in plain English. Bedrock loads the attendance sheet into an in-memory SQLite database, lets the AI query it, and returns an answer with the SQL underneath. You can inspect the queries when you want to check a number.
+
+```text
+Google Sheet → cached attendance → SQLite → AI queries → answer + SQL
+```
+
+### From question to answer
+
+1. The app checks request limits before making any paid AI calls.
+2. It loads attendance records, reusing a cached copy for up to 10 minutes.
+3. `gpt-6.1-sol` writes SQL, reads the results, and can query again before answering.
+4. The app returns the answer, query details, and suggested follow-up questions.
+
+Each question allows up to six model rounds, with capped outputs. Auto mode uses a smaller model to choose the reasoning level; you can also select Low, Medium, or High. The app shows progress while it works.
+
+Query results give the AI records to work from, but it can still make mistakes. Check the SQL and source sheet when a number looks wrong or an answer matters.
+
+### EH Challenge
+
+The leaderboard calculates points from recorded attendance and the EH’er listed in the existing Roster. An FNG counts only when attendance marks him as an FNG and his Roster region is Bedrock. Roster data is cached for one minute.
+
+The default view is this year. Sort by points or FNG count, search for a person, or open a profile for milestones, badges, and suggested next invitations. Badges do not add points. The [points guide](https://data.f3bedrock.com/eh-challenge/points) explains workout and referral scoring.
+
+EH corrections are saved for review and posted to Discord. Names and notes appear in the public correction history. Submissions do not change standings; the sheet maintainer must update the Roster.
+
+### Chats and stored data
+
+Saved chats live in your browser’s local storage. Clearing browser data removes them. When you ask a follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.
+
+Questions are logged on the server. When Discord notifications are configured, the app also posts the question and a short answer excerpt there. Correction submissions and AI usage counts are stored in private Vercel Blob storage. Attendance stays in Google Sheets, with temporary copies cached in server memory.
+
+### Bring your own agent
+
+Connect ChatGPT, Claude, or another MCP client to query the same attendance data. The connector provides read-only tools for table information, SQL queries, and name searches. It requires a private key from the site maintainer. Your chosen AI service handles the reasoning and its own charges.
+
+[Connector setup](https://data.f3bedrock.com/connect)
+
+### Hosting
+
+The app runs on Vercel using Node.js. SQLite runs through sql.js and WebAssembly. Warm server instances reuse cached data; cold instances load it again.
+
 ## Run locally
 
 Requires Node.js 20.9 or later and npm.

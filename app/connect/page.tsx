@@ -71,9 +71,9 @@ export default async function ConnectPage() {
             Connect ChatGPT or Claude to your crew&apos;s data
           </h1>
           <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-            Bedrock exposes your attendance data as an <strong className="text-white/70">MCP server</strong> — the
-            open standard both Claude and ChatGPT use to plug into outside tools. Add one URL as a connector and your
-            own AI can query the exact same data this app runs on. No install, no code.
+            Connect your AI through <strong className="text-white/70">MCP</strong>, a standard for connecting AI apps
+            to data and tools. Your agent can query the same attendance records as this app. You&apos;ll need a private
+            key from the site maintainer.
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export default async function ConnectPage() {
               "Open ChatGPT → Settings → Connectors (requires a plan with custom connectors / developer mode).",
               "Click “Create” / “Add connector” and choose an MCP server.",
               "Paste the URL with token above as the MCP server URL and name it “Bedrock Data”.",
-              "Save, then turn the connector on for a chat and ask away.",
+              "Save, then enable the connector in a chat and ask an attendance question.",
             ]}
           />
         </Section>
@@ -147,14 +147,14 @@ export default async function ConnectPage() {
         {/* What it can do */}
         <Section title="What your agent can do">
           <p className="text-sm mb-4" style={{ color: "rgba(255,255,255,0.45)" }}>
-            The connector gives your agent three read-only tools. Your own AI does the reasoning — it just queries the
-            live data directly, so answers stay grounded in the real records.
+            The connector gives your agent three read-only tools to query attendance records. Your AI service
+            handles the reasoning and its own charges.
           </p>
           <Tool name="get_schema" desc="Learn the table columns, F3 terminology (PAX, Q, FNG, AO, Kotter List), and the analytical rules." />
           <Tool name="run_sql" desc="Run a read-only SELECT against the attendance table and get exact rows back. Writes are blocked." />
-          <Tool name="search_pax" desc="Fuzzy-find a member's exact stored name before pulling their stats." />
+          <Tool name="search_pax" desc="Find a member's recorded name, including approximate matches, before querying their stats." />
           <p className="text-xs mt-4" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Read-only by design: only SELECT queries run, against an in-memory copy of the sheet refreshed every 10
+            Only SELECT queries run, against an in-memory copy of the sheet cached for up to 10
             minutes. Your agent can read the data but never change it.
           </p>
         </Section>

@@ -55,13 +55,13 @@ export default function PersonDetail({ name, period }: { name: string; period: P
 
     <section aria-labelledby="next-steps-heading" className="mt-7">
       <h2 id="next-steps-heading" className="text-lg font-semibold text-white">Next steps</h2>
-      <p className="text-sm text-white/65 mt-1">A few invitations that could turn into the next milestone.</p>
+      <p className="text-sm text-white/65 mt-1">Who to invite back and which workout earns points next.</p>
       <ul className="divide-y divide-white/10 mt-3">
         {nextSteps.slice(0, 3).map((fng) => {
           const next = nextMilestone(fng.posts);
           return <li key={fng.name} className="py-4 flex items-start gap-3"><svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-violet-300 shrink-0 mt-0.5" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg><div className="min-w-0"><p className="text-sm text-white/90">Invite <Link href={personURL(fng.name, period)} className={`text-violet-300 underline underline-offset-4 ${focus}`}>{fng.name}</Link> back for workout #{fng.posts + 1}.</p><p className="text-xs text-white/65 mt-1 leading-relaxed">{next.remaining === 1 ? `That next workout earns ${profile.name} +${next.points} points.` : `After ${next.remaining} more workouts, #${next.workout} earns ${profile.name} +${next.points} points.`}{fng.lastPost ? ` Last post ${formatDay(fng.lastPost)}.` : ""}</p></div></li>;
         })}
-        <li className="py-4 text-sm text-white/85">{recruits.length ? "Keep the crew growing: invite someone new to a workout." : "Start with one invitation: bring a new guy to a Bedrock workout."}<span className="block text-xs text-white/65 mt-1">A first workout earns +5. Make sure the Roster records the EH&apos;er.</span></li>
+        <li className="py-4 text-sm text-white/85">{recruits.length ? "Invite someone new to a Bedrock workout." : "Bring a new guy to a Bedrock workout."}<span className="block text-xs text-white/65 mt-1">A first workout earns +5. Make sure the Roster records the EH&apos;er.</span></li>
       </ul>
     </section>
 

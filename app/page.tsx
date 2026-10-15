@@ -201,7 +201,7 @@ export default function Home() {
         const error = await res.json().catch(() => null);
         throw new Error(error?.error ?? (res.status === 429 ? "Too many requests. Please try again in a minute." : "AI questions are temporarily unavailable."));
       }
-      if (!res.body) throw new Error("No response body");
+      if (!res.body) throw new Error("The server returned an empty response. Please try again.");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -571,7 +571,7 @@ export default function Home() {
                     Bedrock Data AI
                   </h1>
                   <p className="text-white/40 text-sm">
-                    Precise answers from your F3 workout attendance data
+                    Ask about your F3 workout attendance
                   </p>
                 </div>
 
