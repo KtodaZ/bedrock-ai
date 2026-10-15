@@ -12,7 +12,7 @@ EH correction submissions do not authorize source-sheet edits. Save them for mai
 
 ## Local setup
 
-Use Node.js 20.9 or later and npm:
+Use Node.js 20.19 or later and npm:
 
 ```sh
 npm ci
@@ -32,6 +32,9 @@ The source sheet URLs are constants in `lib/attendance-db.ts` and `lib/sheet.ts`
 | `AUTH_SECRET` | HMAC of client IP in quota storage | Required for chat even though passwords were removed |
 | `BLOB_READ_WRITE_TOKEN` | AI quota and correction history | Required for both durable stores; server-only |
 | `DISCORD_WEBHOOK_URL` | Chat notifications and correction delivery | Optional; missing webhook leaves correction alerts pending |
+| `MONGODB_URI`, `MONGODB_DATABASE` | Persistent private chat records | Server-only Atlas URI; database defaults to `bedrock_ai` |
+| `CHAT_ADMIN_PASSWORD` | Private `/admin/chats` viewer | Strong unique password; sessions also require `AUTH_SECRET` |
+| `CHAT_HISTORY_MCP_TOKEN` | Private chat-history MCP | Separate bearer token; production only |
 | `MCP_TOKEN` | MCP POST authorization | Required only for connector access; use a private random token |
 | `AI_RATE_LIMIT_BLOB_PATH` | Quota document path | Optional test namespace; default `ai-rate-limit/usage.json` |
 | `EH_CORRECTIONS_BLOB_PATH` | Correction document path | Optional test namespace; default `eh-corrections/history.json` |
@@ -128,6 +131,18 @@ These tests use mocks and synthetic records. They do not prove current sheet con
 | MCP GET returns 405 | HTTP method | Expected; POST JSON-RPC to call tools. |
 | Data explorer returns 503 | Attendance/Roster/Sites CSV access | The explorer needs the existing Sites tab as well as attendance and Roster. Retry after confirming all three are publicly readable; it never uses AI or writes the sheet. |
 | SQL route cannot load WASM | `next.config.ts`, deployed sql.js files, Node runtime | Check the affected route's actual bundle and runtime. |
-| Chat history disappeared | Browser localStorage | History is tied to the browser; clearing data removes it. No account-based chat restore exists. |
+| Saved browser chat disappeared | Browser localStorage | Browser history is separate from private MongoDB logs; clearing browser data removes the local copy. |
 
 Questions and SQL details are logged on the server. When configured, chat also sends questions and answer excerpts to Discord. Correction history is publicly served even though its backing Blob is private. Keep these facts in privacy copy; do not describe the whole app as device-only or all stored content as private.
+
+## Chat-history deployment checks
+
+The MongoDB setup, indexes, and private connector are documented in [README.md](../README.md#chat-history-operations). Keep the logging helpers, admin routes, private MCP route, dependency/lockfile, and tests committed together. A deployment from local uncommitted files is temporary: the next Git-based deployment will omit them.
+
+After deployment, run this read-only check against the public alias:
+
+```sh
+node --env-file=.env.local scripts/check-chat-history.mjs https://data.f3bedrock.com
+```
+
+It verifies authentication, all five MCP tools, MongoDB reads, and the admin route without paid AI calls, notifications, or test records. A 404 means the deployed build omitted the route; check the production commit and build route list. A 401 with the private key means its production credential differs; a storage tool error points to Atlas configuration. Preserve existing logs and quota documents when diagnosing failures. Logging failure warnings appear as `[chat-history] write failed` in runtime logs. There is no automatic expiration or historical Discord import.

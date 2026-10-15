@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { fetchCSV, getDatabase, runSQL } from "@/lib/attendance-db";
 
+import { randomUUID } from "node:crypto";
+import { saveChatLog, type ChatLog } from "@/lib/chatLogStore";
 import { reserveAiRequest } from "@/lib/aiRateLimit";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 0, timeout: 60_000 });
@@ -220,20 +222,32 @@ export async function POST(req: NextRequest) {
   if (history.some((m: HistoryMessage) => !m || !["user", "assistant"].includes(m.role) || typeof m.content !== "string") || history.reduce((n, m) => n + m.content.length, 0) > 16000) {
     return NextResponse.json({ error: "This conversation is too long. Please start a new chat." }, { status: 400 });
   }
+  if (body.conversationId !== undefined && (typeof body.conversationId !== "string" || !/^[a-zA-Z0-9-]{1,100}$/.test(body.conversationId))) {
+    return NextResponse.json({ error: "Invalid conversation ID." }, { status: 400 });
+  }
   const clientLevel: "auto" | "low" | "medium" | "high" = ["low", "medium", "high"].includes(body.reasoningLevel) ? body.reasoningLevel : "auto";
   const limit = await reserveAiRequest(req.headers);
   if (!limit.allowed) return NextResponse.json({ error: limit.message }, { status: limit.status, headers: { "Retry-After": String(limit.retryAfter), "Cache-Control": "no-store" } });
+  const started = Date.now();
+  const log: ChatLog = {
+    _id: randomUUID(), conversationId: body.conversationId || randomUUID(),
+    createdAt: new Date(started), updatedAt: new Date(started), question, history,
+    model: "gpt-6.1-sol", reasoningLevel: clientLevel, status: "pending", queries: [],
+  };
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       function send(event: object) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        // Finish storing the result even if the browser disconnects mid-answer.
+        try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); } catch {}
       }
 
       try {
+        await saveChatLog(log);
         const reasoningLevel =
           clientLevel === "auto" ? await classifyReasoning(question) : clientLevel;
+        log.reasoningLevel = reasoningLevel;
         const startTime = Date.now();
         console.log(`[chat] question="${question}" reasoning=${reasoningLevel} historyLen=${history.length}`);
         notifyDiscord(`❓ **${question}** _(${reasoningLevel} reasoning)_`);
@@ -299,6 +313,7 @@ export async function POST(req: NextRequest) {
             }
             console.log(`[chat] sql_query=${queryBatch} reason="${args.reason}" sql="${args.sql.replace(/\s+/g, " ").trim()}"`);
             send({ type: "query", index: queryBatch, reason: args.reason, sql: args.sql.trim() });
+            log.queries.push({ sql: args.sql, reason: args.reason });
             const result = runSQL(db, args.sql);
             input.push({
               type: "function_call_output",
@@ -350,13 +365,17 @@ Return ONLY a JSON array of 3 strings, no explanation.`,
           .replace(/\n{3,}/g, "\n\n")
           .trim();
         notifyDiscord(`✅ Done — ${queryBatch} quer${queryBatch === 1 ? "y" : "ies"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${plainAnswer.slice(0, 500)}${plainAnswer.length > 500 ? "…" : ""}\n\`\`\``);
+        Object.assign(log, { status: "success", answer: finalAnswer, durationMs: Date.now() - started, updatedAt: new Date() });
+        await saveChatLog(log);
         send({ type: "done", answer: finalAnswer, suggestions, reasoningLevel });
       } catch (err) {
+        Object.assign(log, { status: "error", error: String(err).slice(0, 2000), durationMs: Date.now() - started, updatedAt: new Date() });
+        await saveChatLog(log);
         console.error(`[chat] error: ${String(err)}`);
         notifyDiscord(`⚠️ Error: ${String(err).slice(0, 300)}`);
         send({ type: "error", message: String(err) });
       } finally {
-        controller.close();
+        try { controller.close(); } catch {}
       }
     },
   });

@@ -53,6 +53,7 @@ test('Rejected questions never call OpenAI, and homepage suggestions are free', 
   class FakeAI { responses = { create() { calls++; throw new Error('Should not call'); } }; }
   const chat = load('app/api/chat/route.ts', {
     openai: { default: FakeAI },
+    '@/lib/chatLogStore': { saveChatLog: async () => {} },
     '@/lib/attendance-db': {},
     '@/lib/aiRateLimit': { reserveAiRequest: async () => ({ allowed: false, status: 429, message: 'Limit reached', retryAfter: 60 }) },
   });
@@ -75,6 +76,7 @@ test('Allowed chat has at most six analysis rounds and a bounded follow-up call'
   } }; }
   const chat = load('app/api/chat/route.ts', {
     openai: { default: FakeAI },
+    '@/lib/chatLogStore': { saveChatLog: async () => {} },
     '@/lib/attendance-db': { fetchCSV: async () => 'csv', getDatabase: async () => ({}), runSQL: () => '1' },
     '@/lib/aiRateLimit': { reserveAiRequest: async () => ({ allowed: true }) },
   });

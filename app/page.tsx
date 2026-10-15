@@ -197,6 +197,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
+          conversationId: currentId,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
           reasoningLevel,
         }),

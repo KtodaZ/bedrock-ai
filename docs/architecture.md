@@ -47,6 +47,9 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 | `GET /api/eh-challenge?period=month\|year\|all` | `app/api/eh-challenge/route.ts` | Computed `ChallengeResult`; invalid/missing period defaults to year |
 | `GET, POST /api/eh-corrections` | `app/api/eh-corrections/route.ts` | Roster names / save-and-notify submission |
 | `GET /api/eh-corrections/history` | `app/api/eh-corrections/history/route.ts` | Public review history with current-Roster comparison |
+| `/admin/chats` | `app/admin/chats` | Password-protected search and review of private chat records |
+| `GET /api/admin/chats`, `POST, DELETE /api/admin/session` | `app/api/admin` | Signed admin sessions and private, uncached history reads |
+| `POST /api/mcp/chat-history` | `app/api/mcp/chat-history/route.ts` | Private, read-only chat-history tools; separate bearer token |
 | `POST /api/mcp` | `app/api/mcp/route.ts` | Token-protected JSON-RPC tools |
 | `/login`, `POST /api/auth` | Legacy compatibility routes | Redirect to `/` / HTTP 410; no password middleware |
 
@@ -99,7 +102,7 @@ AO coverage uses current active Sites (`Active` status text or Y), not all histo
 
 ## Chat request lifecycle
 
-`app/page.tsx` posts `{ question, history, reasoningLevel }` to `/api/chat`.
+`app/page.tsx` posts `{ question, conversationId, history, reasoningLevel }` to `/api/chat`.
 
 1. Validate the request: question 1–2,000 characters, last 12 history messages with valid roles and at most 16,000 content characters, body at most 32,000 characters (plus a preliminary Content-Length check).
 2. Reserve quota using `lib/aiRateLimit.ts`, before any OpenAI call. An accepted reservation counts even if the later question fails; there is no refund step.
@@ -187,3 +190,9 @@ Chat Discord notifications use a different, process-local, best-effort queue. Th
 MCP supports JSON-RPC initialization, ping, tool listing/calls, and batches over HTTP POST. Tools are `get_schema`, `run_sql`, and `search_pax`. Auth accepts an exact shared `MCP_TOKEN` in a Bearer header or `?key=`. Missing configuration keeps POST closed with 401. GET returns 405; OPTIONS returns 204. This is a small custom implementation, without user accounts, OAuth, or server-pushed SSE sessions. The public `/connect` page contains placeholders only.
 
 See [operations.md](operations.md) for quota details, Blob initialization, configuration, and troubleshooting.
+
+## Persistent chat history
+
+`lib/chatLogStore.ts` uses a small shared MongoDB connection pool and stores one `bedrock_ai.chat_logs` record per accepted question. A pending record is awaited before analysis; a final success/error record is awaited before sending the result. Records include full questions/answers, recent context, SQL, reasoning level, timing, and timestamps. Logging failures emit a credential-free warning and do not block answers. Interrupted work may remain pending. No raw IP is stored in these records, and browser history remains separate.
+
+`/admin/chats` uses the independent `CHAT_ADMIN_PASSWORD` and signed HttpOnly cookies. The private MCP endpoint `/api/mcp/chat-history` requires `CHAT_HISTORY_MCP_TOKEN` in the Authorization header; neither the attendance token, admin password, nor URL keys grant access. Its five fixed read-only tools expose schema guidance, text/date/status search, chronological conversations, complete request records, and count/daily/repeated-question summaries. There is no arbitrary MongoDB query or write tool, and these lookups do not call OpenAI. Transcript strings are untrusted data; anonymous conversation IDs do not identify people. See the README for pagination and summary limits.

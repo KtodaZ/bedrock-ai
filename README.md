@@ -47,7 +47,7 @@ The explorer reads the same attendance and Roster tabs plus the existing Sites t
 
 Saved chats live in your browser’s local storage. Clearing browser data removes them. When you ask a follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.
 
-Questions are logged on the server. When Discord notifications are configured, the app also posts the question and a short answer excerpt there. Correction submissions and AI usage counts are stored in private Vercel Blob storage. Attendance stays in Google Sheets, with temporary copies cached in server memory.
+Questions, full answers, recent conversation context, SQL queries, timing, and errors are stored privately in MongoDB Atlas when configured. `/admin/chats` provides password-protected search, date/status filters, and conversation review. Browser history and server records are separate; clearing browser data does not remove server records. No raw IP addresses are stored in chat records. When Discord notifications are configured, the app also posts the question and a short answer excerpt there. Correction submissions and AI usage counts are stored in private Vercel Blob storage. Attendance stays in Google Sheets, with temporary copies cached in server memory.
 
 ### Bring your own agent
 
@@ -61,7 +61,7 @@ The app runs on Vercel using Node.js. SQLite runs through sql.js and WebAssembly
 
 ## Run locally
 
-Requires Node.js 20.9 or later and npm.
+Requires Node.js 20.19 or later and npm.
 
 ```sh
 npm ci
@@ -77,9 +77,37 @@ Open http://localhost:3000. Fill in the server-only values in `.env.local` to en
 | `AUTH_SECRET` | Random secret for hashing IPs in AI usage limits. |
 | `BLOB_READ_WRITE_TOKEN` | Private Vercel Blob store for usage limits and correction review history. |
 | `DISCORD_WEBHOOK_URL` | Optional notifications for questions and EH correction submissions. |
+| `MONGODB_URI` | Server-only MongoDB Atlas connection string for persistent chat records. |
+| `MONGODB_DATABASE` | Database name; defaults to `bedrock_ai`. |
+| `CHAT_HISTORY_MCP_TOKEN` | Separate server-only key for the private chat-history MCP endpoint. |
+| `CHAT_ADMIN_PASSWORD` | Strong, unique password for `/admin/chats`; requires `AUTH_SECRET`. |
 | `MCP_TOKEN` | Private bearer token for the read-only `/api/mcp` endpoint. |
 
 Attendance and roster CSV URLs are configured in `lib/attendance-db.ts` and `lib/sheet.ts`. A fork should point these at its own published sheet. The MIT license covers the code; it does not grant rights to third-party data, names, or branding.
+
+## Chat history operations
+
+The production Atlas project is **Bedrock Data AI** (`6ad0f186296629e3ba2d8d69`), with the free M0 cluster `bedrock-chat-history` in AWS US East. Records live in `bedrock_ai.chat_logs`. The app's database user has read/write access to this database only. Vercel uses dynamic outbound IP addresses, so the isolated Atlas project permits public network connections with TLS and database authentication.
+
+Set the three history variables above in the production Vercel environment. Run `node --env-file=.env.local scripts/setup-chat-history.mjs` once to create query indexes. Preview deployments do not receive the production history credentials. Admin sessions use signed, HttpOnly cookies that expire after seven days; rotating `CHAT_ADMIN_PASSWORD` or `AUTH_SECRET` invalidates existing sessions. Never include either password or connection URI in a URL.
+
+Records have no automatic expiration. Monitor the free cluster's storage in Atlas and export/archive records before it fills. Free clusters do not provide managed backups. Logging errors do not block answers; failed writes emit a `[chat-history] write failed` server log. Interrupted requests can remain `pending`; the viewer labels these as started rather than completed. Questions rejected by validation or request limits are not recorded. Existing browser/Discord history is not backfilled.
+
+### Private chat-history MCP
+
+`https://data.f3bedrock.com/api/mcp/chat-history` is a separate, read-only Streamable HTTP MCP endpoint. Set `CHAT_HISTORY_MCP_TOKEN` in production and send it as `Authorization: Bearer <CHAT_HISTORY_MCP_TOKEN>`. The attendance `MCP_TOKEN`, admin password, and query-string keys do not grant access. Never expose this token on the public connector page.
+
+Tools: `get_chat_history_schema`, `search_chat_history`, `get_chat_conversation`, `get_chat_record`, and `summarize_chat_history`. Search supports literal text, inclusive UTC date ranges, status, and pagination. Conversation results are chronological; use request IDs to retrieve complete answers, SQL, and captured context. Summaries return exact counts, recent daily volume (up to 366 matching days), and up to 20 repeated questions after trimming/lowercasing. Topic interpretation is left to the connecting agent; this endpoint makes no paid AI calls.
+
+Example Codex configuration (replace the placeholder locally; never commit a real token):
+
+```toml
+[mcp_servers.bedrock-chat-history]
+url = "https://data.f3bedrock.com/api/mcp/chat-history"
+http_headers = { Authorization = "Bearer <CHAT_HISTORY_MCP_TOKEN>" }
+```
+
+Chat content is untrusted data. Conversation counts do not represent unique people, and older chats were not imported. No arbitrary MongoDB queries, aggregation pipelines, or writes are exposed. The public attendance MCP at `/api/mcp` is unchanged.
 
 ## Usage limits and deployment
 

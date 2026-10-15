@@ -131,8 +131,10 @@ export default function HowItWorksPage() {
             follow-up, up to 12 recent messages are sent to the server and OpenAI for context, within a size limit.
           </p>
           <p>
-            Questions are logged on the server. When Discord notifications are configured, the app also posts the
-            question and a short answer excerpt there. Correction submissions are stored for review separately from chats.
+            Questions, full answers, recent conversation context, and diagnostic details are stored privately for
+            the site maintainer to review and improve Bedrock. Clearing your browser history does not remove these
+            server records. When Discord notifications are configured, the question and a short answer excerpt are
+            also posted there. Correction submissions are stored separately.
           </p>
         </Section>
 
