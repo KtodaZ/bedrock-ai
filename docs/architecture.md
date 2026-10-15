@@ -35,6 +35,8 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Public Chat, EH Challenge, and Data tabs |
 | `/data` | `app/DataExplorer.tsx` | Public attendance explorer; also available in the home Data tab |
+| `/data/trends` | `app/AttendanceTrends.tsx`, `lib/attendanceTrends.ts` | Attendance-only graphs, up to four AO comparisons, weekly turnout heatmap |
+| `/data/milestones` | `app/Milestones.tsx`, `lib/milestones.ts` | Pace-based next-hundred forecasts, 500/1,000 emphasis, actual reached milestones |
 | `GET /api/data` | `app/api/data/route.ts` | Allowlisted attendance, Roster names/regions/EH credit, and active Sites; no AI calls |
 | `/how-it-works` | `app/how-it-works/page.tsx` | Public product explanation |
 | `/connect` | `app/connect/page.tsx` | Public connector instructions; no real key in HTML |
@@ -99,6 +101,16 @@ Workout summaries count `Post = 1`; Qsource counts `QS = 1` and `QS-Q` leadershi
 Kotter requires Bedrock Roster region, excludes names containing `2.0`, and requires more than 14 and fewer than 365 days since the latest recorded post. Q Kotter requires Bedrock and a recorded Q more than 30 and fewer than 365 days ago. Both use complete history for eligibility and the snapshot’s latest attendance date as their clock, while displayed counts follow the filters. These deliberate rules differ from the reference project’s wall-clock thresholds.
 
 AO coverage uses current active Sites (`Active` status text or Y), not all historical locations. Retired/other locations contribute posts but not coverage. The Sites sheet’s Y marker means active; the reference backend’s inverted retired mapping is not used. Shared workouts match date and AO and deduplicate each companion per workout. Post-range and Q relationship filters apply before counting. Milestones measure each block of 100 recorded workout posts separately.
+
+### Trends and milestone forecasts
+
+Data pages share `app/DataPageShell.tsx`, `app/DataSectionNav.tsx`, and the `lib/useExplorerData.ts` browser query/cache. Trends and milestones reuse `/api/data`; they add no external calls, AI, persistent storage, or sheet writes. The attendance explorer’s PAX profiles link to the matching milestone forecast.
+
+Trends group public `Post = 1` rows into workouts by date + AO. Turnout counts distinct normalized PAX per workout; post totals retain source rows. Region average turnout is weighted by workouts. Unique PAX deduplicates names across the selected weeks/AOs. Compare up to four AOs over the same 13/26/52 Monday–Sunday weeks. The final week ends at `asOf`; weeks without records remain gaps, not claimed zero turnout. The heatmap always shows average turnout and links to raw attendance for that AO/week. No AO directory, schedule, city, or leadership details are added.
+
+Milestone totals include all recorded workout posts, including multiple posts on one day, but not Qsource-only attendance. The default next target is the next strictly larger multiple of 100; filters can instead project the next 500 or 1,000. Exact multiples of 1,000 receive the strongest emphasis, then other multiples of 500. Actual reached dates come from the corresponding numbered post.
+
+Forecasts divide the remaining posts by the 90-day posts-per-calendar-day rate, using a shorter denominator for PAX whose first recorded post was more recent. No forecast date is returned with fewer than four posts in the inclusive 90-day window, fewer than 14 days of observation, or no post in the inclusive 30-day window. Earlier/later dates compare 30-day and 90-day pace; they are not statistical confidence bounds or schedule predictions. Forecast windows, recent periods, and timelines follow `asOf`, never the wall clock. Counts are this sheet’s recorded history, not a claim about lifetime posts outside it. Search, milestone interval, period, region, and AO selections persist in page URLs.
 
 ## Chat request lifecycle
 
