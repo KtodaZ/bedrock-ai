@@ -31,7 +31,7 @@ export default function PersonDetail({ name, period }: { name: string; period: P
   const back = <Link href={`/eh-challenge?period=${period}`} className={`inline-flex items-center min-h-11 text-sm text-violet-300 hover:text-violet-200 ${focus}`}>← Leaderboard</Link>;
   if (isLoading) return <main className="max-w-3xl mx-auto px-4 py-6">{back}<p role="status" className="text-white/70 mt-6">Loading person…</p></main>;
   if (error || !data) return <main className="max-w-3xl mx-auto px-4 py-6">{back}<p role="alert" className="mt-6 text-red-200">Couldn&apos;t load this person.</p><button onClick={() => refetch()} className={`text-violet-300 min-h-11 underline ${focus}`}>Try again</button></main>;
-  if (!profile) return <main className="max-w-3xl mx-auto px-4 py-6">{back}<h1 className="text-2xl font-bold mt-6 break-words">{name}</h1><p className="text-white/70 mt-3">No EH Challenge activity for this person in this period.</p>{period !== "all" && <Link href={personURL(name, "all")} className={`inline-flex items-center min-h-11 mt-4 text-violet-300 underline ${focus}`}>Check all time</Link>}</main>;
+  if (!profile) return <main className="max-w-3xl mx-auto px-4 py-6">{back}<h1 className="text-2xl font-bold mt-6 break-words">{name}</h1><p className="text-white/70 mt-3">No EH Challenge activity for this person in this period.</p>{scoring && <Link href={personURL(name, "year")} className={`inline-flex items-center min-h-11 mt-4 text-violet-300 underline ${focus}`}>View This Year</Link>}</main>;
   const { standing, recruits, ownFng, badges, nextSteps } = profile;
   const earned = badges.filter((b) => b.earned);
   const breakdown = standing?.breakdown ?? { workouts: 0, referrals: 0, themes: 0 };

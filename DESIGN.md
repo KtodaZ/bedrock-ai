@@ -98,7 +98,7 @@ Attendance chart titles use the chart-title step. Axes use 12px labels, reducing
 ## Layout
 The app fills the viewport, with a persistent header and independently scrolling content. The desktop chat sidebar becomes a sliding panel on smaller screens. EH content is centered in a 48rem container; Data expands to 1320px with 32px horizontal padding.
 Data padding reduces to 20px at 900px and 16px at 540px. Profile detail columns collapse at 900px. At 540px, heading actions stack, search spans both filter columns, profile stats use two columns, and companion lists use one.
-**The Pinned Name Rule.** Keep wide tables horizontally scrollable and the first column sticky. On phones, its width is 145px and long names wrap; preserve the numeric columns rather than squeezing them into cards.
+**The Pinned Name Rule.** Keep wide tables horizontally scrollable and the first column sticky. On phones, its width is 104px with 10px horizontal cell padding and a 6px name/arrow gap; long names wrap without reducing the 13px type. Keep the name text flexible inside the profile button; preserve the numeric columns rather than squeezing them into cards.
 
 Milestone results are the deliberate phone exception to the pinned-table rule: at 540px they become a compact divided list, with PAX and milestone first, then posts remaining, expected week, and pace range. Desktop retains the full table. Attendance summaries keep four compact columns on phones; charts and the weekly AO heatmap can scroll horizontally.
 

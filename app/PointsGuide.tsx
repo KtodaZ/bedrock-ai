@@ -57,7 +57,7 @@ export default function PointsGuide() {
 
       <footer className="border-t border-violet-300/20 mt-7 pt-5 text-sm text-violet-100/80 leading-relaxed">
         <p><strong className="text-white">Bedrock FNGs only.</strong> An FNG-marked attendance entry must match a Roster entry with Region set to Bedrock. Credit goes to the recorded EH&apos;er.</p>
-        <p className="mt-3">Challenge points count FNGs joining Oct 15–Dec 31, 2026, with workouts counted through Dec 31. Annual, monthly, and all-time views show FNG stats without competition points. Themed events can add the listed bonus.</p>
+        <p className="mt-3">Challenge points count FNGs joining Oct 15–Dec 31, 2026, with workouts counted through Dec 31. This Year shows FNG stats without competition points. Themed events can add the listed bonus.</p>
       </footer>
     </article>
   );

@@ -339,6 +339,12 @@
 .personLink span {
   color: #a694bd;
 }
+.personLink .personName {
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .flagYes {
   color: #ceb4ff;
   font-weight: 650;
@@ -684,14 +690,11 @@
     font-size: 11px;
   }
   .table :is(th, td) {
-    padding: 12px;
-  }
-  .table .pinned {
-    max-width: 145px;
+    padding: 12px 10px;
   }
   .table .personLink {
-    gap: 14px;
-    max-width: 125px;
+    gap: 6px;
+    max-width: 84px;
     white-space: normal;
     overflow-wrap: anywhere;
     min-height: 30px;
@@ -771,11 +774,9 @@
     font-size: 16px;
   }
   .table .pinned {
-    min-width: 145px;
-    max-width: 145px;
-  }
-  .table .personLink {
-    max-width: 120px;
+    width: 104px;
+    min-width: 104px;
+    max-width: 104px;
   }
 }
 

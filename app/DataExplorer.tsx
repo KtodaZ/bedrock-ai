@@ -725,7 +725,7 @@ function Explorer({
                                     className={styles.personLink}
                                     onClick={() => openPerson(String(value))}
                                   >
-                                    {String(value)}
+                                    <span className={styles.personName}>{String(value)}</span>
                                     <span aria-hidden="true">›</span>
                                   </button>
                                 ) : typeof value === "boolean" ? (

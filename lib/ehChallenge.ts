@@ -2,12 +2,12 @@ import type { AttendanceRow } from "./sheet";
 
 // ── Challenge config ─────────────────────────────────────────────────────────
 
-export type Period = "month" | "year" | "all" | "challenge";
+export type Period = "year" | "challenge";
 
 export const PERIOD_LABELS: Record<Period, string> = {
-  challenge: "2026 Challenge", year: "This year", month: "This month", all: "All time",
+  challenge: "2026 Challenge", year: "This Year",
 };
-export const PERIODS: Period[] = ["year", "challenge", "month", "all"];
+export const PERIODS: Period[] = ["year", "challenge"];
 export function parsePeriod(value: string | null | undefined): Period {
   return PERIODS.includes(value as Period) ? value as Period : "year";
 }
@@ -138,7 +138,7 @@ export interface ChallengeResult {
   scoringEnabled: boolean;
   weekStart: string;
   weekEnd: string;
-  goal: number | null;
+  goal: number;
   regionFngs: number;
   leaderboard: LeaderboardEntry[];
   fngs: FngEntry[];
@@ -199,8 +199,7 @@ export function computeChallenge(
   const sourceAsOf = allDates[allDates.length - 1];
   const scoringEnabled = period === "challenge";
   const asOf = scoringEnabled && sourceAsOf > CHALLENGE_END ? CHALLENGE_END : sourceAsOf;
-  const start = scoringEnabled ? CHALLENGE_START :
-    period === "month" ? `${asOf.slice(0, 7)}-01` : period === "year" ? `${asOf.slice(0, 4)}-01-01` : allDates[0];
+  const start = scoringEnabled ? CHALLENGE_START : `${asOf.slice(0, 4)}-01-01`;
   const end = scoringEnabled ? CHALLENGE_END : asOf;
 
   // Monday–Sunday week containing the latest data date
@@ -326,7 +325,7 @@ export function computeChallenge(
     scoringEnabled,
     weekStart,
     weekEnd,
-    goal: scoringEnabled ? CHALLENGE_FNG_GOAL : period === "year" ? ANNUAL_FNG_GOAL : null,
+    goal: scoringEnabled ? CHALLENGE_FNG_GOAL : ANNUAL_FNG_GOAL,
     regionFngs: challengeFngs.length,
     leaderboard,
     fngs: fngs.reverse(),

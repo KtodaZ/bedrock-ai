@@ -46,7 +46,7 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 | `/eh-challenge/corrections` | `app/EhCorrectionHistory.tsx` | Public submission history |
 | `POST /api/chat` | `app/api/chat/route.ts` | JSON input, SSE success, JSON validation/quota errors |
 | `GET /api/suggestions` | `app/api/suggestions/route.ts` | Static homepage questions |
-| `GET /api/eh-challenge?period=challenge\|month\|year\|all` | `app/api/eh-challenge/route.ts` | Computed `ChallengeResult`; invalid/missing period defaults to year |
+| `GET /api/eh-challenge?period=challenge\|year` | `app/api/eh-challenge/route.ts` | Computed `ChallengeResult`; invalid/missing period defaults to year |
 | `GET, POST /api/eh-corrections` | `app/api/eh-corrections/route.ts` | Roster names / save-and-notify submission |
 | `GET /api/eh-corrections/history` | `app/api/eh-corrections/history/route.ts` | Public review history with current-Roster comparison |
 | `/admin/chats` | `app/admin/chats` | Password-protected search and review of private chat records |
@@ -90,7 +90,7 @@ Roster headers required by the reader are `F3 Name`, `Region`, and `EH'er`. Opti
 
 ## Attendance explorer
 
-`lib/dataExplorerSource.ts` combines the existing attendance cache, a public-field Roster reader, and the existing Sites tab (`gviz/tq?tqx=out:csv&sheet=Sites`). The assembled snapshot is cached for one minute per warm instance, with concurrent loads sharing a promise; HTTP caching adds up to one minute. Attendance retains its existing ten-minute cache. The browser query is stale after five minutes. Reload reads through these caches; it does not force a Google Sheets refresh. Failed loads return 503 without source details and are not cached.
+`lib/dataExplorerSource.ts` combines the existing attendance cache, a public-field Roster reader, and the existing Sites tab (`gviz/tq?tqx=out:csv&sheet=Sites`). The assembled snapshot is cached for one minute per warm instance, with concurrent loads sharing a promise; HTTP caching adds up to one minute. Attendance retains its existing ten-minute cache. Phone tables keep the first column pinned at 104px, with full names wrapping and the other columns horizontally scrollable. The browser query is stale after five minutes. Reload reads through these caches; it does not force a Google Sheets refresh. Failed loads return 503 without source details and are not cached.
 
 `lib/dataExplorer.ts` supplies quoted/multiline CSV parsing, date validation, allowlisted fields, combined filters, PAX statistics, shared-workout counts, and formula-safe CSV export. Attendance exposes only PAX, AO, city, date, and Post/Q/FNG/QS/QS-Q flags. The Roster exposes only F3 name, Region, and EH’er. Names containing `(Archived)` or `(<18)` are excluded before serialization, including EH attribution labels. No contact/intake fields or Sites phone numbers leave the server.
 
@@ -141,13 +141,13 @@ Homepage `/api/suggestions` returns six static questions with CDN caching and ma
 
 ## EH scoring
 
-`/api/eh-challenge` fetches attendance, EH attributions, and return attributions, then calls the pure `computeChallenge()` function in `lib/ehChallenge.ts`. The API and person pages default to `year`; the UI remembers later period choices. `parsePeriod()` in `lib/ehChallenge.ts` also accepts `challenge`, `month`, and `all`. Shared links may specify `?period=challenge`; profiles and the return link preserve that selection.
+`/api/eh-challenge` fetches attendance, EH attributions, and return attributions, then calls the pure `computeChallenge()` function in `lib/ehChallenge.ts`. The API and person pages default to `year`; the UI remembers later period choices. `parsePeriod()` in `lib/ehChallenge.ts` accepts only `year` and `challenge`; legacy `month`/`all` links and saved preferences fall back to `year`. Shared links may specify `?period=challenge`; profiles and the return link preserve that selection.
 
 A challenge FNG needs an attendance FNG flag and a matching Roster name whose trimmed, case-insensitive `Region` is Bedrock. Missing/blank/other regions do not qualify. The rest of attendance remains available. Names are compared after trimming, lowercasing, and collapsing whitespace; this is not typo correction.
 
 For each PAX, the earliest eligible FNG date defines when he joined. `challenge` selects FNGs joining Oct 15–Dec 31, 2026, inclusive; earlier FNGs cannot earn competition points from later attendance. Its `asOf` is capped at Dec 31 so later workouts and referrals cannot count. `sourceAsOf` always reports the latest parsed attendance date, including rows without a post; `end` reports Dec 31 for the challenge. Before opening day the challenge cohort is empty. Workouts are distinct post dates from the FNG's first date through `asOf`; multiple posts on the same date count once.
 
-Year, month, and all-time are invitation/retention stats with `scoringEnabled: false`: point totals, breakdowns, and unassigned points are zero. These views do not display point badges, score breakdowns, or a competition ranking. Year/month select FNGs joining in that attendance-anchored period; all-time begins at the earliest attendance date. The year view remains the default. The point schedule below applies only to the explicit challenge view.
+This Year contains invitation/retention stats with `scoringEnabled: false`: point totals, breakdowns, and unassigned points are zero. This view does not display point badges, score breakdowns, or a competition ranking. It selects FNGs joining in the year anchored to the latest attendance date. The year view remains the default. The point schedule below applies only to the explicit challenge view.
 
 | FNG workout | Points to recorded EH'er | Cumulative workout points |
 | --- | --- | --- |
@@ -161,7 +161,7 @@ A nonblank Roster EH'er is authoritative. With no EH'er, the FNG still appears, 
 
 Referral example: You EH Alex; Alex EHs Ben. You receive a +5 upstream referral bonus for Ben, while Alex receives Ben's workout points. Both Alex and Ben must belong to the Oct 15–Dec 31 challenge cohort. The code awards this per qualifying downstream FNG, not as an unlimited multigeneration chain.
 
-The annual goal is 100 FNGs; the challenge goal is 50. Month/all-time return a null goal and display counts without a goal progress bar. Double Down means two FNGs at one workout and normal points only: two first posts earn 10 total. No extra award or separate tracking is implemented. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
+The annual goal is 100 FNGs; the challenge goal is 50. Double Down means two FNGs at one workout and normal points only: two first posts earn 10 total. No extra award or separate tracking is implemented. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
 
 ### Provisional themed bonuses configured for 2026
 
