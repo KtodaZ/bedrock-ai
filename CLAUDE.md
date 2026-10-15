@@ -97,10 +97,13 @@ Events sent by `/api/chat`:
 - The home page has an EH Challenge tab; `/eh-challenge` is its public, shareable page.
 - Periods: this month, this year, all time, anchored to the latest attendance date. Only FNGs joining within the selected period count.
 - This year is the default; the saved-period key was reset when the default changed, and subsequent selections are remembered.
-- Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`.
+- Scoring and draft theme dates/bonuses live in `lib/ehChallenge.ts`. Family Tree gives a one-time bonus to the person inviting his first recorded FNG, separately from upstream referral points.
+- Resurrection credits the person recorded in Roster G (`Brought back by`), with the return workout in H (`Return date`). Both are required; the date must match attendance after at least 180 days away and fall inside the themed window. Original EH credit is not reused. G has strict validation against Roster F3 names; H is a validated date.
+- Search filters EH’ers by name and FNGs by name/EH’er while preserving standings rank. Public person pages at `/eh-challenge/person/<encoded-name>?period=year` show points breakdown, invited FNGs, recorded milestones, next-step suggestions, and badges. Badges do not add points and use the selected period’s cohort.
+- Run scoring/profile regression checks with `node --test scripts/test-eh-challenge.cjs`.
 - The app reads the existing `Roster` tab (gid `437240319`) in F3 Bedrock Data, using `F3 Name`, `Region`, and `EH'er`. Attendance FNG marks count only when the matching Roster Region is Bedrock; visiting PAX and blank/missing regions do not count. Attendance itself is retained.
 - Every nonblank EH'er entry in the Roster is treated as confirmed, using the recorded name. There is no separate review/status gate, Band inference, or EH Log override.
-- The added EH Log tab is unused and retained without further edits. Sheet updates continue in the familiar Roster tab.
+- Sheet updates continue in the familiar Roster tab; the app has no EH Log dependency.
 - Roster changes refresh within the one-minute server cache; attendance retains its separate ten-minute cache.
 - The component includes a region goal, weekly points, FNG milestones, and Copy for Band. Points/FNG sorting also controls the copied Band standings.
 - The public `/eh-challenge/points` infographic illustrates workout milestones, retention, and referrals; it also appears inside a “How it works” expandable section on the leaderboard, closed by default.

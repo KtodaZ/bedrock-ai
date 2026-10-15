@@ -60,6 +60,12 @@ export interface EhLogEntry {
   ehBy: string;
 }
 
+export interface ResurrectionEntry {
+  pax: string;
+  broughtBy: string;
+  date: string;
+}
+
 const RESURRECTION_GAP_DAYS = 180;
 
 // ── Scoring ──────────────────────────────────────────────────────────────────
@@ -69,6 +75,7 @@ export interface LeaderboardEntry {
   total: number;
   week: number;
   fngs: number;
+  breakdown: { workouts: number; referrals: number; themes: number };
 }
 
 export type LeaderboardSort = "points" | "fngs";
@@ -85,6 +92,7 @@ export interface FngEntry {
   firstPost: string;
   posts: number;
   points: number;
+  lastPost: string | null;
 }
 
 export interface ThemeStatus extends Theme {
@@ -110,6 +118,7 @@ interface PointEvent {
   who: string;
   date: string;
   points: number;
+  kind: keyof LeaderboardEntry["breakdown"];
 }
 
 const norm = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
@@ -149,7 +158,8 @@ export function pointsForPosts(posts: number): number {
 export function computeChallenge(
   rows: AttendanceRow[],
   ehLog: EhLogEntry[],
-  period: Period
+  period: Period,
+  resurrections: ResurrectionEntry[] = []
 ): ChallengeResult {
   const allDates = rows.map((r) => r.date).sort();
   if (allDates.length === 0) throw new Error("No attendance rows found");
@@ -182,7 +192,7 @@ export function computeChallenge(
     if (e.pax.trim() && e.ehBy.trim()) ehByKey.set(norm(e.pax), norm(e.ehBy));
   }
   const nameOf = (key: string) =>
-    displayName.get(key) ?? ehLog.find((e) => norm(e.ehBy) === key)?.ehBy.trim() ?? key;
+    displayName.get(key) ?? ehLog.find((e) => norm(e.ehBy) === key)?.ehBy.trim() ?? resurrections.find((e) => norm(e.broughtBy) === key)?.broughtBy.trim() ?? key;
 
   const inWindow = (d: string) => d >= start && d <= asOf;
   const challengeFngs = [...fngDate.entries()]
@@ -202,21 +212,21 @@ export function computeChallenge(
       const p = postPoints(i + 1);
       if (!p) return;
       points += p;
-      if (ehr) events.push({ who: ehr, date, points: p });
+      if (ehr) events.push({ who: ehr, date, points: p, kind: "workouts" });
     });
     if (!ehr) unassignedPoints += points;
-    fngs.push({ name: nameOf(key), ehBy: ehr ? nameOf(ehr) : null, firstPost: first, posts: posts.length, points });
+    fngs.push({ name: nameOf(key), ehBy: ehr ? nameOf(ehr) : null, firstPost: first, posts: posts.length, points, lastPost: posts.at(-1) ?? null });
 
     // Referral: this FNG was EH'd by another challenge FNG → that FNG's EH'er gets a bonus
     const grand = ehr && isChallengeFng(ehr) ? ehByKey.get(ehr) : undefined;
-    if (grand) events.push({ who: grand, date: first, points: POINTS.referral });
+    if (grand) events.push({ who: grand, date: first, points: POINTS.referral, kind: "referrals" });
   }
 
   // First FNG each EH'er ever brought (for Family Tree)
   const firstFngOf = new Map<string, string>();
-  for (const [key, d] of [...fngDate.entries()].sort((a, b) => a[1].localeCompare(b[1]))) {
+  for (const [key] of [...fngDate.entries()].sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]))) {
     const ehr = ehByKey.get(key);
-    if (ehr && !firstFngOf.has(ehr)) firstFngOf.set(ehr, d);
+    if (ehr && !firstFngOf.has(ehr)) firstFngOf.set(ehr, key);
   }
 
   for (const t of THEMES) {
@@ -229,28 +239,34 @@ export function computeChallenge(
       for (const [key, first] of challengeFngs) {
         const ehr = ehByKey.get(key);
         if (!ehr || !inTheme(first)) continue;
-        if (t.kind === "familyTree" && firstFngOf.get(ehr) !== first) continue;
-        events.push({ who: ehr, date: first, points: t.bonus });
+        if (t.kind === "familyTree" && firstFngOf.get(ehr) !== key) continue;
+        events.push({ who: ehr, date: first, points: t.bonus, kind: "themes" });
       }
     } else {
-      for (const [key, ehr] of ehByKey) {
+      const credited = new Set<string>();
+      for (const record of resurrections) {
+        const key = norm(record.pax);
+        const recruiter = norm(record.broughtBy);
+        if (!key || !recruiter || !inTheme(record.date) || credited.has(key)) continue;
         const posts = postDates.get(key) ?? [];
-        const returned = posts.some(
-          (d, i) => inTheme(d) && i > 0 && daysBetween(posts[i - 1], d) >= RESURRECTION_GAP_DAYS
-        );
-        if (returned) events.push({ who: ehr, date: posts.find(inTheme)!, points: t.bonus });
+        const i = posts.indexOf(record.date);
+        if (i > 0 && daysBetween(posts[i - 1], record.date) >= RESURRECTION_GAP_DAYS) {
+          events.push({ who: recruiter, date: record.date, points: t.bonus, kind: "themes" });
+          credited.add(key);
+        }
       }
     }
   }
 
   const board = new Map<string, LeaderboardEntry>();
   const entry = (key: string) => {
-    if (!board.has(key)) board.set(key, { name: nameOf(key), total: 0, week: 0, fngs: 0 });
+    if (!board.has(key)) board.set(key, { name: nameOf(key), total: 0, week: 0, fngs: 0, breakdown: { workouts: 0, referrals: 0, themes: 0 } });
     return board.get(key)!;
   };
   for (const e of events) {
     const b = entry(e.who);
     b.total += e.points;
+    b.breakdown[e.kind] += e.points;
     if (e.date >= weekStart) b.week += e.points;
   }
   for (const [key] of challengeFngs) {

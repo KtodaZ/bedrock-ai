@@ -44,6 +44,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname === "/eh-challenge" ||
     pathname === "/eh-challenge/points" ||
+    pathname.startsWith("/eh-challenge/person/") ||
     pathname === "/api/eh-challenge" ||
     pathname === "/how-it-works" ||
     pathname === "/icon.svg" ||

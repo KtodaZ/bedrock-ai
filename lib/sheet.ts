@@ -1,5 +1,5 @@
 import { fetchCSV } from "./attendance-db";
-import type { EhLogEntry } from "./ehChallenge";
+import type { EhLogEntry, ResurrectionEntry } from "./ehChallenge";
 
 const CACHE_TTL_MS = 60 * 1000; // EH attributions are edited live in the sheet.
 const ROSTER_CSV_URL = "https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/export?format=csv&gid=437240319";
@@ -109,4 +109,14 @@ export async function fetchEhAttributions(): Promise<EhLogEntry[]> {
   return (await fetchRoster())
     .map((row) => ({ pax: row["F3 Name"].trim(), ehBy: row["EH'er"].trim() }))
     .filter((entry) => entry.pax && entry.ehBy);
+}
+
+/** Bring-back credit is recorded separately from the original EH'er, on the existing Roster. */
+export async function fetchResurrectionAttributions(): Promise<ResurrectionEntry[]> {
+  return (await fetchRoster()).flatMap((r) => {
+    const pax = r["F3 Name"].trim();
+    const broughtBy = (r["Brought back by"] ?? "").trim();
+    const date = toISO(r["Return date"] ?? "");
+    return pax && broughtBy && date && r.Region.trim().toLowerCase() === "bedrock" ? [{ pax, broughtBy, date }] : [];
+  });
 }

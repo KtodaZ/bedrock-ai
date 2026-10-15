@@ -2,7 +2,10 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { buildBandText, formatDay, sortLeaderboard, type ChallengeResult, type LeaderboardSort, type Period } from "@/lib/ehChallenge";
+import Link from "next/link";
+import { buildBandText, formatDay, sortLeaderboard, type LeaderboardSort, type Period } from "@/lib/ehChallenge";
+import { fetchChallenge } from "@/lib/challenge-client";
+import { matchesPerson, normalizePerson, personURL } from "@/lib/ehProfile";
 import PointsGuide from "./PointsGuide";
 
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
@@ -35,13 +38,6 @@ const FNG_PREVIEW = 10;
 
 const card = { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" };
 
-async function fetchChallenge(period: Period): Promise<ChallengeResult> {
-  const res = await fetch(`/api/eh-challenge?period=${period}`);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "Failed to load");
-  return data;
-}
-
 export default function EhChallenge() {
   const savedPeriod = useSyncExternalStore(subscribePeriod, readPeriod, () => "year" as Period);
   const [selectedPeriod, setSelectedPeriod] = useState<Period | null>(null);
@@ -50,6 +46,7 @@ export default function EhChallenge() {
   const [copyFailed, setCopyFailed] = useState(false);
   const [showAllFngs, setShowAllFngs] = useState(false);
   const [sort, setSort] = useState<LeaderboardSort>("points");
+  const [search, setSearch] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["eh-challenge", period],
@@ -83,7 +80,10 @@ export default function EhChallenge() {
   const theme = data?.themes.find((t) => t.status === "active") ?? data?.themes.find((t) => t.status === "upcoming");
   const goalPct = data ? Math.min(100, (data.regionFngs / data.goal) * 100) : 0;
   const unassigned = data?.fngs.filter((f) => !f.ehBy).length ?? 0;
-  const leaderboard = sortLeaderboard(data?.leaderboard ?? [], sort);
+  const leaderboard = sortLeaderboard(data?.leaderboard ?? [], sort)
+    .map((entry, i) => ({ ...entry, rank: i + 1 }))
+    .filter((entry) => normalizePerson(entry.name).includes(normalizePerson(search)));
+  const fngs = data?.fngs.filter((fng) => matchesPerson(fng, search)) ?? [];
 
   return (
     <main className="flex-1 overflow-y-auto">
@@ -168,6 +168,16 @@ export default function EhChallenge() {
               <div className="mt-3"><PointsGuide /></div>
             </details>
 
+            <div>
+              <label htmlFor="eh-person-search" className="block text-sm font-medium text-white/85 mb-2">Find a person</label>
+              <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-3 focus-within:border-violet-400">
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="w-5 h-5 text-white/65 shrink-0"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5" /><path d="m13 13 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                <input id="eh-person-search" type="search" value={search} onChange={(e) => { setSearch(e.target.value); setShowAllFngs(false); }} placeholder="PAX name or EH’er" aria-describedby="eh-search-help" className="w-full min-w-0 min-h-12 bg-transparent text-sm text-white placeholder:text-white/60 outline-none caret-violet-300" />
+                {search && <button onClick={() => setSearch("")} className="min-h-11 text-xs text-violet-200 px-2 rounded focus-visible:outline-2 focus-visible:outline-violet-400 cursor-pointer">Clear</button>}
+              </div>
+              <p id="eh-search-help" className="text-xs text-white/65 mt-2" aria-live="polite">{search.trim() ? `${leaderboard.length} EH’er${leaderboard.length === 1 ? "" : "s"} · ${fngs.length} FNG${fngs.length === 1 ? "" : "s"} match in this period.` : "Tap a name to see milestones, badges, and next steps."}</p>
+            </div>
+
             <section className="rounded-2xl overflow-hidden" style={card}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
                 <h2 className="text-sm font-semibold text-white/80">Leaderboard</h2>
@@ -193,26 +203,26 @@ export default function EhChallenge() {
                   ))}
                 </div>
               </div>
-              {data.leaderboard.length === 0 ? (
+              {leaderboard.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-white/40 text-center">
-                  No EH points yet. Points show up once FNGs have their EH&apos;er logged.
+                  {search.trim() ? "No EH’ers match this search. Try another name or clear the search." : "No EH points yet. Points show up once FNGs have their EH’er logged."}
                 </p>
               ) : (
                 <ol>
-                  {leaderboard.map((e, i) => (
-                    <li key={e.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
+                  {leaderboard.map((e) => (
+                    <li key={e.name} className="relative flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
                       <span
                         className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
                         style={
-                          i < 3
+                          e.rank <= 3
                             ? { background: "linear-gradient(135deg, #7c3aed, #2563eb)", color: "white" }
                             : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)" }
                         }
                       >
-                        {i + 1}
+                        {e.rank}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white/85 truncate">{e.name}</div>
+                        <Link href={personURL(e.name, period)} className="block text-sm text-violet-200 hover:underline underline-offset-4 rounded after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-violet-400" aria-label={`View ${e.name}`}><span className="block truncate">{e.name}</span></Link>
                         <div className="text-xs text-white/50">{sort === "points" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}` : `${e.total} pts`}</div>
                       </div>
                       {e.week > 0 && <span className="text-xs text-emerald-400/80">+{e.week} this week</span>}
@@ -232,14 +242,14 @@ export default function EhChallenge() {
                   </span>
                 )}
               </div>
-              {data.fngs.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-white/40 text-center">No FNGs in this period yet.</p>
+              {fngs.length === 0 ? (
+                <p className="px-4 py-6 text-sm text-white/65 text-center">{search.trim() ? "No FNGs match this search. Try another name or clear the search." : "No FNGs in this period yet."}</p>
               ) : (
                 <ul>
-                  {(showAllFngs ? data.fngs : data.fngs.slice(0, FNG_PREVIEW)).map((f) => (
-                    <li key={f.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
+                  {(showAllFngs ? fngs : fngs.slice(0, FNG_PREVIEW)).map((f) => (
+                    <li key={f.name} className="relative flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white/85 truncate">{f.name}</div>
+                        <Link href={personURL(f.name, period)} className="block text-sm text-violet-200 hover:underline underline-offset-4 rounded after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-violet-400" aria-label={`View ${f.name}`}><span className="block truncate">{f.name}</span></Link>
                         <div className="text-xs text-white/35">
                           First post {formatDay(f.firstPost)} · {f.posts} post{f.posts === 1 ? "" : "s"}
                         </div>
@@ -254,13 +264,13 @@ export default function EhChallenge() {
                       <span className="text-sm text-white/70 w-14 text-right">{f.points} pts</span>
                     </li>
                   ))}
-                  {data.fngs.length > FNG_PREVIEW && (
+                  {fngs.length > FNG_PREVIEW && (
                     <li>
                       <button
                         onClick={() => setShowAllFngs((v) => !v)}
                         className="w-full text-xs text-white/45 hover:text-white/80 py-2.5 cursor-pointer"
                       >
-                        {showAllFngs ? "Show less" : `Show all ${data.fngs.length}`}
+                        {showAllFngs ? "Show less" : `Show all ${fngs.length}`}
                       </button>
                     </li>
                   )}
