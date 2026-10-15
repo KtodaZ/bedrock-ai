@@ -53,6 +53,14 @@ Never edit a spreadsheet without the user's explicit permission for the specific
 - SQL-backed answers can still be wrong. Do not describe the AI as unable to hallucinate, and do not claim chat content never leaves the device.
 - Keep F3 terms and concrete copy. Avoid promotional filler and unsupported accuracy claims. Preserve scoring quantities and privacy disclosures when editing wording.
 
+## Worktrees and shipping
+
+- Use a dedicated Git worktree and task branch for each task, starting from the latest `origin/main`. Preserve unrelated changes and other agents' worktrees.
+- After completing the task and passing the appropriate checks, commit only the task's changes, push the task branch, merge it into the latest `main`, and push `main`. Do this without asking for another confirmation unless the user explicitly requests otherwise.
+- Resolve conflicts within the task's scope; never overwrite unrelated work or force-push `main`. If a blocker prevents shipping, report it clearly.
+- Pushing `main` triggers Vercel production. Verify the resulting deployment and affected published behavior before reporting it as live.
+- Remove the task's worktree after shipping, preserving source and review media needed for the handoff.
+
 ## Working and verification
 
 Use npm and the committed `package-lock.json`. Install with `npm ci`; copy `.env.example` to ignored `.env.local` and fill in your own credentials. See the operations guide before creating Blob documents. Never replace existing production counters or correction history with empty test data.
