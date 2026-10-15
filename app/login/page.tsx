@@ -110,6 +110,8 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError(false); }}
                 placeholder="Access code"
+                aria-label="Access code"
+                aria-describedby="password-hint"
                 autoComplete="current-password"
                 className="flex-1 bg-transparent text-sm outline-none"
                 style={{
@@ -119,6 +121,10 @@ export default function LoginPage() {
               />
             </div>
           </div>
+
+          <p id="password-hint" className="text-xs text-violet-100/75 text-center mb-4">
+            Hint: Impossible&apos;s &quot;real&quot; F3 name.
+          </p>
 
           {error && (
             <p className="text-xs text-red-400/80 text-center mb-3">

@@ -22,13 +22,13 @@ async function createToken(secret: string): Promise<string> {
 
 export async function POST(req: Request) {
   const { password } = await req.json();
-  const correct = process.env.AUTH_PASSWORD ?? "accelerate";
+  const passwords = [process.env.AUTH_PASSWORD, process.env.AUTH_PASSWORD_SECONDARY].filter(Boolean);
   const secret = process.env.AUTH_SECRET;
 
-  if (!secret) {
+  if (!secret || passwords.length === 0) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
-  if (password !== correct) {
+  if (typeof password !== "string" || !passwords.includes(password)) {
     return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
   }
 
