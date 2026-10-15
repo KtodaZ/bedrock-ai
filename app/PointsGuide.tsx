@@ -47,12 +47,17 @@ export default function PointsGuide() {
         <div className="grid grid-cols-[1fr_24px_1fr_24px_1fr] gap-1 items-start text-center mt-6">
           {["You", "Alex", "Ben"].map((name, i) => <div key={name} className="contents"><div><Person className={`h-14 w-12 mx-auto ${i === 2 ? "text-sky-300" : "text-violet-300"}`} /><div className="font-semibold text-white mt-2">{name}</div><div className="text-xs text-violet-100/75 mt-1">{i === 0 ? `+${POINTS.referral} bonus` : i === 1 ? "Ben’s workout points" : "New FNG"}</div></div>{i < 2 && <svg viewBox="0 0 24 24" className="w-6 h-6 mt-4 text-violet-300" fill="none" aria-label="invites"><path d="M2 12h18m-7-7 7 7-7 7" stroke="currentColor" strokeWidth="2" /></svg>}</div>)}
         </div>
-        <p className="text-sm leading-relaxed text-violet-100/80 mt-5">You invite Alex. Alex invites Ben. You earn a one-time +{POINTS.referral}; Alex earns Ben&apos;s workout points. Alex and Ben must both join within the selected period.</p>
+        <p className="text-sm leading-relaxed text-violet-100/80 mt-5">You invite Alex. Alex invites Ben. You earn a one-time +{POINTS.referral}; Alex earns Ben&apos;s workout points. Alex and Ben must both join during the Oct 15–Dec 31, 2026 challenge.</p>
+      </section>
+
+      <section aria-labelledby="double-down-title" className="border-t border-violet-300/20 mt-8 pt-7">
+        <h2 id="double-down-title" className="text-xl sm:text-2xl font-semibold text-white">Double Down</h2>
+        <p className="text-sm leading-relaxed text-violet-100/80 mt-3">Bring two FNGs to the same workout. Two first posts earn 10 points total: 5 each. There&apos;s no extra bonus or separate Double Down tracking.</p>
       </section>
 
       <footer className="border-t border-violet-300/20 mt-7 pt-5 text-sm text-violet-100/80 leading-relaxed">
         <p><strong className="text-white">Bedrock FNGs only.</strong> An FNG-marked attendance entry must match a Roster entry with Region set to Bedrock. Credit goes to the recorded EH&apos;er.</p>
-        <p className="mt-3">The selected month or year includes FNGs joining in that period. Themed events can add the listed bonus.</p>
+        <p className="mt-3">Challenge points count FNGs joining Oct 15–Dec 31, 2026, with workouts counted through Dec 31. Annual, monthly, and all-time views show FNG stats without competition points. Themed events can add the listed bonus.</p>
       </footer>
     </article>
   );

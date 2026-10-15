@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchAttendance, fetchEhAttributions, fetchResurrectionAttributions } from "@/lib/sheet";
-import { computeChallenge, type Period } from "@/lib/ehChallenge";
+import { computeChallenge, parsePeriod } from "@/lib/ehChallenge";
 
 export const runtime = "nodejs";
 
-const PERIODS: Period[] = ["month", "year", "all"];
-
 export async function GET(req: NextRequest) {
-  const param = req.nextUrl.searchParams.get("period") as Period | null;
-  const period = param && PERIODS.includes(param) ? param : "year";
+  const period = parsePeriod(req.nextUrl.searchParams.get("period"));
   try {
     const [rows, ehLog, resurrections] = await Promise.all([fetchAttendance(), fetchEhAttributions(), fetchResurrectionAttributions()]);
     return NextResponse.json(computeChallenge(rows, ehLog, period, resurrections));

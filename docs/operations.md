@@ -119,7 +119,7 @@ These tests use mocks and synthetic records. They do not prove current sheet con
 
 | Symptom or question | Inspect | Likely explanation / next check |
 | --- | --- | --- |
-| Why are there no EH points? | Attendance FNG flag, matching Roster Region, EH'er, selected period | A visitor is not automatically a Bedrock FNG; a blank EH'er leaves workout points unassigned. Check distinct Post dates. |
+| Why are there no EH points? | Attendance FNG flag, matching Roster Region, EH'er, selected period | Competition points exist only in the 2026 Challenge view for FNGs joining Oct 15–Dec 31. Stats views intentionally award zero points. A visitor is not automatically a Bedrock FNG; a blank EH'er leaves challenge workout points unassigned. Check distinct Post dates. |
 | Chat FNG count differs from leaderboard | SQL query versus `lib/sheet.ts` eligibility | Chat has raw attendance without Roster region filtering; challenge uses a Bedrock cohort. |
 | Sheet change has not appeared | Server CSV caches and browser challenge query | Attendance TTL is 10 minutes; Roster TTL one minute; browser staleTime five minutes. Reload/refetch after cache expiry rather than creating a new tab/source. |
 | Theme or year seems wrong | Latest parsed attendance date | Periods and theme status follow `asOf`, not the wall clock. Check the source's latest valid date. |

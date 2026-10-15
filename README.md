@@ -33,7 +33,9 @@ Query results give the AI records to work from, but it can still make mistakes. 
 
 The leaderboard calculates points from recorded attendance and the EH’er listed in the existing Roster. An FNG counts only when attendance marks him as an FNG and his Roster region is Bedrock. Roster data is cached for one minute.
 
-The default view is this year. Sort by points or FNG count, search for a person, or open a profile for milestones, badges, and suggested next invitations. Badges do not add points. The [points guide](https://data.f3bedrock.com/eh-challenge/points) explains workout and referral scoring.
+The default view is this year, with a 100-FNG annual goal and invitation stats without competition points. Switch to **2026 Challenge** for Oct 15–Dec 31 scoring and its separate 50-FNG goal. Earlier FNGs and workouts after Dec 31 do not earn challenge points. Sort challenge standings by points or FNG count, search for a person, or open a profile for milestones, badges, and suggested next invitations. Badges do not add points. The [points guide](https://data.f3bedrock.com/eh-challenge/points) explains workout and referral scoring.
+
+Double Down means two FNGs at the same workout: two first posts earn 10 normal points, with no extra bonus or separate tracking. Upstream referral credit remains +5. The existing weekly calendar and Resurrection rules are provisional pending Clove’s clarification; this update does not change their configured dates or bonuses.
 
 EH corrections are saved for review and posted to Discord. Names and notes appear in the public correction history. Submissions do not change standings; the sheet maintainer must update the Roster.
 

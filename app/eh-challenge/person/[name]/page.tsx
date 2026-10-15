@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import PersonDetail from "../../../PersonDetail";
-import type { Period } from "@/lib/ehChallenge";
+import { parsePeriod } from "@/lib/ehChallenge";
 
 type Props = { params: Promise<{ name: string }>; searchParams: Promise<{ period?: string }> };
 
@@ -16,6 +16,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PersonPage({ params, searchParams }: Props) {
   const { name } = await params;
   const { period: selected } = await searchParams;
-  const period: Period = selected === "month" || selected === "all" ? selected : "year";
+  const period = parsePeriod(selected);
   return <PersonDetail name={personName(name)} period={period} />;
 }

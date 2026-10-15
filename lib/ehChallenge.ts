@@ -2,7 +2,17 @@ import type { AttendanceRow } from "./sheet";
 
 // ── Challenge config ─────────────────────────────────────────────────────────
 
-export type Period = "month" | "year" | "all";
+export type Period = "month" | "year" | "all" | "challenge";
+
+export const PERIOD_LABELS: Record<Period, string> = {
+  challenge: "2026 Challenge", year: "This year", month: "This month", all: "All time",
+};
+export const PERIODS: Period[] = ["year", "challenge", "month", "all"];
+export function parsePeriod(value: string | null | undefined): Period {
+  return PERIODS.includes(value as Period) ? value as Period : "year";
+}
+export const CHALLENGE_START = "2026-10-15";
+export const CHALLENGE_END = "2026-12-31";
 
 export const POINTS = {
   firstPost: 5,
@@ -12,7 +22,8 @@ export const POINTS = {
   referral: 5, // original EH'er's bonus when their FNG EHs another FNG
 };
 
-export const REGION_FNG_GOAL = 50;
+export const CHALLENGE_FNG_GOAL = 50;
+export const ANNUAL_FNG_GOAL = 100;
 
 type ThemeKind =
   | "open" // standard scoring without a themed bonus
@@ -112,9 +123,12 @@ export interface ChallengeResult {
   period: Period;
   start: string;
   asOf: string;
+  sourceAsOf: string;
+  end: string;
+  scoringEnabled: boolean;
   weekStart: string;
   weekEnd: string;
-  goal: number;
+  goal: number | null;
   regionFngs: number;
   leaderboard: LeaderboardEntry[];
   fngs: FngEntry[];
@@ -172,9 +186,12 @@ export function computeChallenge(
 ): ChallengeResult {
   const allDates = rows.map((r) => r.date).sort();
   if (allDates.length === 0) throw new Error("No attendance rows found");
-  const asOf = allDates[allDates.length - 1];
-  const start =
+  const sourceAsOf = allDates[allDates.length - 1];
+  const scoringEnabled = period === "challenge";
+  const asOf = scoringEnabled && sourceAsOf > CHALLENGE_END ? CHALLENGE_END : sourceAsOf;
+  const start = scoringEnabled ? CHALLENGE_START :
     period === "month" ? `${asOf.slice(0, 7)}-01` : period === "year" ? `${asOf.slice(0, 4)}-01-01` : allDates[0];
+  const end = scoringEnabled ? CHALLENGE_END : asOf;
 
   // Monday–Sunday week containing the latest data date
   const dow = new Date(`${asOf}T00:00:00Z`).getUTCDay();
@@ -218,7 +235,7 @@ export function computeChallenge(
     const posts = (postDates.get(key) ?? []).filter((d) => d >= first && d <= asOf);
     let points = 0;
     posts.forEach((date, i) => {
-      const p = postPoints(i + 1);
+      const p = scoringEnabled ? postPoints(i + 1) : 0;
       if (!p) return;
       points += p;
       if (ehr) events.push({ who: ehr, date, points: p, kind: "workouts" });
@@ -228,7 +245,7 @@ export function computeChallenge(
 
     // Referral: this FNG was EH'd by another challenge FNG → that FNG's EH'er gets a bonus
     const grand = ehr && isChallengeFng(ehr) ? ehByKey.get(ehr) : undefined;
-    if (grand) events.push({ who: grand, date: first, points: POINTS.referral, kind: "referrals" });
+    if (scoringEnabled && grand) events.push({ who: grand, date: first, points: POINTS.referral, kind: "referrals" });
   }
 
   // First FNG each EH'er ever brought (for Family Tree)
@@ -238,7 +255,7 @@ export function computeChallenge(
     if (ehr && !firstFngOf.has(ehr)) firstFngOf.set(ehr, key);
   }
 
-  for (const t of THEMES) {
+  for (const t of scoringEnabled ? THEMES : []) {
     if (t.kind === "open") continue;
     const from = t.start > start ? t.start : start;
     const to = t.end < asOf ? t.end : asOf;
@@ -283,7 +300,7 @@ export function computeChallenge(
     const ehr = ehByKey.get(key);
     if (ehr) entry(ehr).fngs++;
   }
-  const leaderboard = sortLeaderboard([...board.values()]);
+  const leaderboard = sortLeaderboard([...board.values()], scoringEnabled ? "points" : "fngs");
 
   const themes: ThemeStatus[] = THEMES.map((t) => ({
     ...t,
@@ -294,9 +311,12 @@ export function computeChallenge(
     period,
     start,
     asOf,
+    sourceAsOf,
+    end,
+    scoringEnabled,
     weekStart,
     weekEnd,
-    goal: REGION_FNG_GOAL,
+    goal: scoringEnabled ? CHALLENGE_FNG_GOAL : period === "year" ? ANNUAL_FNG_GOAL : null,
     regionFngs: challengeFngs.length,
     leaderboard,
     fngs: fngs.reverse(),
@@ -308,27 +328,28 @@ export function computeChallenge(
 
 export function buildBandText(r: Omit<ChallengeResult, "bandText">, sort: LeaderboardSort = "points"): string {
   const lines = [
-    `🏆 EH Challenge Leaderboard${sort === "fngs" ? " · Most FNGs" : ""}`,
-    `${formatDay(r.start)} – ${formatDay(r.asOf)} · week of ${formatDay(r.weekStart)}`,
+    r.scoringEnabled ? `🏆 2026 EH Challenge${sort === "fngs" ? " · Most FNGs" : ""}` : `Bedrock FNGs · ${PERIOD_LABELS[r.period]}`,
+    `${formatDay(r.start)} – ${formatDay(r.end)}${r.scoringEnabled ? ` · scored through ${formatDay(r.asOf)}` : " · FNG stats, no challenge points"}`,
     "",
   ];
   if (r.leaderboard.length === 0) {
-    lines.push("No points on the board yet. Go EH somebody!");
+    lines.push(r.scoringEnabled ? "No points on the board yet. Go EH somebody!" : "No EH’ers recorded for this period yet.");
   } else {
-    sortLeaderboard(r.leaderboard, sort).slice(0, 10).forEach((e, i) => {
+    sortLeaderboard(r.leaderboard, r.scoringEnabled ? sort : "fngs").slice(0, 10).forEach((e, i) => {
       const week = e.week ? ` (+${e.week} this week)` : "";
-      const score = sort === "fngs" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"} · ${e.total} pts` : `${e.total} pts`;
+      const score = !r.scoringEnabled ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}` : sort === "fngs" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"} · ${e.total} pts` : `${e.total} pts`;
       lines.push(`${i + 1}. ${e.name} — ${score}${week}`);
     });
   }
   const theme = r.themes.find((t) => t.status === "active") ?? r.themes.find((t) => t.status === "upcoming");
-  if (theme) {
+  if (r.scoringEnabled && theme) {
     lines.push(
       "",
+      "Weekly calendar provisional; awaiting confirmation.",
       `🔥 ${theme.status === "active" ? "This week" : "Coming up"}: ${theme.name} (${formatDay(theme.start)} – ${formatDay(theme.end)})`,
       theme.description
     );
   }
-  lines.push("", `🎯 Region FNGs: ${r.regionFngs} / ${r.goal}`);
+  lines.push("", `🎯 Region FNGs: ${r.regionFngs}${r.goal ? ` / ${r.goal}` : ""}`);
   return lines.join("\n");
 }

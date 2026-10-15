@@ -40,11 +40,11 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 | `/connect` | `app/connect/page.tsx` | Public connector instructions; no real key in HTML |
 | `/eh-challenge` | `app/EhChallenge.tsx` | Public standings, search, sorting, corrections |
 | `/eh-challenge/points` | `app/PointsGuide.tsx` | Public infographic; also embedded in leaderboard details |
-| `/eh-challenge/person/[name]?period=year` | `app/PersonDetail.tsx` | Encoded-name profile; decoded in the server route |
+| `/eh-challenge/person/[name]?period=challenge` | `app/PersonDetail.tsx` | Encoded-name profile; decoded in the server route |
 | `/eh-challenge/corrections` | `app/EhCorrectionHistory.tsx` | Public submission history |
 | `POST /api/chat` | `app/api/chat/route.ts` | JSON input, SSE success, JSON validation/quota errors |
 | `GET /api/suggestions` | `app/api/suggestions/route.ts` | Static homepage questions |
-| `GET /api/eh-challenge?period=month\|year\|all` | `app/api/eh-challenge/route.ts` | Computed `ChallengeResult`; invalid/missing period defaults to year |
+| `GET /api/eh-challenge?period=challenge\|month\|year\|all` | `app/api/eh-challenge/route.ts` | Computed `ChallengeResult`; invalid/missing period defaults to year |
 | `GET, POST /api/eh-corrections` | `app/api/eh-corrections/route.ts` | Roster names / save-and-notify submission |
 | `GET /api/eh-corrections/history` | `app/api/eh-corrections/history/route.ts` | Public review history with current-Roster comparison |
 | `/admin/chats` | `app/admin/chats` | Password-protected search and review of private chat records |
@@ -129,11 +129,13 @@ Homepage `/api/suggestions` returns six static questions with CDN caching and ma
 
 ## EH scoring
 
-`/api/eh-challenge` fetches attendance, EH attributions, and return attributions, then calls the pure `computeChallenge()` function in `lib/ehChallenge.ts`. The API and person pages default to `year`; the UI remembers later period choices.
+`/api/eh-challenge` fetches attendance, EH attributions, and return attributions, then calls the pure `computeChallenge()` function in `lib/ehChallenge.ts`. The API and person pages default to `year`; the UI remembers later period choices. `parsePeriod()` in `lib/ehChallenge.ts` also accepts `challenge`, `month`, and `all`. Shared links may specify `?period=challenge`; profiles and the return link preserve that selection.
 
 A challenge FNG needs an attendance FNG flag and a matching Roster name whose trimmed, case-insensitive `Region` is Bedrock. Missing/blank/other regions do not qualify. The rest of attendance remains available. Names are compared after trimming, lowercasing, and collapsing whitespace; this is not typo correction.
 
-For each PAX, the earliest eligible FNG date defines when he joined. Month/year selects the cohort joining in that window, rather than merely filtering all earned events by calendar date. All-time begins at the earliest attendance date. `asOf` is the latest parsed attendance date, including rows without a post. Workouts are distinct post dates from the FNG's first date through `asOf`; multiple posts on the same date count once.
+For each PAX, the earliest eligible FNG date defines when he joined. `challenge` selects FNGs joining Oct 15–Dec 31, 2026, inclusive; earlier FNGs cannot earn competition points from later attendance. Its `asOf` is capped at Dec 31 so later workouts and referrals cannot count. `sourceAsOf` always reports the latest parsed attendance date, including rows without a post; `end` reports Dec 31 for the challenge. Before opening day the challenge cohort is empty. Workouts are distinct post dates from the FNG's first date through `asOf`; multiple posts on the same date count once.
+
+Year, month, and all-time are invitation/retention stats with `scoringEnabled: false`: point totals, breakdowns, and unassigned points are zero. These views do not display point badges, score breakdowns, or a competition ranking. Year/month select FNGs joining in that attendance-anchored period; all-time begins at the earliest attendance date. The year view remains the default. The point schedule below applies only to the explicit challenge view.
 
 | FNG workout | Points to recorded EH'er | Cumulative workout points |
 | --- | --- | --- |
@@ -145,11 +147,13 @@ For each PAX, the earliest eligible FNG date defines when he joined. Month/year 
 
 A nonblank Roster EH'er is authoritative. With no EH'er, the FNG still appears, but his workout points are unassigned. No correction suggestion or Band research overrides the Roster.
 
-Referral example: You EH Alex; Alex EHs Ben. You receive a +5 upstream referral bonus for Ben, while Alex receives Ben's workout points. Both Alex and Ben must belong to the selected cohort. The code awards this per qualifying downstream FNG, not as an unlimited multigeneration chain.
+Referral example: You EH Alex; Alex EHs Ben. You receive a +5 upstream referral bonus for Ben, while Alex receives Ben's workout points. Both Alex and Ben must belong to the Oct 15–Dec 31 challenge cohort. The code awards this per qualifying downstream FNG, not as an unlimited multigeneration chain.
 
-The configured region goal is 50 FNGs. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
+The annual goal is 100 FNGs; the challenge goal is 50. Month/all-time return a null goal and display counts without a goal progress bar. Double Down means two FNGs at one workout and normal points only: two first posts earn 10 total. No extra award or separate tracking is implemented. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
 
-### Themed bonuses configured for 2026
+### Provisional themed bonuses configured for 2026
+
+Clove’s exact weekly calendar, whether other themes add bonus points, and the three-month Resurrection definition/window await confirmation. The existing configuration below is retained; dates are labeled provisional in the UI and copied standings. Do not treat this table as a newly approved calendar.
 
 | Dates (inclusive) | Theme | Award |
 | --- | --- | --- |
@@ -185,7 +189,7 @@ Chat Discord notifications use a different, process-local, best-effort queue. Th
 | MCP POST | Private shared token | No | Uses attendance memory cache |
 | Saved chats | This browser | Follow-ups send recent context | Browser localStorage |
 
-`bedrock-conversations` stores chats and pending state; `bedrock-chat-session` stores the active chat, drafts, and reasoning preference; `bedrock-suggestions` caches homepage questions; `bedrock-eh-period-v2` stores the period; `bedrock-agent-banner-dismissed` remembers banner dismissal. The menu retains connector and GitHub links. Clearing browser storage clears these preferences and saved chats.
+`bedrock-conversations` stores chats and pending state; `bedrock-chat-session` stores the active chat, drafts, and reasoning preference; `bedrock-suggestions` caches homepage questions; `bedrock-eh-period-v2` stores the period (including `challenge`); `bedrock-agent-banner-dismissed` remembers banner dismissal. The menu retains connector and GitHub links. Clearing browser storage clears these preferences and saved chats.
 
 MCP supports JSON-RPC initialization, ping, tool listing/calls, and batches over HTTP POST. Tools are `get_schema`, `run_sql`, and `search_pax`. Auth accepts an exact shared `MCP_TOKEN` in a Bearer header or `?key=`. Missing configuration keeps POST closed with 401. GET returns 405; OPTIONS returns 204. This is a small custom implementation, without user accounts, OAuth, or server-pushed SSE sessions. The public `/connect` page contains placeholders only.
 

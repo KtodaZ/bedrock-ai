@@ -3,17 +3,13 @@
 import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { buildBandText, formatDay, sortLeaderboard, type LeaderboardSort, type Period } from "@/lib/ehChallenge";
+import { buildBandText, formatDay, sortLeaderboard, type LeaderboardSort, type Period, PERIODS, PERIOD_LABELS, parsePeriod } from "@/lib/ehChallenge";
 import { fetchChallenge } from "@/lib/challenge-client";
 import { matchesPerson, normalizePerson, personURL } from "@/lib/ehProfile";
 import PointsGuide from "./PointsGuide";
 import EhCorrectionForm from "./EhCorrectionForm";
 
-const PERIOD_OPTIONS: { value: Period; label: string }[] = [
-  { value: "month", label: "This month" },
-  { value: "year", label: "This year" },
-  { value: "all", label: "All time" },
-];
+const PERIOD_OPTIONS = PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }));
 
 const PERIOD_KEY = "bedrock-eh-period-v2";
 const PERIOD_EVENT = "bedrock-eh-period-change";
@@ -29,8 +25,9 @@ function subscribePeriod(onChange: () => void) {
 
 function readPeriod(): Period {
   try {
-    const saved = localStorage.getItem(PERIOD_KEY);
-    return saved === "month" || saved === "all" ? saved : "year";
+    const linked = new URLSearchParams(window.location.search).get("period");
+    if (linked) return parsePeriod(linked);
+    return parsePeriod(localStorage.getItem(PERIOD_KEY));
   } catch {
     return "year";
   }
@@ -59,6 +56,9 @@ export default function EhChallenge() {
     setSelectedPeriod(p);
     setShowAllFngs(false);
     try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("period", p);
+      window.history.replaceState(null, "", url);
       localStorage.setItem(PERIOD_KEY, p);
       window.dispatchEvent(new Event(PERIOD_EVENT));
     } catch {
@@ -70,7 +70,7 @@ export default function EhChallenge() {
     if (!data) return;
     setCopyFailed(false);
     try {
-      await navigator.clipboard.writeText(buildBandText(data, sort));
+      await navigator.clipboard.writeText(buildBandText(data, period === "challenge" ? sort : "fngs"));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -79,9 +79,11 @@ export default function EhChallenge() {
   }
 
   const theme = data?.themes.find((t) => t.status === "active") ?? data?.themes.find((t) => t.status === "upcoming");
-  const goalPct = data ? Math.min(100, (data.regionFngs / data.goal) * 100) : 0;
+  const goalPct = data?.goal ? Math.min(100, (data.regionFngs / data.goal) * 100) : 0;
+  const scoring = period === "challenge";
+  const effectiveSort = scoring ? sort : "fngs";
   const unassigned = data?.fngs.filter((f) => !f.ehBy).length ?? 0;
-  const leaderboard = sortLeaderboard(data?.leaderboard ?? [], sort)
+  const leaderboard = sortLeaderboard(data?.leaderboard ?? [], effectiveSort)
     .map((entry, i) => ({ ...entry, rank: i + 1 }))
     .filter((entry) => normalizePerson(entry.name).includes(normalizePerson(search)));
   const fngs = data?.fngs.filter((fng) => matchesPerson(fng, search)) ?? [];
@@ -98,15 +100,16 @@ export default function EhChallenge() {
               EH Challenge
             </h1>
             <p className="text-xs text-white/35 mt-1">
-              {data ? `${formatDay(data.start)} – ${formatDay(data.asOf)} · latest data ${formatDay(data.asOf)}` : "Loading…"}
+              {data ? `${formatDay(data.start)} – ${formatDay(data.end)} · latest data ${formatDay(data.sourceAsOf)}` : "Loading…"}
             </p>
           </div>
-          <div className="flex rounded-xl p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
+          <div className="flex flex-wrap rounded-xl p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
             {PERIOD_OPTIONS.map((o) => (
               <button
                 key={o.value}
                 onClick={() => choosePeriod(o.value)}
-                className={`text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                aria-pressed={period === o.value}
+                className={`text-xs min-h-11 px-3 py-1.5 rounded-lg transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-violet-400 ${
                   period === o.value ? "text-white" : "text-white/40 hover:text-white/70"
                 }`}
                 style={period === o.value ? { background: "linear-gradient(135deg, #7c3aed, #2563eb)" } : undefined}
@@ -130,24 +133,28 @@ export default function EhChallenge() {
 
         {data && (
           <>
+            <p className="text-sm text-white/75 leading-relaxed">
+              {scoring ? "Challenge points count FNGs joining Oct 15–Dec 31, 2026, and their workouts through Dec 31. Earlier FNGs stay in the stats views." : "FNG stats show who invited whom. Competition points are kept in the 2026 Challenge view."}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="rounded-2xl p-4" style={card}>
-                <div className="text-xs text-white/40">Region FNGs</div>
+                <div className="text-xs text-white/65">{scoring ? "Challenge FNGs" : period === "year" ? "Annual FNG goal" : "Region FNGs"}</div>
                 <div className="flex items-baseline gap-1.5 mt-1">
                   <span className="text-3xl font-bold text-white/90">{data.regionFngs}</span>
-                  <span className="text-sm text-white/35">/ {data.goal} goal</span>
+                  {data.goal && <span className="text-sm text-white/65">/ {data.goal} goal</span>}
                 </div>
-                <div className="h-1.5 rounded-full mt-3 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                {data.goal && <div className="h-1.5 rounded-full mt-3 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                   <div
                     className="h-full rounded-full"
                     style={{ width: `${goalPct}%`, background: "linear-gradient(90deg, #7c3aed, #2563eb)" }}
                   />
-                </div>
+                </div>}
               </div>
               <div className="rounded-2xl p-4" style={card}>
-                {theme ? (
+                {!scoring ? <><div className="text-xs text-white/65">2026 EH Challenge</div><p className="text-sm text-white/85 mt-2">Oct 15–Dec 31 · 50 FNG goal</p><button onClick={() => choosePeriod("challenge")} className="text-sm text-violet-200 underline underline-offset-4 min-h-11 cursor-pointer focus-visible:outline-2 focus-visible:outline-violet-400">View challenge standings →</button></> : theme ? (
                   <>
-                    <div className="text-xs text-white/40">
+                    <div className="text-xs text-white/65">Provisional calendar · dates being confirmed</div>
+                    <div className="text-xs text-white/65 mt-2">
                       {theme.status === "active" ? "This week's theme" : "Next theme"} · {formatDay(theme.start)} – {formatDay(theme.end)}
                     </div>
                     <div className="text-base font-semibold text-white/90 mt-1">{theme.name}</div>
@@ -183,7 +190,7 @@ export default function EhChallenge() {
 
             <section className="rounded-2xl overflow-hidden" style={card}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-                <h2 className="text-sm font-semibold text-white/80">Leaderboard</h2>
+                <h2 className="text-sm font-semibold text-white/80">{scoring ? "Challenge standings" : "FNGs invited"}</h2>
                 <button
                   onClick={copyForBand}
                   className="text-xs text-white/50 hover:text-white/90 border border-white/10 hover:border-white/25 rounded-full px-3 py-1 transition-colors cursor-pointer"
@@ -191,7 +198,7 @@ export default function EhChallenge() {
                   {copied ? "Copied!" : copyFailed ? "Retry copy" : "Copy for Band"}
                 </button>
               </div>
-              <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5">
+              {scoring && <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5">
                 <span className="text-xs text-white/65">Sort by</span>
                 <div className="flex gap-1" role="group" aria-label="Leaderboard sort">
                   {([["points", "Points"], ["fngs", "FNGs"]] as const).map(([value, label]) => (
@@ -205,10 +212,10 @@ export default function EhChallenge() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </div>}
               {leaderboard.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-white/40 text-center">
-                  {search.trim() ? "No EH’ers match this search. Try another name or clear the search." : "No EH points yet. Points show up once FNGs have their EH’er logged."}
+                  {search.trim() ? "No EH’ers match this search. Try another name or clear the search." : scoring ? "No challenge points yet. Eligible FNGs need a recorded workout and an EH’er in the Roster." : "No EH’ers recorded for this period yet."}
                 </p>
               ) : (
                 <ol>
@@ -226,10 +233,10 @@ export default function EhChallenge() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <Link href={personURL(e.name, period)} className="block text-sm text-violet-200 hover:underline underline-offset-4 rounded after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-violet-400" aria-label={`View ${e.name}`}><span className="block truncate">{e.name}</span></Link>
-                        <div className="text-xs text-white/50">{sort === "points" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}` : `${e.total} pts`}</div>
+                        <div className="text-xs text-white/50">{effectiveSort === "points" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}` : scoring ? `${e.total} pts` : "View invited FNGs →"}</div>
                       </div>
                       {e.week > 0 && <span className="text-xs text-emerald-400/80">+{e.week} this week</span>}
-                      <span className="text-sm font-semibold text-white/90 w-16 text-right tabular-nums">{sort === "points" ? `${e.total} pts` : `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}`}</span>
+                      <span className="text-sm font-semibold text-white/90 w-16 text-right tabular-nums">{effectiveSort === "points" ? `${e.total} pts` : `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}`}</span>
                     </li>
                   ))}
                 </ol>
@@ -241,7 +248,7 @@ export default function EhChallenge() {
                 <h2 className="text-sm font-semibold text-white/80">FNGs</h2>
                 {unassigned > 0 && (
                   <span className="text-xs text-amber-300/80">
-                    {unassigned} need an EH&apos;er · {data.unassignedPoints} pts unclaimed
+                    {unassigned} need an EH&apos;er{scoring && <> · {data.unassignedPoints} pts unclaimed</>}
                   </span>
                 )}
               </div>
@@ -264,7 +271,7 @@ export default function EhChallenge() {
                           Needs EH&apos;er
                         </span>
                       )}
-                      <span className="text-sm text-white/70 w-14 text-right">{f.points} pts</span>
+                      <span className="text-sm text-white/70 w-20 text-right">{scoring ? `${f.points} pts` : `${f.posts} workouts`}</span>
                     </li>
                   ))}
                   {fngs.length > FNG_PREVIEW && (

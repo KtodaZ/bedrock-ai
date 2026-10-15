@@ -101,7 +101,9 @@ export default function HowItWorksPage() {
           <p>
             The leaderboard calculates points from recorded workouts and the EH&apos;er listed in the Roster. An FNG
             counts only when attendance marks him as an FNG and his Roster region is Bedrock. The leaderboard opens
-            to this year; you can change the period, sort by points or FNGs, and search for a person.
+            to this year, with a 100-FNG goal and invitation stats. The separate 2026 Challenge view scores FNGs joining
+            Oct 15–Dec 31 toward a 50-FNG goal, with workouts counted through Dec 31. You can sort challenge standings
+            by points or FNGs and search for a person.
           </p>
           <p>
             Open a person&apos;s page for workout milestones, badges, and suggested next invitations. The EH Challenge&apos;s

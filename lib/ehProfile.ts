@@ -30,8 +30,10 @@ export function buildPersonProfile(data: ChallengeResult, name: string) {
     { name: "Crew builder", description: "Invited at least 3 FNGs", earned: recruits.length >= 3 },
     { name: "Back for more", description: "An invited FNG posted twice", earned: returned >= 1 },
     { name: "Habit builder", description: "An invited FNG reached 5 workouts", earned: regulars >= 1 },
-    { name: "Ripple effect", description: "Earned a referral bonus", earned: referralPoints > 0 },
-    { name: "Century club", description: "Earned at least 100 points", earned: (standing?.total ?? 0) >= 100 },
+    ...(data.scoringEnabled ? [
+      { name: "Ripple effect", description: "Earned a referral bonus", earned: referralPoints > 0 },
+      { name: "Century club", description: "Earned at least 100 points", earned: (standing?.total ?? 0) >= 100 },
+    ] : []),
   ];
   return {
     name: standing?.name ?? ownFng!.name,
