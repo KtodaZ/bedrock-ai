@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
 import EhChallenge from "./EhChallenge";
+import DataExplorer from "./DataExplorer";
 
 interface QueryLogEntry {
   index: number;
@@ -91,7 +92,11 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : true
   );
-  const [tab, setTab] = useState<"chat" | "eh">("chat");
+  const [tab, setTab] = useState<"chat" | "eh" | "data">("chat");
+  useEffect(() => {
+    const initialTab = new URLSearchParams(window.location.search).get("tab");
+    if (initialTab === "data" || initialTab === "eh") setTab(initialTab);
+  }, []);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [expandedQueries, setExpandedQueries] = useState<Set<number>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -274,6 +279,7 @@ export default function Home() {
 
   function startNewChat() {
     setTab("chat");
+    window.history.replaceState(null, "", "/");
     setMessages([]);
     setActiveId(null);
     setInput("");
@@ -283,6 +289,7 @@ export default function Home() {
 
   function restoreConversation(convo: Conversation) {
     setTab("chat");
+    window.history.replaceState(null, "", "/");
     setMessages(convo.messages);
     setActiveId(convo.id);
     if (window.innerWidth < 768) setSidebarOpen(false);
@@ -522,10 +529,14 @@ export default function Home() {
             </button>
             <span className="hidden sm:inline font-semibold text-white/80 tracking-tight text-sm">Bedrock Data AI</span>
             <div className="flex rounded-full p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
-              {([["chat", "Chat"], ["eh", "EH Challenge"]] as const).map(([value, label]) => (
+              {([["chat", "Chat"], ["eh", "EH Challenge"], ["data", "Data"]] as const).map(([value, label]) => (
                 <button
                   key={value}
-                  onClick={() => setTab(value)}
+                  onClick={() => {
+                    setTab(value);
+                    if (value !== "data") window.history.replaceState(null, "", value === "eh" ? "/?tab=eh" : "/");
+                  }}
+                  aria-pressed={tab === value}
                   className={`text-xs px-3 py-1 rounded-full transition-colors cursor-pointer ${
                     tab === value ? "text-white" : "text-white/40 hover:text-white/70"
                   }`}
@@ -557,6 +568,7 @@ export default function Home() {
         </header>
 
         {tab === "eh" && <EhChallenge />}
+        {tab === "data" && <DataExplorer />}
 
         {/* Chat area */}
         <main className={`flex-1 min-h-0 overflow-hidden flex-col ${tab === "chat" ? "flex" : "hidden"}`}>

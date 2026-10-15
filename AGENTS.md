@@ -2,7 +2,7 @@
 
 ## Read first
 
-This is the Next.js app at https://data.f3bedrock.com. It has three separate features: attendance chat, a deterministic EH Challenge leaderboard, and a read-only MCP connector. The leaderboard does not use AI.
+This is the Next.js app at https://data.f3bedrock.com. It has four separate features: attendance chat, a read-only data explorer, a deterministic EH Challenge leaderboard, and a read-only MCP connector. The leaderboard does not use AI.
 
 Read [README.md](README.md) for the product and local setup, [docs/architecture.md](docs/architecture.md) for data flows and implementation, and [docs/operations.md](docs/operations.md) for configuration, deployment, and troubleshooting. Check the implementation before changing behavior; these docs describe the current system, not a backlog.
 
@@ -11,6 +11,8 @@ Read [README.md](README.md) for the product and local setup, [docs/architecture.
 | Question or change | Start here |
 | --- | --- |
 | Chat UI, saved chats, menu, banner | `app/page.tsx` |
+| Data tab, filters, attendance profiles | `app/DataExplorer.tsx`, `lib/dataExplorer.ts` |
+| Public data snapshot and source fields | `app/api/data/route.ts`, `lib/dataExplorerSource.ts` |
 | AI model, prompts, tool loop, SSE events | `app/api/chat/route.ts` |
 | AI quota and paid-call rejection | `lib/aiRateLimit.ts` |
 | Attendance CSV, SQLite schema, SQL helpers | `lib/attendance-db.ts` |

@@ -2,7 +2,7 @@
 
 Bedrock Data AI is one Next.js App Router application, written in TypeScript with React and Tailwind CSS. TanStack Query handles browser fetches. Vercel hosts the app; Google Sheets supplies attendance and EH attributions; private Vercel Blob stores correction history and AI usage. There is no permanent SQL attendance database and no automatic sheet writer.
 
-## Three paths through the app
+## Data paths through the app
 
 ```mermaid
 flowchart TD
@@ -14,6 +14,8 @@ flowchart TD
   Agent <--> SQLite
   Agent --> SSE[Progress, queries, final answer]
   SSE --> Chat
+  Loader --> Explorer[Read-only attendance explorer]
+  Explorer --> DataUI[Filters, raw rows, PAX details, CSV]
   Loader --> Score[TypeScript EH scoring]
   Score --> Board[Leaderboard and person profiles]
   MCP[External AI with private MCP token] --> SQLite
@@ -23,15 +25,17 @@ flowchart TD
   Review -. maintainer updates manually .-> Sheet
 ```
 
-Chat uses AI to query attendance. The leaderboard computes scores directly in TypeScript. MCP lets an external AI query attendance without using this app's OpenAI key. These paths share data helpers but have different eligibility, authentication, and cost rules.
+Chat uses AI to query attendance. The leaderboard computes scores directly in TypeScript. MCP lets an external AI query attendance without using this app's OpenAI key. These paths and the data explorer share data helpers but have different eligibility, authentication, and cost rules.
 
 ## Routes and UI ownership
 
-`app/page.tsx` owns the chat state, saved conversations, desktop/mobile sidebar, and the home page's Chat/EH tab switch. `/eh-challenge` renders the same leaderboard component on a shareable route. `app/providers.tsx` creates the browser QueryClient. Styling uses `app/globals.css` and Tailwind classes: dark background `#07070f`, purple/blue accents, and the existing mobile sidebar overlay.
+`app/page.tsx` owns the chat state, saved conversations, desktop/mobile sidebar, and the home page's Chat/EH/Data tab switch. `/eh-challenge` renders the same leaderboard component on a shareable route. `app/providers.tsx` creates the browser QueryClient. Styling uses `app/globals.css` and Tailwind classes: dark background `#07070f`, purple/blue accents, and the existing mobile sidebar overlay.
 
 | Route | Handler/component | Contract |
 | --- | --- | --- |
-| `/` | `app/page.tsx` | Public chat and EH tab |
+| `/` | `app/page.tsx` | Public Chat, EH Challenge, and Data tabs |
+| `/data` | `app/DataExplorer.tsx` | Public attendance explorer; also available in the home Data tab |
+| `GET /api/data` | `app/api/data/route.ts` | Allowlisted attendance, Roster names/regions/EH credit, and active Sites; no AI calls |
 | `/how-it-works` | `app/how-it-works/page.tsx` | Public product explanation |
 | `/connect` | `app/connect/page.tsx` | Public connector instructions; no real key in HTML |
 | `/eh-challenge` | `app/EhChallenge.tsx` | Public standings, search, sorting, corrections |
@@ -55,6 +59,7 @@ The source is [F3 Bedrock Data](https://docs.google.com/spreadsheets/d/11fIBnwzc
 | Tab | gid | Reader | Used for |
 | --- | --- | --- | --- |
 | Attendance Master | `729344821` | `lib/attendance-db.ts` | Chat/MCP SQL and challenge workouts |
+| Sites | Named CSV export (`sheet=Sites`) | `lib/dataExplorerSource.ts` | Current active AO names/cities and coverage denominator |
 | Roster | `437240319` | `lib/sheet.ts` | Bedrock eligibility, EH credit, return credit, canonical correction names |
 
 Attendance is exported as CSV and cached in server memory for 10 minutes. SQLite is also reused for 10 minutes per warm instance. Roster CSV has its own one-minute cache. These are per-instance caches, not a shared synchronization service. The browser's challenge query is stale after five minutes and does not poll automatically; a sheet edit need not appear immediately in an already-open page.
@@ -77,6 +82,20 @@ Attendance is exported as CSV and cached in server memory for 10 minutes. SQLite
 Attendance rows may exist when a PAX did not post: filter `Post = 1` when counting workouts. Chat/MCP guidance anchors “last N days” to `MAX(Date)` and asks for exact name lookup before person statistics. The SQL table contains attendance only, not the Roster. Consequently a raw SQL FNG count is not necessarily the region-filtered challenge count.
 
 Roster headers required by the reader are `F3 Name`, `Region`, and `EH'er`. Optional `Brought back by` and `Return date` supply Resurrection credit. Readers use header names rather than fixed column letters. The public correction-name API returns only names and EH attribution, not the rest of the intake information.
+
+## Attendance explorer
+
+`lib/dataExplorerSource.ts` combines the existing attendance cache, a public-field Roster reader, and the existing Sites tab (`gviz/tq?tqx=out:csv&sheet=Sites`). The assembled snapshot is cached for one minute per warm instance, with concurrent loads sharing a promise; HTTP caching adds up to one minute. Attendance retains its existing ten-minute cache. The browser query is stale after five minutes. Reload reads through these caches; it does not force a Google Sheets refresh. Failed loads return 503 without source details and are not cached.
+
+`lib/dataExplorer.ts` supplies quoted/multiline CSV parsing, date validation, allowlisted fields, combined filters, PAX statistics, shared-workout counts, and formula-safe CSV export. Attendance exposes only PAX, AO, city, date, and Post/Q/FNG/QS/QS-Q flags. The Roster exposes only F3 name, Region, and EH’er. Names containing `(Archived)` or `(<18)` are excluded before serialization, including EH attribution labels. No contact/intake fields or Sites phone numbers leave the server.
+
+Views are PAX, Qsource, Kotter, Q Kotter, monthly AOs, and raw attendance. The initial period is the latest attendance year. View/date/AO/region/search/flag filters are serialized in the URL; `/data` is the canonical share link. Exports include all filtered rows in selected sort order, not only the visible page. PAX detail retains the explorer filters and always describes all-time attendance.
+
+Workout summaries count `Post = 1`; Qsource counts `QS = 1` and `QS-Q` leadership. Multiple workouts on one day count separately as posts. Post percentage counts distinct attended dates divided by recorded workout dates in the selected period/AO; all-time denominators start at the PAX’s first recorded post at the selected AO, before flag filtering. Search, region, and flags do not shrink opportunity dates. Streaks count consecutive recorded workout dates, ignoring dates without workouts. First-in-view is not a region-qualified FNG date. Raw FNG flags remain raw; challenge eligibility is unchanged.
+
+Kotter requires Bedrock Roster region, excludes names containing `2.0`, and requires more than 14 and fewer than 365 days since the latest recorded post. Q Kotter requires Bedrock and a recorded Q more than 30 and fewer than 365 days ago. Both use complete history for eligibility and the snapshot’s latest attendance date as their clock, while displayed counts follow the filters. These deliberate rules differ from the reference project’s wall-clock thresholds.
+
+AO coverage uses current active Sites (`Active` status text or Y), not all historical locations. Retired/other locations contribute posts but not coverage. The Sites sheet’s Y marker means active; the reference backend’s inverted retired mapping is not used. Shared workouts match date and AO and deduplicate each companion per workout. Post-range and Q relationship filters apply before counting. Milestones measure each block of 100 recorded workout posts separately.
 
 ## Chat request lifecycle
 
@@ -157,6 +176,7 @@ Chat Discord notifications use a different, process-local, best-effort queue. Th
 | Surface | Access | App OpenAI calls? | Persistent state |
 | --- | --- | --- | --- |
 | Chat | Public; quota applies | Yes | Hashed-IP usage counters; logs/optional Discord |
+| Data explorer | Public | No | Source sheet; memory/HTTP caches; share filters in URL |
 | Leaderboard/profiles/points | Public | No | Source sheet; browser period preference |
 | Corrections/history | Public; input validation | No | Private Blob backing publicly displayed history |
 | MCP POST | Private shared token | No | Uses attendance memory cache |

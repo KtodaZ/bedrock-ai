@@ -132,3 +132,13 @@ export async function fetchResurrectionAttributions(): Promise<ResurrectionEntry
     return pax && broughtBy && date && r.Region.trim().toLowerCase() === "bedrock" ? [{ pax, broughtBy, date }] : [];
   });
 }
+
+/** Allowlisted explorer fields only; do not expose the full Roster to the browser. */
+export async function fetchDataRoster(): Promise<import('./dataExplorer').DataPerson[]> {
+  const { isPublicDataName } = await import('./dataExplorer');
+  return (await fetchRoster()).flatMap(row => {
+    const name = row['F3 Name'].trim();
+    const ehBy = row["EH'er"].trim();
+    return isPublicDataName(name) ? [{ name, region: row.Region.trim(), ehBy: isPublicDataName(ehBy) ? ehBy : null }] : [];
+  });
+}

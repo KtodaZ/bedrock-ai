@@ -1,6 +1,6 @@
 # Bedrock Data AI
 
-F3 Bedrock attendance questions, the EH Challenge leaderboard, and a read-only MCP connector for your own AI agent.
+F3 Bedrock attendance questions, a searchable data explorer, the EH Challenge leaderboard, and a read-only MCP connector for your own AI agent.
 
 Live app: https://data.f3bedrock.com
 
@@ -36,6 +36,12 @@ The leaderboard calculates points from recorded attendance and the EH’er liste
 The default view is this year. Sort by points or FNG count, search for a person, or open a profile for milestones, badges, and suggested next invitations. Badges do not add points. The [points guide](https://data.f3bedrock.com/eh-challenge/points) explains workout and referral scoring.
 
 EH corrections are saved for review and posted to Discord. Names and notes appear in the public correction history. Submissions do not change standings; the sheet maintainer must update the Roster.
+
+### Data explorer
+
+The **Data** tab and [/data](https://data.f3bedrock.com/data) provide read-only PAX summaries, Qsource, Kotter and Q Kotter lists, monthly AO coverage, and raw attendance. Combine name, date, AO, Roster region, and attendance-flag filters; sort columns, share a filtered link, or export every matching row to CSV. Select a name for all-time attendance, a calendar, AO counts, 100-post milestones, and shared workouts.
+
+The explorer reads the same attendance and Roster tabs plus the existing Sites tab for active AOs. It makes no AI calls. Archived names and entries marked `(<18)` are excluded; contact and intake fields are never served. Dates and inactivity thresholds follow the latest attendance date. Open “How these numbers work” for calculation details.
 
 ### Chats and stored data
 

@@ -105,6 +105,7 @@ npm run build
 | Test script | Coverage |
 | --- | --- |
 | `scripts/test-ai-rate-limit.cjs` | Per-IP/daily limits, concurrent reservations, storage failure, rejecting before OpenAI, bounded mock chat calls, free homepage suggestions |
+| `scripts/test-data-explorer.cjs` | Public data fields/exclusions, CSV parsing, active Sites, combined filters, PAX/Qsource counts, inactivity thresholds, streaks, shared workouts, URL filters, and safe exports |
 | `scripts/test-eh-challenge.cjs` | Resurrection recipient, Family Tree versus referrals, profile milestones/badges |
 | `scripts/test-eh-corrections.cjs` | Canonical names, validation, concurrent durable writes, idempotent retries, delivery failures, endpoint rejection |
 
@@ -125,6 +126,7 @@ These tests use mocks and synthetic records. They do not prove current sheet con
 | Chat returns 503 before analysis | `AUTH_SECRET`, Blob token, quota path/schema, conflict pressure | Tracking fails closed. Check the existing object instead of replacing it. |
 | MCP returns 401 | Configured token and supplied header/key | MCP auth remains required even though the app is public. |
 | MCP GET returns 405 | HTTP method | Expected; POST JSON-RPC to call tools. |
+| Data explorer returns 503 | Attendance/Roster/Sites CSV access | The explorer needs the existing Sites tab as well as attendance and Roster. Retry after confirming all three are publicly readable; it never uses AI or writes the sheet. |
 | SQL route cannot load WASM | `next.config.ts`, deployed sql.js files, Node runtime | Check the affected route's actual bundle and runtime. |
 | Chat history disappeared | Browser localStorage | History is tied to the browser; clearing data removes it. No account-based chat restore exists. |
 
