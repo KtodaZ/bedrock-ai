@@ -1,4 +1,4 @@
-# Working on Bedrock Data AI
+# Working on Bedrock Data
 
 ## Read first
 
@@ -14,7 +14,9 @@ Read [README.md](README.md) for the product and local setup, [docs/architecture.
 | Data tab, filters, attendance profiles | `app/DataExplorer.tsx`, `lib/dataExplorer.ts` |
 | Attendance graphs, AO comparisons and growth, weekday turnout, heatmap, last-7-days strip | `app/AttendanceTrends.tsx`, `app/RegionPulse.tsx`, `lib/attendanceTrends.ts` |
 | Milestone forecasts and reached milestones | `app/Milestones.tsx`, `lib/milestones.ts` |
-| FNG follow-through, EH family tree, Q leaders | `app/Community.tsx`, `lib/community.ts` |
+| FNG follow-through, EH family tree, Q leaders, run/beatdown AO types | `app/Community.tsx`, `lib/community.ts` |
+| AO list and AO detail pages | `app/AoPages.tsx`, `lib/aoProfile.ts` |
+| Profile month/year/over-time views | `app/PaxActivity.tsx`, `lib/paxActivity.ts`, `app/SwipeViews.tsx` |
 | Public data snapshot and source fields | `app/api/data/route.ts`, `lib/dataExplorerSource.ts` |
 | AI model, prompts, tool loop, SSE events | `app/api/chat/route.ts` |
 | AI quota and paid-call rejection | `lib/aiRateLimit.ts` |

@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import CopyButton from "./CopyButton";
 
 export const metadata = {
-  title: "Bring Your Own Agent — Bedrock Data AI",
+  title: "Bring Your Own Agent — Bedrock Data",
   description: "Connect ChatGPT or Claude to your F3 attendance data via MCP",
 };
 

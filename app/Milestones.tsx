@@ -26,7 +26,7 @@ function readOptions(search: string) {
     search: (p.get("search") ?? "").slice(0, 200),
     step: [100, 500, 1000].includes(Number(p.get("step")))
       ? (Number(p.get("step")) as MilestoneStep)
-      : 100,
+      : ("major" as MilestoneStep),
     horizon: ["30", "90", "180", "all"].includes(p.get("horizon") ?? "")
       ? p.get("horizon")!
       : "90",
@@ -69,7 +69,7 @@ export default function Milestones() {
     <DataInsightsFrame
       page="milestones"
       title="Milestones"
-      description="Every hundred, with 500s and 1,000s highlighted."
+      description="100, 500, 1,000, and every 500 after, with 500s and 1,000s highlighted."
     >
       {(data) => <MilestoneContent data={data} />}
     </DataInsightsFrame>
@@ -241,9 +241,15 @@ function MilestoneContent({ data }: { data: ExplorerData }) {
                 aria-label="Milestone interval"
                 value={step}
                 onChange={(e) =>
-                  update({ step: Number(e.target.value) as MilestoneStep })
+                  update({
+                    step:
+                      e.target.value === "major"
+                        ? "major"
+                        : (Number(e.target.value) as MilestoneStep),
+                  })
                 }
               >
+                <option value="major">100, 500, then every 500</option>
                 <option value={100}>Every 100 posts</option>
                 <option value={500}>500s only</option>
                 <option value={1000}>1,000s only</option>
@@ -564,9 +570,10 @@ function MilestoneContent({ data }: { data: ExplorerData }) {
           years; they are not a claim about posts at other regions.
         </p>
         <p>
-          The next milestone is the next multiple of 100, 500, or 1,000.
-          Reaching 100 moves the next 100-post milestone to 200. Recently
-          reached milestones come from actual recorded attendance dates.
+          By default the milestones are 100, 500, 1,000, and every 500 after
+          that (1,500, 2,000…). More options can switch to every 100, 500s
+          only, or 1,000s only. Recently reached milestones come from actual
+          recorded attendance dates.
         </p>
         <p>
           Forecasts use posts per calendar day over the last 90 days, starting

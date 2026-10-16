@@ -183,7 +183,7 @@ export default function Home() {
           >
             B
           </div>
-          <span className="text-sm font-semibold text-white/70 truncate">Bedrock Data AI</span>
+          <span className="text-sm font-semibold text-white/70 truncate">Bedrock Data</span>
         </div>
         <button
           onClick={() => setSidebarOpen(false)}
@@ -369,7 +369,7 @@ export default function Home() {
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <span className="hidden sm:inline font-semibold text-white/80 tracking-tight text-sm">Bedrock Data AI</span>
+            <span className="hidden sm:inline font-semibold text-white/80 tracking-tight text-sm">Bedrock Data</span>
             <div className="flex rounded-full p-0.5 border border-white/10" style={{ background: "rgba(255,255,255,0.03)" }}>
               {([["chat", "Chat"], ["eh", "EH Challenge"], ["data", "Data"]] as const).map(([value, label]) => (
                 <button
@@ -423,7 +423,7 @@ export default function Home() {
                       className="text-3xl sm:text-4xl font-bold mb-2 sm:mb-3 bg-clip-text text-transparent"
                       style={{ backgroundImage: "linear-gradient(135deg, #a78bfa, #60a5fa, #f0f0ff)" }}
                     >
-                      Bedrock Data AI
+                      Bedrock Data
                     </h1>
                     <p className="text-white/40 text-sm">
                       Ask about your F3 workout attendance

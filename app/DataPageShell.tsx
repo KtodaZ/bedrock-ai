@@ -6,7 +6,7 @@ export default function DataPageShell({ children }: { children: ReactNode }) {
     <div className="flex h-dvh flex-col bg-[#07070f] text-[#f0f0ff]">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-8">
         <Link href="/" className="text-sm font-semibold text-white/80">
-          Bedrock Data AI
+          Bedrock Data
         </Link>
         <nav
           aria-label="App navigation"

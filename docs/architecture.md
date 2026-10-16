@@ -1,6 +1,6 @@
 # Architecture
 
-Bedrock Data AI is one Next.js App Router application, written in TypeScript with React and Tailwind CSS. TanStack Query handles browser fetches. Vercel hosts the app; Google Sheets supplies attendance and EH attributions; private Vercel Blob stores correction history and AI usage. There is no permanent SQL attendance database and no automatic sheet writer.
+Bedrock Data is one Next.js App Router application, written in TypeScript with React and Tailwind CSS. TanStack Query handles browser fetches. Vercel hosts the app; Google Sheets supplies attendance and EH attributions; private Vercel Blob stores correction history and AI usage. There is no permanent SQL attendance database and no automatic sheet writer.
 
 ## Data paths through the app
 
@@ -36,8 +36,9 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 | `/` | `app/page.tsx` | Public Chat, EH Challenge, and Data tabs |
 | `/data` | `app/DataExplorer.tsx` | Public attendance explorer; also available in the home Data tab |
 | `/data/trends` | `app/AttendanceTrends.tsx`, `lib/attendanceTrends.ts` | Attendance-only graphs, up to four AO comparisons, AO growth ranking, turnout by weekday, weekly turnout heatmap |
-| `/data/milestones` | `app/Milestones.tsx`, `lib/milestones.ts` | Pace-based next-hundred forecasts, 500/1,000 emphasis, actual reached milestones |
-| `/data/community` | `app/Community.tsx`, `lib/community.ts` | FNG follow-through by month, Roster EH family tree, first-Q candidates, Q ratio among regulars |
+| `/data/aos?ao=NAME` | `app/AoPages.tsx`, `lib/aoProfile.ts` | AO list (no `ao`) and one AO's turnout over time, growth, top PAX, top Qs, Q draw, biggest workouts, weekdays, FNGs, and a second-AO comparison |
+| `/data/milestones` | `app/Milestones.tsx`, `lib/milestones.ts` | Pace-based forecasts for 100, 500, then every 500 (filterable to every 100, 500s, or 1,000s), actual reached milestones |
+| `/data/community` | `app/Community.tsx`, `lib/community.ts` | FNG follow-through by month, Roster EH family tree, first-Q candidates, Q ratio among regulars, run-site vs beatdown Q mix |
 | `GET /api/data` | `app/api/data/route.ts` | Allowlisted attendance, Roster names/regions/EH credit, and active Sites; no AI calls |
 | `/how-it-works` | `app/how-it-works/page.tsx` | Public product explanation |
 | `/connect` | `app/connect/page.tsx` | Public connector instructions; no real key in HTML |
@@ -91,11 +92,11 @@ Roster headers required by the reader are `F3 Name`, `Region`, and `EH'er`. Opti
 
 ## Attendance explorer
 
-`lib/dataExplorerSource.ts` combines the existing attendance cache, a public-field Roster reader, and the existing Sites tab (`gviz/tq?tqx=out:csv&sheet=Sites`). The assembled snapshot is cached for one minute per warm instance, with concurrent loads sharing a promise; HTTP caching adds up to one minute. Attendance retains its existing ten-minute cache. Phone tables keep the first column pinned at 104px, with full names wrapping and the other columns horizontally scrollable. The browser query is stale after five minutes. Reload reads through these caches; it does not force a Google Sheets refresh. Failed loads return 503 without source details and are not cached.
+`lib/dataExplorerSource.ts` combines the existing attendance cache, a public-field Roster reader, and the existing Sites tab (`gviz/tq?tqx=out:csv&sheet=Sites`). The assembled snapshot is cached for one minute per warm instance, with concurrent loads sharing a promise; HTTP caching adds up to one minute. Attendance retains its existing ten-minute cache. Phone tables keep the first column pinned at 104px, with full names wrapping and the other columns horizontally scrollable. The browser query is stale after five minutes and refetches on page load or when the tab regains focus; there is no reload button, and refetches read through these caches rather than forcing a Google Sheets refresh. Failed loads return 503 without source details and are not cached.
 
 `lib/dataExplorer.ts` supplies quoted/multiline CSV parsing, date validation, allowlisted fields, combined filters, PAX statistics, shared-workout counts, and formula-safe CSV export. Attendance exposes only PAX, AO, city, date, and Post/Q/FNG/QS/QS-Q flags. The Roster exposes only F3 name, Region, and EH’er. Names containing `(Archived)` or `(<18)` are excluded before serialization, including EH attribution labels. No contact/intake fields or Sites phone numbers leave the server.
 
-Views are PAX, Qsource, Kotter, Q Kotter, monthly AOs, and raw attendance. The initial period is the latest attendance year. View/date/AO/region/search/flag filters are serialized in the URL; `/data` is the canonical share link. Exports include all filtered rows in selected sort order, not only the visible page. PAX detail retains the explorer filters and always describes all-time attendance.
+Views are PAX, Qsource, Kotter, Q Kotter, monthly AOs, and raw attendance. The initial period is the latest attendance year. View/date/AO/region/search/flag filters are serialized in the URL; `/data` is the canonical share link. Exports include all filtered rows in selected sort order, not only the visible page. PAX detail retains the explorer filters and always describes all-time attendance. Its attendance card swipes between Month (calendar), Year (twelve mini months; tapping one opens it in Month), and Over time (posts and Qs per month from the first recorded post through `asOf`; the monthly average leaves out the partial current month).
 
 Workout summaries count `Post = 1`; Qsource counts `QS = 1` and `QS-Q` leadership. Multiple workouts on one day count separately as posts. Post percentage counts distinct attended dates divided by recorded workout dates in the selected period/AO; all-time denominators start at the PAX’s first recorded post at the selected AO, before flag filtering. Search, region, and flags do not shrink opportunity dates. Streaks count consecutive recorded workout dates, ignoring dates without workouts. First-in-view is not a region-qualified FNG date. Raw FNG flags remain raw; challenge eligibility is unchanged.
 
@@ -107,13 +108,13 @@ AO coverage uses current active Sites (`Active` status text or Y), not all histo
 
 Data pages share `app/DataPageShell.tsx`, `app/DataSectionNav.tsx`, and the `lib/useExplorerData.ts` browser query/cache. Trends and milestones reuse `/api/data`; they add no external calls, AI, persistent storage, or sheet writes. The attendance explorer’s PAX profiles link to the matching milestone forecast.
 
-Trends group public `Post = 1` rows into workouts by date + AO. Turnout counts distinct normalized PAX per workout; post totals retain source rows. Region average turnout is weighted by workouts. Unique PAX deduplicates names across the selected weeks/AOs. Compare up to four AOs over the same 13/26/52 Monday–Sunday weeks. The final week ends at `asOf`; weeks without records remain gaps, not claimed zero turnout. The heatmap always shows average turnout and links to raw attendance for that AO/week. No AO directory, schedule, city, or leadership details are added.
+Trends group public `Post = 1` rows into workouts by date + AO. Turnout counts distinct normalized PAX per workout; post totals retain source rows. Region average turnout is weighted by workouts. Unique PAX deduplicates names across the selected weeks/AOs. Compare up to four AOs over the same 13/26/52 Monday–Sunday weeks. The final week ends at `asOf`; weeks without records remain gaps, not claimed zero turnout. The heatmap always shows average turnout and links to raw attendance for that AO/week. AO names in the growth list and heatmap open the AO page. “Clear AOs and show whole region” removes the comparison, closes the panel, and scrolls to the graph; it is disabled when no AO is selected.
 
 AO growth compares each AO’s average turnout in the selected weeks with the same number of weeks just before; a percentage needs at least three workouts in both windows, and an AO with no earlier workouts is “New.” Compare on a growth row adds that AO to the graph (still up to four). Turnout by day averages distinct PAX per workout for each weekday over the selected weeks and AO selection.
 
 The attendance page’s “Last 7 days” strip compares the seven days ending at `asOf` with the seven before: posts, unique PAX, Bedrock FNGs (same rule as the challenge), and the AO with the highest average turnout. The PAX view’s “Last 12 wks” column shows posts in trailing 7-day buckets ending at `asOf`, following the AO filter but not the period; it is sortable and exported.
 
-Milestone totals include all recorded workout posts, including multiple posts on one day, but not Qsource-only attendance. The default next target is the next strictly larger multiple of 100; filters can instead project the next 500 or 1,000. Exact multiples of 1,000 receive the strongest emphasis, then other multiples of 500. Actual reached dates come from the corresponding numbered post.
+Milestone totals include all recorded workout posts, including multiple posts on one day, but not Qsource-only attendance. The default milestones are 100, 500, 1,000, then every 500 (`step=major`); filters can instead use every 100, 500s only, or 1,000s only. Old links with `step=100|500|1000` keep that interval. Exact multiples of 1,000 receive the strongest emphasis, then other multiples of 500. Actual reached dates come from the corresponding numbered post.
 
 Forecasts divide the remaining posts by the 90-day posts-per-calendar-day rate, using a shorter denominator for PAX whose first recorded post was more recent. No forecast date is returned with fewer than four posts in the inclusive 90-day window, fewer than 14 days of observation, or no post in the inclusive 30-day window. Earlier/later dates compare 30-day and 90-day pace; they are not statistical confidence bounds or schedule predictions. Forecast windows, recent periods, and timelines follow `asOf`, never the wall clock. Counts are this sheet’s recorded history, not a claim about lifetime posts outside it. Search, milestone interval, period, region, and AO selections persist in page URLs.
 
@@ -124,6 +125,12 @@ Forecasts divide the remaining posts by the 90-day posts-per-calendar-day rate, 
 The family tree uses Roster `EH'er` exactly as written, matched by normalized name like the leaderboard. An unmatched spelling becomes its own root; loops are broken rather than followed. Names with public posts link to their profiles.
 
 Ready for a first Q lists PAX with no recorded Q, 10+ posts, and 2+ posts in the 30 days ending `asOf`, excluding 2.0s, with the AO they posted at most in the last 90 days. Q ratio among regulars covers PAX with 13+ posts in the 90 days ending `asOf` (recorded Qs ÷ posts in that window). Region is not required for either list because most regulars have a blank Roster region.
+
+The run-site vs beatdown section uses AO types supplied by the region in `lib/community.ts` (`AO_KINDS`): Pinnacle, Rattlesnake Ridge, and Trailhead are run sites; Spartan, Divento, Grizzly Bar, Asylum, The Great Awakening, Outpost, Hilltop, and Excelsior are beatdowns. Unlisted AOs (for example CSAUP) count as neither. It lists Qs with 2+ run-site Qs and no beatdown Q in the 365 days ending `asOf` (with their last beatdown Q from all history) and a Q mix table for Qs with 3+ typed Qs in that window, counting each Q once per date and AO.
+
+### AO pages
+
+`/data/aos` lists AOs from recorded workouts with type, usual weekdays (2+ workouts on that weekday in the last 13 weeks), Sites city (placeholders such as `NA` hidden), and 13-week average turnout. AOs the Sites tab marks inactive, or with no workout in 90 days, are grouped separately. `/data/aos?ao=NAME&weeks=13|26|52|all&metric=…&vs=OTHER` shows one AO for the selected Monday–Sunday weeks ending `asOf`: totals, turnout change versus the same number of weeks before (3+ workouts in both windows; not shown for all time), a weekly graph with an optional second AO, swipeable Top PAX (distinct dates and share of the AO’s workouts), Top Qs, Best draw (average turnout at workouts each PAX Q’d, 2+ Qs), and Biggest workouts, plus turnout by weekday and Bedrock FNGs whose first FNG row was at this AO. It reuses `/api/data` with no AI, storage, or sheet writes.
 
 ## Chat request lifecycle
 

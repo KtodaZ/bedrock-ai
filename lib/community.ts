@@ -14,7 +14,10 @@ export function bedrockFngDates(data: ExplorerData) {
   const regions = new Map(
     data.people.map((p) => [normalizeDataName(p.name), p.region]),
   );
-  const firsts = new Map<string, { name: string; date: string }>();
+  const firsts = new Map<
+    string,
+    { name: string; date: string; site: string }
+  >();
   for (const row of data.rows) {
     if (!row.fng || row.date > data.asOf || !isPublicDataName(row.pax))
       continue;
@@ -22,7 +25,7 @@ export function bedrockFngDates(data: ExplorerData) {
     if (!isBedrock(regions.get(key))) continue;
     const seen = firsts.get(key);
     if (!seen || row.date < seen.date)
-      firsts.set(key, { name: row.pax, date: row.date });
+      firsts.set(key, { name: row.pax, date: row.date, site: row.site });
   }
   return firsts;
 }
@@ -65,9 +68,7 @@ export const ACTIVE_DAYS = 30;
 
 export function fngCohorts(data: ExplorerData): FngCohort[] {
   const dates = postDates(data);
-  const names = new Map(
-    data.people.map((p) => [normalizeDataName(p.name), p]),
-  );
+  const names = new Map(data.people.map((p) => [normalizeDataName(p.name), p]));
   const activeFrom = addDataDays(data.asOf, -(ACTIVE_DAYS - 1));
   const [asOfYear, asOfMonth] = data.asOf.split("-").map(Number);
   const earlyFrom = new Date(Date.UTC(asOfYear, asOfMonth - 2, 1))
@@ -178,9 +179,7 @@ export function familyTree(data: ExplorerData): TreeNode[] {
   for (const key of children.keys()) if (!parent.has(key)) add(key);
   for (const key of [...parent.keys()].sort())
     if (!inTree.has(key) && children.has(key)) add(key);
-  return roots.sort(
-    (a, b) => b.size - a.size || a.name.localeCompare(b.name),
-  );
+  return roots.sort((a, b) => b.size - a.size || a.name.localeCompare(b.name));
 }
 export function treeMatches(node: TreeNode, search: string): boolean {
   return (
@@ -298,4 +297,106 @@ export function regularQRatios(data: ExplorerData): RegularQRatio[] {
       (a, b) =>
         b.ratio - a.ratio || b.qs90 - a.qs90 || a.name.localeCompare(b.name),
     );
+}
+
+export type AoKind = "run" | "beatdown";
+/** Run sites vs beatdowns as given by the region (Oct 2026). Unlisted AOs count as neither. */
+const AO_KINDS: Record<string, AoKind> = {
+  spartan: "beatdown",
+  divento: "beatdown",
+  pinnacle: "run",
+  "rattlesnake ridge": "run",
+  "grizzly bar": "beatdown",
+  asylum: "beatdown",
+  "great awakening": "beatdown",
+  trailhead: "run",
+  outpost: "beatdown",
+  hilltop: "beatdown",
+  excelsior: "beatdown",
+};
+export function aoKind(site: string): AoKind | null {
+  return (
+    AO_KINDS[
+      site
+        .trim()
+        .toLowerCase()
+        .replace(/^the\s+/, "")
+    ] ?? null
+  );
+}
+export const RUN_SITES = Object.keys(AO_KINDS).filter(
+  (k) => AO_KINDS[k] === "run",
+);
+export const Q_MIX = { days: 365, runOnlyMin: 2, mixMin: 3 } as const;
+
+export interface QMix {
+  name: string;
+  run: number;
+  beatdown: number;
+  /** Run-site share of run + beatdown Qs in the window. */
+  runShare: number;
+  lastRun: string;
+  /** Most recent beatdown Q in all recorded attendance, or "". */
+  lastBeatdown: string;
+}
+/** Qs at run sites vs beatdowns in the last 365 days ending asOf. */
+export function qMix(data: ExplorerData) {
+  const from = addDataDays(data.asOf, -(Q_MIX.days - 1));
+  const people = new Map(
+    data.people.map((p) => [normalizeDataName(p.name), p.name]),
+  );
+  const result = new Map<string, QMix>();
+  const seen = new Set<string>();
+  for (const row of data.rows) {
+    if (!row.post || !row.q || row.date > data.asOf) continue;
+    if (!isPublicDataName(row.pax)) continue;
+    const kind = aoKind(row.site);
+    if (!kind) continue;
+    const key = normalizeDataName(row.pax);
+    const id = `${key}\0${row.date}\0${row.site}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const m = result.get(key) ?? {
+      name: people.get(key) ?? row.pax.trim(),
+      run: 0,
+      beatdown: 0,
+      runShare: 0,
+      lastRun: "",
+      lastBeatdown: "",
+    };
+    if (kind === "beatdown" && row.date > m.lastBeatdown)
+      m.lastBeatdown = row.date;
+    if (row.date >= from) {
+      if (kind === "run") {
+        m.run++;
+        if (row.date > m.lastRun) m.lastRun = row.date;
+      } else m.beatdown++;
+    }
+    result.set(key, m);
+  }
+  const all = [...result.values()]
+    .map((m) => ({
+      ...m,
+      runShare: m.run + m.beatdown ? (m.run / (m.run + m.beatdown)) * 100 : 0,
+    }))
+    .filter((m) => m.run + m.beatdown > 0);
+  return {
+    /** Led a run site at least twice and no beatdown in the window. */
+    runOnly: all
+      .filter((m) => m.run >= Q_MIX.runOnlyMin && m.beatdown === 0)
+      .sort(
+        (a, b) =>
+          b.run - a.run ||
+          b.lastRun.localeCompare(a.lastRun) ||
+          a.name.localeCompare(b.name),
+      ),
+    mix: all
+      .filter((m) => m.run + m.beatdown >= Q_MIX.mixMin)
+      .sort(
+        (a, b) =>
+          b.runShare - a.runShare ||
+          b.run - a.run ||
+          a.name.localeCompare(b.name),
+      ),
+  };
 }

@@ -5,7 +5,8 @@ import {
   type ExplorerData,
 } from "./dataExplorer";
 
-export type MilestoneStep = 100 | 500 | 1000;
+/** "major" is 100, 500, then every 500 (1,000, 1,500, 2,000…). */
+export type MilestoneStep = "major" | 100 | 500 | 1000;
 export type MilestoneTier = "hundred" | "five-hundred" | "thousand";
 export interface MilestoneForecast {
   name: string;
@@ -31,7 +32,10 @@ export interface ReachedMilestone {
   tier: MilestoneTier;
 }
 export function nextPostMilestone(posts: number, step: MilestoneStep = 100) {
-  return (Math.floor(Math.max(0, posts) / step) + 1) * step;
+  const n = Math.max(0, posts);
+  if (step === "major")
+    return n < 100 ? 100 : n < 500 ? 500 : (Math.floor(n / 500) + 1) * 500;
+  return (Math.floor(n / step) + 1) * step;
 }
 export function milestoneTier(target: number): MilestoneTier {
   return target % 1000 === 0
@@ -109,7 +113,11 @@ export function buildMilestones(data: ExplorerData, step: MilestoneStep = 100) {
       reason,
       tier: milestoneTier(target),
     });
-    for (let milestone = step; milestone <= posts; milestone += step)
+    for (
+      let milestone = nextPostMilestone(0, step);
+      milestone <= posts;
+      milestone = nextPostMilestone(milestone, step)
+    )
       reached.push({
         name,
         region,

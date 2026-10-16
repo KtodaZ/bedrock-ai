@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "How It Works — Bedrock Data AI",
-  description: "How Bedrock Data AI answers questions about F3 attendance",
+  title: "How It Works — Bedrock Data",
+  description: "How Bedrock Data answers questions about F3 attendance",
 };
 
 export default function HowItWorksPage() {
@@ -45,7 +45,7 @@ export default function HowItWorksPage() {
             className="text-3xl sm:text-4xl font-bold mb-4 bg-clip-text text-transparent leading-tight"
             style={{ backgroundImage: "linear-gradient(135deg, #a78bfa, #60a5fa, #f0f0ff)" }}
           >
-            How Bedrock Data AI Works
+            How Bedrock Data Works
           </h1>
           <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
             Ask about F3 attendance in plain English. Bedrock queries the attendance sheet and shows the results, along with the SQL it used.

@@ -16,6 +16,8 @@ import {
 import { type ExplorerData } from "../lib/dataExplorer";
 import DataInsightsFrame, { insightDate } from "./DataInsightsFrame";
 import Sparkline from "./Sparkline";
+import LineChart from "./LineChart";
+import { aoURL } from "../lib/aoProfile";
 import common from "./DataExplorer.module.css";
 import styles from "./DataInsights.module.css";
 
@@ -42,141 +44,6 @@ interface Series {
   name: string;
   color: string;
   buckets: AttendanceBucket[];
-}
-function LineChart({
-  series,
-  metric,
-}: {
-  series: Series[];
-  metric: TrendMetric;
-}) {
-  const chartRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(1000);
-  useEffect(() => {
-    const observer = new ResizeObserver((entries) =>
-      setWidth(Math.max(300, entries[0].contentRect.width)),
-    );
-    if (chartRef.current) observer.observe(chartRef.current);
-    return () => observer.disconnect();
-  }, []);
-  const height = width < 600 ? 235 : 285,
-    left = 45,
-    right = 18,
-    top = 18,
-    bottom = 38;
-  const allValues = series
-    .flatMap((s) => s.buckets.map((b) => attendanceValue(b, metric)))
-    .filter((v): v is number => v !== null);
-  const max = Math.max(1, ...allValues),
-    ceiling = Math.ceil(max / 4) * 4;
-  const x = (i: number) =>
-    left +
-    (i / Math.max(1, series[0].buckets.length - 1)) * (width - left - right);
-  const y = (v: number) => top + (1 - v / ceiling) * (height - top - bottom);
-  const label = METRICS.find((m) => m.key === metric)!.label;
-  return (
-    <div ref={chartRef} className={styles.chartScroll}>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className={styles.lineChart}
-        role="img"
-        aria-labelledby="attendance-chart-title attendance-chart-desc"
-      >
-        <title id="attendance-chart-title">{label} over time</title>
-        <desc id="attendance-chart-desc">
-          {series.map((s) => s.name).join(", ")}. Missing records create gaps.
-          The last week is partial. Exact weekly values are in the table below.
-        </desc>
-        {[0, 1, 2, 3, 4].map((i) => {
-          const value = (ceiling * i) / 4;
-          return (
-            <g key={i}>
-              <line
-                x1={left}
-                x2={width - right}
-                y1={y(value)}
-                y2={y(value)}
-                stroke="#33283f"
-                strokeDasharray={i === 0 ? undefined : "3 5"}
-              />
-              <text
-                x={left - 10}
-                y={y(value) + 4}
-                textAnchor="end"
-                fill="#b4a6c6"
-                fontSize={width < 600 ? 10 : 12}
-              >
-                {value.toFixed(ceiling <= 10 ? 1 : 0)}
-              </text>
-            </g>
-          );
-        })}
-        {series[0].buckets.map(
-          (bucket, i, arr) =>
-            (i % Math.ceil(arr.length / (width < 600 ? 4 : 7)) === 0 ||
-              i === arr.length - 1) && (
-              <text
-                key={bucket.start}
-                x={x(i)}
-                y={height - 11}
-                textAnchor={
-                  i === 0 ? "start" : i === arr.length - 1 ? "end" : "middle"
-                }
-                fill="#b4a6c6"
-                fontSize={width < 600 ? 10 : 12}
-              >
-                {insightDate(bucket.start)}
-                {i === arr.length - 1 ? "*" : ""}
-              </text>
-            ),
-        )}
-        {series.map((s) => {
-          let drawing = false;
-          const path = s.buckets
-            .map((b, i) => {
-              const value = attendanceValue(b, metric);
-              if (value === null) {
-                drawing = false;
-                return "";
-              }
-              const part = `${drawing ? "L" : "M"}${x(i)},${y(value)}`;
-              drawing = true;
-              return part;
-            })
-            .join(" ");
-          return (
-            <g key={s.name}>
-              <path
-                d={path}
-                fill="none"
-                stroke={s.color}
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {s.buckets.map((b, i) => {
-                const value = attendanceValue(b, metric);
-                return value === null ? null : (
-                  <circle
-                    key={b.start}
-                    cx={x(i)}
-                    cy={y(value)}
-                    r="3.5"
-                    fill={s.color}
-                  >
-                    <title>
-                      {s.name}, week of {insightDate(b.start, true)}:{" "}
-                      {value.toFixed(metric === "average" ? 1 : 0)}
-                    </title>
-                  </circle>
-                );
-              })}
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
 }
 export default function AttendanceTrends() {
   return (
@@ -269,6 +136,7 @@ function TrendsContent({ data }: { data: ExplorerData }) {
   const weekdays = weekdayTurnout(workouts, first, data.asOf, selectedSites);
   const weekdayMax = Math.max(1, ...weekdays.map((d) => d.average ?? 0));
   const chartHeading = useRef<HTMLHeadingElement>(null);
+  const compareRef = useRef<HTMLDetailsElement>(null);
   const toggleCompare = (site: string) => {
     const next = selectedSites.includes(site)
       ? selectedSites.filter((s) => s !== site)
@@ -313,7 +181,7 @@ function TrendsContent({ data }: { data: ExplorerData }) {
             ))}
           </select>
         </label>
-        <details className={styles.compareControls}>
+        <details className={styles.compareControls} ref={compareRef}>
           <summary>
             Compare AOs
             {selectedSites.length ? ` · ${selectedSites.length} selected` : ""}
@@ -360,12 +228,20 @@ function TrendsContent({ data }: { data: ExplorerData }) {
               site.toLowerCase().includes(aoSearch.toLowerCase()),
             ) && <p>No AO matches that name.</p>}
             <button
+              disabled={!selectedSites.length}
               onClick={() => {
                 setSites([]);
                 setAoSearch("");
+                if (compareRef.current) compareRef.current.open = false;
+                chartHeading.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
               }}
             >
-              Show all AOs together
+              {selectedSites.length
+                ? "Clear AOs and show whole region"
+                : "Showing whole region"}
             </button>
           </div>
         </details>
@@ -409,7 +285,23 @@ function TrendsContent({ data }: { data: ExplorerData }) {
             </li>
           ))}
         </ul>
-        <LineChart series={series} metric={metric} />
+        <LineChart
+          series={series.map((s) => ({
+            name: s.name,
+            color: s.color,
+            values: s.buckets.map((b) => attendanceValue(b, metric)),
+          }))}
+          labels={regionBuckets.map(
+            (b, i) =>
+              insightDate(b.start) +
+              (i === regionBuckets.length - 1 ? "*" : ""),
+          )}
+          title={`${METRICS.find((m) => m.key === metric)!.label} over time`}
+          description={`${series.map((s) => s.name).join(", ")}. Missing records create gaps. The last week is partial. Exact weekly values are in the table below.`}
+          pointTitle={(name, i, value) =>
+            `${name}, week of ${insightDate(regionBuckets[i].start, true)}: ${value.toFixed(metric === "average" ? 1 : 0)}`
+          }
+        />
         <p className={styles.note}>
           *The last week is partial. Gaps mean no recorded workouts, not
           confirmed zero turnout.
@@ -474,7 +366,9 @@ function TrendsContent({ data }: { data: ExplorerData }) {
             return (
               <li key={g.site}>
                 <div className={styles.growthName}>
-                  <strong>{g.site}</strong>
+                  <Link className={styles.nameLink} href={aoURL(g.site)}>
+                    <strong>{g.site}</strong>
+                  </Link>
                   <small>
                     {g.workouts} {g.workouts === 1 ? "workout" : "workouts"}
                     {" · "}
@@ -616,7 +510,9 @@ function TrendsContent({ data }: { data: ExplorerData }) {
                 {heatRows.map((row) => (
                   <tr key={row.site}>
                     <th scope="row" className={styles.heatPinned}>
-                      {row.site}
+                      <Link className={styles.nameLink} href={aoURL(row.site)}>
+                        {row.site}
+                      </Link>
                     </th>
                     {row.buckets.map((b) => (
                       <td key={b.start}>

@@ -8,7 +8,10 @@ import { nextPostMilestone } from "../lib/milestones";
 import DataSectionNav from "./DataSectionNav";
 import RegionPulse from "./RegionPulse";
 import Sparkline from "./Sparkline";
+import SwipeViews from "./SwipeViews";
+import { PaxOverTime, PaxYear } from "./PaxActivity";
 import { weeklyPostCounts } from "../lib/attendanceTrends";
+import { aoURL } from "../lib/aoProfile";
 import {
   companions,
   dataCSV,
@@ -190,10 +193,6 @@ export default function DataExplorer() {
       ) : (
         <Explorer
           data={query.data}
-          refreshing={query.isFetching}
-          refresh={() => {
-            void query.refetch();
-          }}
           refreshError={query.isRefetchError}
         />
       )}
@@ -202,13 +201,9 @@ export default function DataExplorer() {
 }
 function Explorer({
   data,
-  refreshing,
-  refresh,
   refreshError,
 }: {
   data: ExplorerData;
-  refreshing: boolean;
-  refresh: () => void;
   refreshError: boolean;
 }) {
   // Next updates window.location after a client navigation renders, so read its params.
@@ -414,16 +409,13 @@ function Explorer({
         <span>
           Attendance through <strong>{formatDate(data.asOf)}</strong>
         </span>
-        <button disabled={refreshing} onClick={refresh}>
-          {refreshing ? "Loading…" : "Reload data"}
-        </button>
         <span className={styles.cacheNote}>
           Sheet changes may take up to 10 minutes to appear.
         </span>
       </div>
       {refreshError && (
         <p role="alert" className={styles.notice}>
-          Reload failed. Showing the last loaded data. Try reloading again.
+          Couldn’t refresh attendance. Showing the last loaded data.
         </p>
       )}
       {shareMessage && (
@@ -935,6 +927,10 @@ function PaxDetail({
   const [month, setMonth] = useState(
     (rows.at(-1)?.date ?? data.asOf).slice(0, 7),
   );
+  const [activityView, setActivityView] = useState(0),
+    [activityYear, setActivityYear] = useState(() =>
+      Number((rows.at(-1)?.date ?? data.asOf).slice(0, 4)),
+    );
   const [relation, setRelation] = useState<"with" | "by" | "led">("with"),
     [range, setRange] = useState("all");
   const start =
@@ -1040,113 +1036,156 @@ function PaxDetail({
           className={styles.calendarSection}
           aria-labelledby="calendar-heading"
         >
-          <div className={styles.sectionHeading}>
-            <h3 id="calendar-heading">Attendance calendar</h3>
-            <div className={styles.monthControls}>
-              <button
-                aria-label="Previous month"
-                onClick={() => shiftMonth(-1)}
-              >
-                ‹
-              </button>
-              <input
-                aria-label="Calendar month"
-                type="month"
-                value={month}
-                onChange={(e) => {
-                  if (e.target.value && /^\d{4}-\d{2}$/.test(e.target.value))
-                    setMonth(e.target.value);
-                }}
-              />
-              <button aria-label="Next month" onClick={() => shiftMonth(1)}>
-                ›
-              </button>
-            </div>
-          </div>
-          <div
-            className={styles.calendar}
-            role="group"
-            aria-label={`Attendance for ${month}`}
-          >
-            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-              <span className={styles.weekday} key={day}>
-                {day}
-              </span>
-            ))}
-            {Array.from({ length: firstWeekday }, (_, i) => (
-              <span key={`blank${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth }, (_, i) => {
-              const day = i + 1,
-                date = `${month}-${String(day).padStart(2, "0")}`,
-                dayRows = calendarRows.filter((row) => row.date === date),
-                dayPosts = dayRows.filter((row) => row.post),
-                hasQ = dayPosts.some((row) => row.q),
-                hasQS = dayRows.some((row) => row.qs);
-              const summary = dayRows
-                .filter((row) => row.post || row.qs)
-                .map(
-                  (row) =>
-                    `${row.site}${row.post ? " · Post" : ""}${row.q ? " · Q" : ""}${row.qs ? " · QS" : ""}${row.qsq ? " · QS-Q" : ""}`,
-                )
-                .join("; ");
-              return (
-                <div
-                  key={day}
-                  className={`${styles.calendarDay} ${dayPosts.length ? styles.postDay : ""} ${hasQ ? styles.qDay : ""}`}
-                  title={`${formatDate(date)}${summary ? ": " + summary : ": No recorded attendance"}`}
-                  aria-label={`${formatDate(date)}${summary ? ": " + summary : ": No recorded attendance"}`}
-                >
-                  <span>{day}</span>
-                  <small>
-                    {hasQ
-                      ? "Q"
-                      : dayPosts.length > 1
-                        ? `${dayPosts.length} posts`
-                        : dayPosts.length
-                          ? "Post"
-                          : ""}
-                    {hasQS ? " QS" : ""}
-                  </small>
+          <h3 id="calendar-heading" className={styles.activityHeading}>
+            Attendance
+          </h3>
+          <SwipeViews
+            label="Attendance views"
+            index={activityView}
+            onIndexChange={setActivityView}
+            views={[
+              {
+                key: "month",
+                label: "Month",
+                content: (
+                  <>
+              <div className={styles.sectionHeading}>
+                <p className={styles.yearTotal}>
+                  {number(calendarRows.filter((r) => r.post).length)} posts in{" "}
+                  {MONTHS[monthNum - 1]}
+                </p>
+                <div className={styles.monthControls}>
+                  <button
+                    aria-label="Previous month"
+                    onClick={() => shiftMonth(-1)}
+                  >
+                    ‹
+                  </button>
+                  <input
+                    aria-label="Calendar month"
+                    type="month"
+                    value={month}
+                    onChange={(e) => {
+                      if (e.target.value && /^\d{4}-\d{2}$/.test(e.target.value))
+                        setMonth(e.target.value);
+                    }}
+                  />
+                  <button aria-label="Next month" onClick={() => shiftMonth(1)}>
+                    ›
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-          <p className={styles.viewNote}>
-            Purple = post · green = Q · QS = Qsource. See the list below for
-            each date’s details.
-          </p>
-          <details className={styles.monthList}>
-            <summary>
-              {number(calendarRows.filter((r) => r.post || r.qs).length)}{" "}
-              attendance entries in {MONTHS[monthNum - 1]} {yearNum}
-            </summary>
-            {calendarRows.filter((r) => r.post || r.qs).length ? (
-              <ul>
-                {calendarRows
-                  .filter((r) => r.post || r.qs)
-                  .map((r, i) => (
-                    <li key={i}>
-                      <span>
-                        {formatDate(r.date)} · {r.site}
-                      </span>
-                      <strong>
-                        {[
-                          r.post && "Post",
-                          r.q && "Q",
-                          r.qs && "QS",
-                          r.qsq && "QS-Q",
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </strong>
-                    </li>
-                  ))}
-              </ul>
-            ) : (
-              <p>No posts or Qsource attendance this month.</p>
-            )}
-          </details>
+              </div>
+              <div
+                className={styles.calendar}
+                role="group"
+                aria-label={`Attendance for ${month}`}
+              >
+                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                  <span className={styles.weekday} key={day}>
+                    {day}
+                  </span>
+                ))}
+                {Array.from({ length: firstWeekday }, (_, i) => (
+                  <span key={`blank${i}`} />
+                ))}
+                {Array.from({ length: daysInMonth }, (_, i) => {
+                  const day = i + 1,
+                    date = `${month}-${String(day).padStart(2, "0")}`,
+                    dayRows = calendarRows.filter((row) => row.date === date),
+                    dayPosts = dayRows.filter((row) => row.post),
+                    hasQ = dayPosts.some((row) => row.q),
+                    hasQS = dayRows.some((row) => row.qs);
+                  const summary = dayRows
+                    .filter((row) => row.post || row.qs)
+                    .map(
+                      (row) =>
+                        `${row.site}${row.post ? " · Post" : ""}${row.q ? " · Q" : ""}${row.qs ? " · QS" : ""}${row.qsq ? " · QS-Q" : ""}`,
+                    )
+                    .join("; ");
+                  return (
+                    <div
+                      key={day}
+                      className={`${styles.calendarDay} ${dayPosts.length ? styles.postDay : ""} ${hasQ ? styles.qDay : ""}`}
+                      title={`${formatDate(date)}${summary ? ": " + summary : ": No recorded attendance"}`}
+                      aria-label={`${formatDate(date)}${summary ? ": " + summary : ": No recorded attendance"}`}
+                    >
+                      <span>{day}</span>
+                      <small>
+                        {hasQ
+                          ? "Q"
+                          : dayPosts.length > 1
+                            ? `${dayPosts.length} posts`
+                            : dayPosts.length
+                              ? "Post"
+                              : ""}
+                        {hasQS ? " QS" : ""}
+                      </small>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className={styles.viewNote}>
+                Purple = post · green = Q · QS = Qsource. See the list below for
+                each date’s details.
+              </p>
+              <details className={styles.monthList}>
+                <summary>
+                  {number(calendarRows.filter((r) => r.post || r.qs).length)}{" "}
+                  attendance entries in {MONTHS[monthNum - 1]} {yearNum}
+                </summary>
+                {calendarRows.filter((r) => r.post || r.qs).length ? (
+                  <ul>
+                    {calendarRows
+                      .filter((r) => r.post || r.qs)
+                      .map((r, i) => (
+                        <li key={i}>
+                          <span>
+                            {formatDate(r.date)} · {r.site}
+                          </span>
+                          <strong>
+                            {[
+                              r.post && "Post",
+                              r.q && "Q",
+                              r.qs && "QS",
+                              r.qsq && "QS-Q",
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </strong>
+                        </li>
+                      ))}
+                  </ul>
+                ) : (
+                  <p>No posts or Qsource attendance this month.</p>
+                )}
+              </details>
+                  </>
+                ),
+              },
+              {
+                key: "year",
+                label: "Year",
+                content: (
+                  <PaxYear
+                    rows={rows}
+                    year={activityYear}
+                    setYear={setActivityYear}
+                    firstYear={Number((posts[0]?.date ?? data.asOf).slice(0, 4))}
+                    lastYear={Number(data.asOf.slice(0, 4))}
+                    openMonth={(m) => {
+                      setMonth(m);
+                      setActivityView(0);
+                    }}
+                  />
+                ),
+              },
+              {
+                key: "trend",
+                label: "Over time",
+                content: <PaxOverTime rows={rows} asOf={data.asOf} />,
+              },
+            ]}
+          />
         </section>
         <section className={styles.locations}>
           <h3>Posts by AO</h3>
@@ -1161,7 +1200,15 @@ function PaxDetail({
               <tbody>
                 {locations.map((item) => (
                   <tr key={item.site}>
-                    <td>{item.site || "Unspecified"}</td>
+                    <td>
+                      {item.site ? (
+                        <Link className={styles.sourceLink} href={aoURL(item.site)}>
+                          {item.site}
+                        </Link>
+                      ) : (
+                        "Unspecified"
+                      )}
+                    </td>
                     <td>{number(item.count)}</td>
                   </tr>
                 ))}

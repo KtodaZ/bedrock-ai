@@ -20,7 +20,7 @@ export default function DataInsightsFrame({
   description,
   children,
 }: {
-  page: "trends" | "milestones" | "community";
+  page: "trends" | "aos" | "milestones" | "community";
   title: string;
   description: string;
   children: (data: ExplorerData) => ReactNode;
@@ -48,16 +48,10 @@ export default function DataInsightsFrame({
                 Attendance through{" "}
                 <strong>{insightDate(query.data.asOf, true)}</strong>
               </span>
-              <button
-                onClick={() => query.refetch()}
-                disabled={query.isFetching}
-              >
-                {query.isFetching ? "Loading…" : "Reload data"}
-              </button>
             </div>
             {query.isRefetchError && (
               <p className={common.notice} role="alert">
-                Reload failed. Showing the last loaded attendance.
+                Couldn’t refresh attendance. Showing the last loaded data.
               </p>
             )}
             {children(query.data)}

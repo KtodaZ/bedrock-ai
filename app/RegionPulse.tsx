@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { regionPulse } from "../lib/attendanceTrends";
 import type { ExplorerData } from "../lib/dataExplorer";
+import { aoURL } from "../lib/aoProfile";
 import { insightDate } from "./DataInsightsFrame";
 import styles from "./DataInsights.module.css";
 
@@ -50,7 +51,13 @@ export default function RegionPulse({ data }: { data: ExplorerData }) {
         </div>
         <div>
           <dt>Biggest turnout</dt>
-          <dd className={styles.pulseAO}>{current.topAO?.site ?? "—"}</dd>
+          <dd className={styles.pulseAO}>
+            {current.topAO ? (
+              <Link href={aoURL(current.topAO.site)}>{current.topAO.site}</Link>
+            ) : (
+              "—"
+            )}
+          </dd>
           {current.topAO && (
             <small className={styles.pulseFlat}>
               {current.topAO.average.toFixed(1)} PAX per workout

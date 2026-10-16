@@ -782,3 +782,118 @@
 
 .sourceLink { display: inline-flex; align-items: center; min-height: 32px; color: #c4abff; text-decoration: underline; text-underline-offset: 3px; }
 .sourceLink:hover { color: #e3d4ff; }
+
+/* Profile attendance views */
+.activityHeading {
+  margin: 0 0 12px;
+}
+.yearTotal {
+  margin: 0;
+  color: #c3b5d3;
+  font-size: 13px;
+}
+.yearLabel {
+  min-width: 64px;
+  text-align: center;
+  color: #eee4ff;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.monthControls button:disabled {
+  opacity: 0.35;
+}
+.yearGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.miniMonth {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch !important;
+  justify-items: stretch;
+  align-content: start;
+  width: 100%;
+  gap: 6px;
+  padding: 8px !important;
+  background: #100d19 !important;
+  border: 1px solid #292231 !important;
+  border-radius: 7px !important;
+  text-align: left;
+  color: #d9cceb !important;
+}
+.miniMonth:hover {
+  border-color: #6a478d !important;
+}
+.miniHeading {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+}
+.miniHeading small {
+  color: #c3a1ff;
+  font-variant-numeric: tabular-nums;
+}
+.miniDays {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.miniDays > span {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: #1f1a2a;
+}
+.miniDays > .miniBlank {
+  background: transparent;
+}
+.miniDays > .miniPost {
+  background: #8a5fc4;
+}
+.miniDays > .miniQ {
+  background: #3fb592;
+}
+.overTimeStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.overTimeStats dt {
+  color: #a99abf;
+  font-size: 11px;
+}
+.overTimeStats dd {
+  margin-top: 4px;
+  color: #eee6ff;
+  font-size: 19px;
+  font-weight: 600;
+}
+.overTimeStats dd small {
+  color: #b7a8c9;
+  font-size: 11px;
+  font-weight: 400;
+}
+.chartKey {
+  display: flex;
+  gap: 18px;
+  list-style: none;
+  margin-top: 14px;
+  font-size: 12px;
+  color: #d4c4e5;
+}
+.chartKey li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.chartKey span {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+}

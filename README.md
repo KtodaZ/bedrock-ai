@@ -1,4 +1,4 @@
-# Bedrock Data AI
+# Bedrock Data
 
 F3 Bedrock attendance questions, a searchable data explorer, the EH Challenge leaderboard, and a read-only MCP connector for your own AI agent.
 
@@ -41,11 +41,11 @@ EH corrections are saved for review and posted to Discord. Names and notes appea
 
 ### Data explorer
 
-The **Data** tab and [/data](https://data.f3bedrock.com/data) provide read-only PAX summaries, Qsource, Kotter and Q Kotter lists, monthly AO coverage, and raw attendance. Combine name, date, AO, Roster region, and attendance-flag filters; sort columns, share a filtered link, or export every matching row to CSV. Select a name for all-time attendance, a calendar, AO counts, 100-post milestones, and shared workouts.
+The **Data** tab and [/data](https://data.f3bedrock.com/data) provide read-only PAX summaries, Qsource, Kotter and Q Kotter lists, monthly AO coverage, and raw attendance. Combine name, date, AO, Roster region, and attendance-flag filters; sort columns, share a filtered link, or export every matching row to CSV. Select a name for all-time attendance, a swipeable month/year/over-time attendance card, AO counts, 100-post milestones, and shared workouts.
 
 The explorer reads the same attendance and Roster tabs plus the existing Sites tab for active AOs. It makes no AI calls. Archived names and entries marked `(<18)` are excluded; contact and intake fields are never served. Dates and inactivity thresholds follow the latest attendance date. Open “How these numbers work” for calculation details.
 
-[Trends](https://data.f3bedrock.com/data/trends) shows turnout graphs, comparisons of up to four AOs, and a weekly attendance heatmap with links to the matching raw rows. [Milestones](https://data.f3bedrock.com/data/milestones) projects each PAX’s next hundred, highlights 500s and 1,000s, and lists recently reached milestones. Estimates use recent recorded attendance; totals cover this sheet rather than posts at other regions. [Community](https://data.f3bedrock.com/data/community) shows how each month’s FNGs followed through, the Roster EH family tree, PAX ready for a first Q, and Q ratios among regulars. Trends also ranks AO growth and turnout by weekday, and the attendance page opens with a last-7-days summary.
+[Trends](https://data.f3bedrock.com/data/trends) shows turnout graphs, comparisons of up to four AOs, and a weekly attendance heatmap with links to the matching raw rows. [AOs](https://data.f3bedrock.com/data/aos) lists every AO; open one for turnout over time, growth, top PAX, top Qs, which Qs draw the most PAX, biggest workouts, best days, and a comparison with another AO. [Milestones](https://data.f3bedrock.com/data/milestones) projects 100, 500, 1,000, and every 500 after by default (filterable to every 100), highlights 500s and 1,000s, and lists recently reached milestones. Estimates use recent recorded attendance; totals cover this sheet rather than posts at other regions. [Community](https://data.f3bedrock.com/data/community) shows how each month’s FNGs followed through, the Roster EH family tree, PAX ready for a first Q, Q ratios among regulars, and Qs who lead run sites but not beatdowns. Trends also ranks AO growth and turnout by weekday, and the attendance page opens with a last-7-days summary.
 
 ### Chats and stored data
 

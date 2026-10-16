@@ -8,7 +8,10 @@ import {
   FNG_STAGES,
   REGULAR_POSTS_90,
   familyTree,
+  Q_MIX,
+  aoKind,
   firstQCandidates,
+  qMix,
   fngCohorts,
   fngTotals,
   regularQRatios,
@@ -139,6 +142,11 @@ function FngFollowThrough({ data }: { data: ExplorerData }) {
           </li>
         ))}
       </ul>
+      <p className={styles.note}>
+        <em className={styles.earlyTerm}>Still early</em> marks the latest
+        attendance month and the month before. Those FNGs have had only a few
+        weeks to come back, so their counts will keep changing.
+      </p>
       {cohorts.length ? (
         <div className={styles.cohorts}>
           {cohorts.map((c) => (
@@ -433,6 +441,103 @@ function QLeadership({ data }: { data: ExplorerData }) {
           uses all recorded history.
         </p>
       </section>
+      <RunBeatdownMix data={data} />
     </>
+  );
+}
+
+function RunBeatdownMix({ data }: { data: ExplorerData }) {
+  const { runOnly, mix } = useMemo(() => qMix(data), [data]);
+  const [showAll, setShowAll] = useState(false);
+  const runSites = [
+    ...new Set(data.rows.map((r) => r.site).filter((s) => aoKind(s) === "run")),
+  ].sort();
+  return (
+    <section aria-labelledby="run-only-heading" className={styles.qRatioSection}>
+      <div className={styles.chartTitle}>
+        <h2 id="run-only-heading">Run-site Qs, no beatdown yet</h2>
+        <p>
+          {Q_MIX.runOnlyMin}+ run-site Qs and no beatdown Q in the last{" "}
+          {Q_MIX.days} days
+        </p>
+      </div>
+      {runOnly.length ? (
+        <ol className={styles.readyList}>
+          {runOnly.map((m) => (
+            <li key={m.name}>
+              <Link className={styles.nameLink} href={profileURL(m.name)}>
+                {m.name}
+              </Link>
+              <span>
+                {m.run} run-site Qs · last {insightDate(m.lastRun, true)}
+              </span>
+              <small>
+                {m.lastBeatdown
+                  ? `Last beatdown Q ${insightDate(m.lastBeatdown, true)}`
+                  : "No recorded beatdown Q"}
+              </small>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className={styles.note}>No one matches right now.</p>
+      )}
+      <div className={styles.chartTitle}>
+        <h2 id="q-mix-heading">Q mix: run sites vs beatdowns</h2>
+        <p>
+          {Q_MIX.mixMin}+ Qs at listed AOs in the last {Q_MIX.days} days ·
+          most run-heavy first
+        </p>
+      </div>
+      {mix.length ? (
+        <div
+          className={common.tableScroll}
+          tabIndex={0}
+          role="region"
+          aria-labelledby="q-mix-heading"
+        >
+          <table className={common.table}>
+            <thead>
+              <tr>
+                <th scope="col" className={common.pinned}>
+                  Q
+                </th>
+                <th scope="col">Run</th>
+                <th scope="col">Beatdown</th>
+                <th scope="col">Run share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mix.slice(0, showAll ? undefined : 15).map((m) => (
+                <tr key={m.name}>
+                  <td className={common.pinned}>
+                    <Link className={styles.nameLink} href={profileURL(m.name)}>
+                      {m.name}
+                    </Link>
+                  </td>
+                  <td>{m.run}</td>
+                  <td>{m.beatdown}</td>
+                  <td>{Math.round(m.runShare)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className={styles.note}>No Qs have enough recorded Qs yet.</p>
+      )}
+      {mix.length > 15 && (
+        <button
+          className={styles.textButton}
+          onClick={() => setShowAll((v) => !v)}
+        >
+          {showAll ? "Show top 15" : `Show all ${mix.length} Qs`}
+        </button>
+      )}
+      <p className={styles.note}>
+        Run sites: {runSites.join(", ")}. Every other listed AO is a beatdown;
+        AOs without a type, like CSAUP, aren’t counted.
+      </p>
+    </section>
   );
 }

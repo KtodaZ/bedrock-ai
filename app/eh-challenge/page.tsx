@@ -12,7 +12,7 @@ export default function EhChallengePage() {
     <div className="min-h-dvh flex flex-col">
       <header className="border-b border-white/10 px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
-          <span className="font-semibold text-sm text-white/80">Bedrock Data AI</span>
+          <span className="font-semibold text-sm text-white/80">Bedrock Data</span>
           <nav aria-label="Main navigation" className="flex items-center gap-1 text-xs">
             <Link href="/" className="text-white/60 hover:text-white rounded-full px-3 py-2 focus-visible:outline-2 focus-visible:outline-violet-400">AI Chat</Link>
             <Link href="/data" className="text-white/60 hover:text-white rounded-full px-3 py-2 focus-visible:outline-2 focus-visible:outline-violet-400">Data</Link>

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bedrock Data AI",
+  title: "Bedrock Data",
   description: "F3 Bedrock attendance questions and EH Challenge standings",
 };
 
