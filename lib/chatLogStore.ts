@@ -14,7 +14,13 @@ export type ChatLog = {
   error?: string;
   durationMs?: number;
   queries: { sql: string; reason: string }[];
+  suggestions?: string[];
 };
+
+/** Browser-generated request IDs are random UUIDs; holding one is what lets a browser read its answer back. */
+export const REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Saved answers can be recovered for a day, long enough to reopen the page after a dropped connection. */
+const RESULT_TTL_MS = 24 * 60 * 60_000;
 
 // Reuse one small pool per warm server instance, including across dev reloads.
 const shared = globalThis as typeof globalThis & { chatMongo?: Promise<MongoClient> };
@@ -46,6 +52,34 @@ export async function saveChatLog(log: ChatLog): Promise<void> {
     // Do not print driver errors, which may contain credentials or connection details.
     console.error(`[chat-history] write failed request=${log._id}`);
   }
+}
+
+/**
+ * Atomically creates the pending record, so one request ID can only ever run once.
+ * "unavailable" means storage is down or unconfigured; the answer still runs, unlogged and unrecoverable.
+ */
+export async function claimChatLog(log: ChatLog): Promise<"claimed" | "duplicate" | "unavailable"> {
+  if (!process.env.MONGODB_URI) return "unavailable";
+  try {
+    await (await chatLogs()).insertOne(log);
+    return "claimed";
+  } catch (error) {
+    if ((error as { code?: number })?.code === 11000) return "duplicate";
+    console.error(`[chat-history] write failed request=${log._id}`);
+    return "unavailable";
+  }
+}
+
+export type ChatResult = Pick<ChatLog, "status" | "answer" | "error" | "reasoningLevel" | "queries" | "suggestions">;
+/** The answer for one recent request, without its conversation history; null when absent or expired. */
+export async function readChatResult(id: string): Promise<ChatResult | null> {
+  const log = await (await chatLogs()).findOne(
+    { _id: id, createdAt: { $gte: new Date(Date.now() - RESULT_TTL_MS) } },
+    { projection: { status: 1, answer: 1, error: 1, reasoningLevel: 1, queries: 1, suggestions: 1 } },
+  );
+  if (!log) return null;
+  return { status: log.status, answer: log.answer, error: log.error, reasoningLevel: log.reasoningLevel,
+    queries: log.queries ?? [], suggestions: log.suggestions ?? [] };
 }
 
 export function historyFilter(params: URLSearchParams): Filter<ChatLog> {

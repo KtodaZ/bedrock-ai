@@ -28,7 +28,7 @@ function setup() {
 const now = Date.parse('2026-10-14T12:00:00Z');
 // Libraries the chat route imports; tests replace the sheet, tools, and SQL.
 const chatDeps = (extra = {}) => ({
-  '@/lib/chatLogStore': { saveChatLog: async () => {} },
+  '@/lib/chatLogStore': { saveChatLog: async () => {}, claimChatLog: async () => 'unavailable' },
   '@/lib/attendance-db': { fetchCSV: async () => 'csv', getDatabase: async () => ({}), runSQL: () => '1', isReadOnlySelect: (sql) => /^select/i.test(sql) },
   '@/lib/dataExplorerSource': { loadExplorerData: async () => ({ rows: [], people: [], sites: [], asOf: '2026-10-14', loadedAt: '' }) },
   '@/lib/attendanceTrends': { attendanceWorkouts: () => [] },

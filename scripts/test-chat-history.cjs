@@ -82,7 +82,7 @@ for (const fails of [false, true]) test(`Chat logging saves the full ${fails ? '
   } }; }
   const route = load('app/api/chat/route.ts', {
     openai: { default: FakeAI },
-    '@/lib/chatLogStore': { saveChatLog: async log => saved.push(structuredClone(log)) },
+    '@/lib/chatLogStore': { saveChatLog: async log => saved.push(structuredClone(log)), claimChatLog: async () => 'unavailable' },
     '@/lib/attendance-db': { fetchCSV: async () => 'csv', getDatabase: async () => ({}), runSQL: () => '1', isReadOnlySelect: () => true },
     '@/lib/aiRateLimit': { reserveAiRequest: async () => ({ allowed: true }) },
     '@/lib/dataExplorerSource': { loadExplorerData: async () => ({ rows: [], people: [], sites: [], asOf: '2026-10-14', loadedAt: '' }) },
@@ -117,4 +117,104 @@ test('A database write failure does not fail the chat and does not expose creden
     await saveChatLog({ _id: 'test-only' });
     assert.deepEqual(errors, ['[chat-history] write failed request=test-only']);
   } finally { console.error = original; delete process.env.MONGODB_URI; delete globalThis.chatMongo; }
+});
+
+const RID = '0b0e5e57-3c1f-4c1a-9a43-6f1f0c3c2d11';
+function recoveryChat(deps) {
+  class FakeAI { responses = { async create(options) {
+    if (options.model === 'gpt-5-mini') return { output_text: '[]' };
+    return (async function* () {
+      yield { type: 'response.completed', response: { output: [{ type: 'message', content: [{ type: 'output_text', text: 'Saved answer.' }] }] } };
+    })();
+  } }; }
+  return load('app/api/chat/route.ts', {
+    openai: { default: FakeAI },
+    '@/lib/attendance-db': { fetchCSV: async () => 'csv', getDatabase: async () => ({}), runSQL: () => '1', isReadOnlySelect: () => true },
+    '@/lib/dataExplorerSource': { loadExplorerData: async () => ({ rows: [], people: [], sites: [], asOf: '2026-10-14', loadedAt: '' }) },
+    '@/lib/attendanceTrends': { attendanceWorkouts: () => [] },
+    '@/lib/chatTools': { CHAT_TOOLS: [], chatDataFacts: () => '', isChatTool: () => false, runChatTool: async () => ({ output: '{}' }) },
+    '@/lib/ehChallenge': { computeChallenge: () => ({}) },
+    '@/lib/sheet': { fetchAttendance: async () => [], fetchEhAttributions: async () => [], fetchResurrectionAttributions: async () => [] },
+    ...deps,
+  });
+}
+const ask = (route, body) => route.POST(new Request('https://bedrock.test/api/chat', { method: 'POST', body: JSON.stringify({ question: 'Who posted?', ...body }) }));
+
+test('Chat claims the browser request ID once; bad IDs never reach quota and repeats never run', async () => {
+  delete process.env.DISCORD_WEBHOOK_URL;
+  const { REQUEST_ID } = load('lib/chatLogStore.ts');
+  const saved = []; let reserved = 0; let modelCalls = 0; const claimed = new Set();
+  const route = recoveryChat({
+    '@/lib/chatLogStore': { REQUEST_ID,
+      // Atomic like a unique insert: the second claim of an ID fails even when both arrive together.
+      claimChatLog: async log => { await Promise.resolve(); if (claimed.has(log._id)) return 'duplicate'; claimed.add(log._id); saved.push(structuredClone(log)); return 'claimed'; },
+      saveChatLog: async log => saved.push(structuredClone(log)) },
+    '@/lib/aiRateLimit': { reserveAiRequest: async () => { reserved++; return { allowed: true }; } },
+    '@/lib/chatTools': { CHAT_TOOLS: [], chatDataFacts: () => { modelCalls++; return ''; }, isChatTool: () => false, runChatTool: async () => ({ output: '{}' }) },
+  });
+  assert.equal((await ask(route, { requestId: 'not-a-uuid' })).status, 400);
+  assert.equal((await ask(route, { requestId: { $ne: null } })).status, 400);
+  assert.equal(reserved, 0);
+  const [a, b] = await Promise.all([ask(route, { requestId: RID }), ask(route, { requestId: RID })]);
+  assert.deepEqual([a.status, b.status].sort(), [200, 409]);
+  await (a.status === 200 ? a : b).text();
+  assert.equal(modelCalls, 1, 'only the claimed request runs');
+  assert.equal(saved[0].status, 'pending');
+  assert.equal(saved.filter(l => l.status === 'pending').length, 1, 'the claim is the pending record');
+  assert.equal(saved.at(-1)._id, RID);
+  assert.equal(saved.at(-1).status, 'success');
+});
+
+test('A unique-key conflict is a duplicate; other storage failures still answer', async () => {
+  process.env.MONGODB_URI = 'mongodb://test';
+  const errors = []; const original = console.error;
+  for (const [failure, expected] of [[{ code: 11000 }, 'duplicate'], [new Error('mongodb://secret'), 'unavailable'], [null, 'claimed']]) {
+    globalThis.chatMongo = undefined;
+    class FakeMongo { async connect() { return this; } db() { return { collection: () => ({ insertOne: async () => { if (failure) throw failure; } }) }; } }
+    const { claimChatLog } = load('lib/chatLogStore.ts', { mongodb: { MongoClient: FakeMongo } });
+    try { console.error = m => errors.push(m); assert.equal(await claimChatLog({ _id: RID }), expected); } finally { console.error = original; }
+  }
+  assert.ok(errors.every(e => !e.includes('secret')));
+  delete process.env.MONGODB_URI; delete globalThis.chatMongo;
+});
+
+test('Saved answers are returned by request ID without history; invalid, missing, and unconfigured requests fail safely', async () => {
+  let read = 0;
+  const route = load('app/api/chat/result/route.ts', { '@/lib/chatLogStore': {
+    REQUEST_ID: load('lib/chatLogStore.ts').REQUEST_ID,
+    readChatResult: async id => { read++; return id === RID ? { status: 'success', answer: 'Saved.', queries: [], suggestions: ['Next?'] } : null; },
+  } });
+  const { NextRequest } = require('next/server');
+  const get = id => route.GET(new NextRequest(`https://bedrock.test/api/chat/result?id=${encodeURIComponent(id)}`));
+  delete process.env.MONGODB_URI;
+  assert.equal((await get(RID)).status, 503);
+  process.env.MONGODB_URI = 'mongodb://test';
+  try {
+    assert.equal((await get('../admin')).status, 400);
+    assert.equal(read, 0);
+    const found = await get(RID);
+    assert.equal(found.status, 200);
+    assert.equal(found.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await found.json(), { status: 'success', answer: 'Saved.', queries: [], suggestions: ['Next?'] });
+    assert.equal((await get('11111111-2222-3333-4444-555555555555')).status, 404);
+  } finally { delete process.env.MONGODB_URI; }
+});
+
+test('Result reads skip history and records older than a day', async () => {
+  let call;
+  process.env.MONGODB_URI = 'mongodb://test';
+  globalThis.chatMongo = undefined;
+  class FakeMongo { async connect() { return this; } db() { return { collection: () => ({ findOne: async (filter, options) => {
+    call = { filter, options };
+    return { status: 'pending', history: [{ role: 'user', content: 'private' }], queries: [] };
+  } }) }; } }
+  try {
+    const { readChatResult } = load('lib/chatLogStore.ts', { mongodb: { MongoClient: FakeMongo } });
+    const result = await readChatResult(RID);
+    assert.equal(call.filter._id, RID);
+    assert.ok(Date.now() - call.filter.createdAt.$gte.getTime() >= 24 * 3600_000 - 1000);
+    assert.equal(call.options.projection.history, undefined);
+    assert.equal(result.history, undefined);
+    assert.equal(result.status, 'pending');
+  } finally { delete process.env.MONGODB_URI; delete globalThis.chatMongo; }
 });

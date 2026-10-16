@@ -6,7 +6,17 @@ import { ChatSession, INITIAL_CHAT_STATE } from "../lib/chatSession";
 const ChatContext = createContext<ChatSession | null>(null);
 export default function ChatSessionProvider({ children }: { children: React.ReactNode }) {
   const [session] = useState(() => new ChatSession(() => window.localStorage));
-  useEffect(() => { session.hydrate(); }, [session]);
+  useEffect(() => {
+    session.hydrate();
+    // Answers that finished while the phone was offline or asleep are picked up when it returns.
+    const recheck = () => { if (document.visibilityState === "visible") session.recheckLost(); };
+    window.addEventListener("online", recheck);
+    document.addEventListener("visibilitychange", recheck);
+    return () => {
+      window.removeEventListener("online", recheck);
+      document.removeEventListener("visibilitychange", recheck);
+    };
+  }, [session]);
   return <ChatContext.Provider value={session}>{children}</ChatContext.Provider>;
 }
 

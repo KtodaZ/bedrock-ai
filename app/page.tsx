@@ -86,7 +86,7 @@ export default function Home() {
   const { session, messages, input, loading, phaseLabel, partialAnswer, conversations, activeId, reasoningLevel, ready, storageError } = useChatSession();
   const setInput = session.setInput;
   const setReasoningLevel = session.setReasoningLevel;
-  const sendMessage = (question: string) => session.sendMessage(question);
+  const sendMessage = (question: string, options?: { retry?: boolean }) => session.sendMessage(question, options);
   const desktop = useSyncExternalStore(subscribeViewport, () => window.matchMedia(desktopQuery).matches, () => false);
   const [sidebarOverride, setSidebarOpen] = useState<boolean | null>(null);
   const sidebarOpen = sidebarOverride ?? desktop;
@@ -539,7 +539,7 @@ export default function Home() {
                           <button
                             onClick={() => {
                               const lastUserMsg = [...messages].slice(0, i).reverse().find((m) => m.role === "user");
-                              if (lastUserMsg) sendMessage(lastUserMsg.content);
+                              if (lastUserMsg) sendMessage(lastUserMsg.content, { retry: i === messages.length - 1 });
                             }}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all cursor-pointer mt-1"
                             style={{ background: "rgba(255,255,255,0.03)" }}

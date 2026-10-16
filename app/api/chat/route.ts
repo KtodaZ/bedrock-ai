@@ -8,8 +8,10 @@ import { computeChallenge, type ChallengeResult, type Period } from "@/lib/ehCha
 import { fetchAttendance, fetchEhAttributions, fetchResurrectionAttributions } from "@/lib/sheet";
 
 import { randomUUID } from "node:crypto";
-import { saveChatLog, type ChatLog } from "@/lib/chatLogStore";
+import { claimChatLog, REQUEST_ID, saveChatLog, type ChatLog } from "@/lib/chatLogStore";
 import { reserveAiRequest } from "@/lib/aiRateLimit";
+// Answer recovery in lib/chatSession.ts keeps checking a little past this limit.
+export const maxDuration = 300;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 0, timeout: 60_000 });
 
@@ -251,15 +253,22 @@ export async function POST(req: NextRequest) {
   if (body.conversationId !== undefined && (typeof body.conversationId !== "string" || !/^[a-zA-Z0-9-]{1,100}$/.test(body.conversationId))) {
     return NextResponse.json({ error: "Invalid conversation ID." }, { status: 400 });
   }
+  if (body.requestId !== undefined && (typeof body.requestId !== "string" || !REQUEST_ID.test(body.requestId))) {
+    return NextResponse.json({ error: "Invalid request ID." }, { status: 400 });
+  }
   const clientLevel: "auto" | "low" | "medium" | "high" = ["low", "medium", "high"].includes(body.reasoningLevel) ? body.reasoningLevel : "auto";
   const limit = await reserveAiRequest(req.headers);
   if (!limit.allowed) return NextResponse.json({ error: limit.message }, { status: limit.status, headers: { "Retry-After": String(limit.retryAfter), "Cache-Control": "no-store" } });
   const started = Date.now();
   const log: ChatLog = {
-    _id: randomUUID(), conversationId: body.conversationId || randomUUID(),
+    _id: body.requestId || randomUUID(), conversationId: body.conversationId || randomUUID(),
     createdAt: new Date(started), updatedAt: new Date(started), question, history,
     model: "gpt-6.1-sol", reasoningLevel: clientLevel, status: "pending", queries: [],
   };
+  // Each request ID belongs to one question; a repeat (even a simultaneous one) must not overwrite or rerun it.
+  // The browser never resends an ID, so the quota already reserved for a duplicate only affects a misbehaving client.
+  const claim = await claimChatLog(log);
+  if (claim === "duplicate") return NextResponse.json({ error: "This question was already sent." }, { status: 409 });
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -269,8 +278,12 @@ export async function POST(req: NextRequest) {
         try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); } catch {}
       }
 
+      // Comments keep mobile networks and proxies from closing a quiet connection during long lookups.
+      const heartbeat = setInterval(() => {
+        try { controller.enqueue(encoder.encode(": ping\n\n")); } catch {}
+      }, 15_000);
       try {
-        await saveChatLog(log);
+        if (claim !== "claimed") await saveChatLog(log);
         send({ type: "phase", label: "Loading attendance data..." });
         // The classifier, sheet reads, and SQL setup don't depend on each other.
         const [reasoningLevel, data, db] = await Promise.all([
@@ -406,7 +419,12 @@ export async function POST(req: NextRequest) {
         // Show the answer now; follow-up suggestions arrive after it.
         send({ type: "done", answer: finalAnswer, suggestions: [], reasoningLevel });
         const suggestions = await suggestFollowUps(question, finalAnswer);
-        if (suggestions.length) send({ type: "suggestions", suggestions });
+        if (suggestions.length) {
+          send({ type: "suggestions", suggestions });
+          // A browser recovering a dropped answer gets these too.
+          log.suggestions = suggestions;
+          await saveChatLog(log);
+        }
       } catch (err) {
         Object.assign(log, { status: "error", error: String(err).slice(0, 2000), durationMs: Date.now() - started, updatedAt: new Date() });
         await saveChatLog(log);
@@ -414,6 +432,7 @@ export async function POST(req: NextRequest) {
         notifyDiscord(`⚠️ Error: ${String(err).slice(0, 300)}`);
         send({ type: "error", message: String(err) });
       } finally {
+        clearInterval(heartbeat);
         try { controller.close(); } catch {}
       }
     },
