@@ -52,7 +52,7 @@ export interface FngFollowThrough {
 export interface FngCohort {
   month: string;
   fngs: FngFollowThrough[];
-  /** Fewer than 90 days since the month ended; follow-through is still forming. */
+  /** The latest attendance month or the one before; follow-through is still forming. */
   early: boolean;
 }
 export const FNG_STAGES = [
@@ -69,6 +69,10 @@ export function fngCohorts(data: ExplorerData): FngCohort[] {
     data.people.map((p) => [normalizeDataName(p.name), p]),
   );
   const activeFrom = addDataDays(data.asOf, -(ACTIVE_DAYS - 1));
+  const [asOfYear, asOfMonth] = data.asOf.split("-").map(Number);
+  const earlyFrom = new Date(Date.UTC(asOfYear, asOfMonth - 2, 1))
+    .toISOString()
+    .slice(0, 7);
   const cohorts = new Map<string, FngFollowThrough[]>();
   for (const [key, first] of bedrockFngDates(data)) {
     const mine = [...(dates.get(key) ?? [])]
@@ -90,17 +94,13 @@ export function fngCohorts(data: ExplorerData): FngCohort[] {
     cohorts.set(month, list);
   }
   return [...cohorts.entries()]
-    .map(([month, fngs]) => {
-      const [y, m] = month.split("-").map(Number);
-      const monthEnd = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
-      return {
-        month,
-        fngs: fngs.sort(
-          (a, b) => b.posts - a.posts || a.name.localeCompare(b.name),
-        ),
-        early: addDataDays(monthEnd, 90) > data.asOf,
-      };
-    })
+    .map(([month, fngs]) => ({
+      month,
+      fngs: fngs.sort(
+        (a, b) => b.posts - a.posts || a.name.localeCompare(b.name),
+      ),
+      early: month >= earlyFrom,
+    }))
     .sort((a, b) => b.month.localeCompare(a.month));
 }
 export function fngTotals(fngs: FngFollowThrough[]) {

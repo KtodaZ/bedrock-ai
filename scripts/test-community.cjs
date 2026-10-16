@@ -23,17 +23,21 @@ test('FNG follow-through uses Bedrock Roster FNGs, distinct post dates, and the 
     row('New Guy', '2026-10-20'), // future row ignored
     row('Visitor', '2026-03-05', { fng: true }), // other region never counts
     row('Fresh', day(10), { fng: true }),
+    row('August', '2026-08-20', { fng: true }), row('September', '2026-09-03', { fng: true }),
     row('Kid (<18)', '2026-03-05', { fng: true }),
   ], [
     { name: 'New Guy', region: 'Bedrock', ehBy: 'Sponsor' },
     { name: 'Visitor', region: 'Asgard', ehBy: null },
     { name: 'Fresh', region: 'bedrock', ehBy: null },
+    { name: 'August', region: 'Bedrock', ehBy: null },
+    { name: 'September', region: 'Bedrock', ehBy: null },
   ]);
   const cohorts = community.fngCohorts(d);
-  assert.deepEqual(cohorts.map(c => [c.month, c.early]), [['2026-10', true], ['2026-03', false]]);
-  const march = cohorts[1].fngs[0];
+  // Only the latest attendance month and the one before are still early.
+  assert.deepEqual(cohorts.map(c => [c.month, c.early]), [['2026-10', true], ['2026-09', true], ['2026-08', false], ['2026-03', false]]);
+  const march = cohorts[3].fngs[0];
   assert.equal(march.name, 'New Guy'); assert.equal(march.posts, 3); assert.equal(march.active, true); assert.equal(march.ehBy, 'Sponsor');
-  assert.deepEqual(community.fngTotals(cohorts.flatMap(c => c.fngs)), { count: 2, returned: 1, ten: 0, active: 2 });
+  assert.deepEqual(community.fngTotals([cohorts[0], cohorts[3]].flatMap(c => c.fngs)), { count: 2, returned: 1, ten: 0, active: 2 });
 });
 
 test('Family tree follows Roster EH’er spellings, keeps unmatched EH’ers as roots, and survives loops', () => {

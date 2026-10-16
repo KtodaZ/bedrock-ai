@@ -119,7 +119,7 @@ Forecasts divide the remaining posts by the 90-day posts-per-calendar-day rate, 
 
 ### Community
 
-`/data/community?tab=fngs|tree|q` reuses `/api/data` with no AI, storage, or sheet writes, and awards no points. FNG follow-through groups Bedrock FNGs (earliest FNG-flagged row plus Bedrock Roster region, as in the challenge) by FNG month and counts distinct post dates from the FNG date through `asOf`; “still posting” means a post in the last 30 days, and months ending fewer than 90 days before `asOf` are marked “Still early.” Under-18 names are absent from the public snapshot, so totals can be lower than the EH Challenge’s region FNG count.
+`/data/community?tab=fngs|tree|q` reuses `/api/data` with no AI, storage, or sheet writes, and awards no points. FNG follow-through groups Bedrock FNGs (earliest FNG-flagged row plus Bedrock Roster region, as in the challenge) by FNG month and counts distinct post dates from the FNG date through `asOf`; “still posting” means a post in the last 30 days, and the latest attendance month and the one before are marked “Still early.” Under-18 names are absent from the public snapshot, so totals can be lower than the EH Challenge’s region FNG count.
 
 The family tree uses Roster `EH'er` exactly as written, matched by normalized name like the leaderboard. An unmatched spelling becomes its own root; loops are broken rather than followed. Names with public posts link to their profiles.
 
