@@ -10,6 +10,7 @@ import {
   attendanceBuckets,
   summarizeAttendance,
   weekdayTurnout,
+  type AttendanceBucket,
   type WorkoutAttendance,
 } from "./attendanceTrends";
 import { aoKind, bedrockFngDates, type AoKind } from "./community";
@@ -281,5 +282,118 @@ export function aoDetail(
       }))
       .sort((a, b) => b.pax - a.pax || b.date.localeCompare(a.date)),
     weekdays: weekdayTurnout(inWindow, from, data.asOf),
+  };
+}
+
+export interface AoYearStats {
+  posts: number;
+  pax: number;
+  workouts: number;
+  average: number | null;
+  fngs: number;
+}
+export interface AoYearMonth {
+  /** 1–12. */
+  month: number;
+  current: AttendanceBucket | null;
+  previous: AttendanceBucket | null;
+}
+export interface AoYearOverYear {
+  site: string;
+  year: number;
+  /** The year still in progress; totals stop at the same date both years. */
+  partial: boolean;
+  from: string;
+  through: string;
+  previousFrom: string;
+  previousThrough: string;
+  /** First recorded workout here; later than previousFrom when last year is incomplete. */
+  firstWorkout: string;
+  current: AoYearStats;
+  previous: AoYearStats;
+  months: AoYearMonth[];
+}
+/** Years with a recorded workout at this AO, newest first. */
+export function aoYears(workouts: WorkoutAttendance[], site: string) {
+  const years = new Set(
+    workouts
+      .filter((w) => w.site === site)
+      .map((w) => Number(w.date.slice(0, 4))),
+  );
+  return [...years].sort((a, b) => b - a);
+}
+/** Percent change, withheld unless both sides have GROWTH_MIN+ workouts. */
+export function yearChange(
+  current: number | null,
+  previous: number | null,
+  workouts: { current: number; previous: number },
+) {
+  if (
+    current == null ||
+    !previous ||
+    workouts.current < GROWTH_MIN ||
+    workouts.previous < GROWTH_MIN
+  )
+    return null;
+  return ((current - previous) / previous) * 100;
+}
+const pad = (n: number) => String(n).padStart(2, "0");
+const lastDay = (year: number, month: number) =>
+  `${year}-${pad(month)}-${pad(new Date(Date.UTC(year, month, 0)).getUTCDate())}`;
+/** The same month and day a year earlier; Feb 29 becomes Feb 28. */
+const sameDayLastYear = (date: string) => {
+  const year = Number(date.slice(0, 4)) - 1;
+  const end = lastDay(year, Number(date.slice(5, 7)));
+  const candidate = `${year}${date.slice(4)}`;
+  return candidate > end ? end : candidate;
+};
+
+/**
+ * One AO's year compared with the year before. A year still in progress
+ * (the latest attendance year) is compared through the same date last year.
+ */
+export function aoYearOverYear(
+  data: ExplorerData,
+  workouts: WorkoutAttendance[],
+  site: string,
+  year: number,
+): AoYearOverYear | null {
+  const here = workouts.filter((w) => w.site === site);
+  if (!here.length) return null;
+  const partial = year === Number(data.asOf.slice(0, 4));
+  const from = `${year}-01-01`;
+  const through = partial ? data.asOf : `${year}-12-31`;
+  const previousFrom = `${year - 1}-01-01`;
+  const previousThrough = sameDayLastYear(through);
+  const fngs = [...bedrockFngDates(data).values()].filter(
+    (f) => f.site === site,
+  );
+  const stats = (start: string, end: string): AoYearStats => ({
+    ...summarizeAttendance(here, start, end),
+    fngs: fngs.filter((f) => f.date >= start && f.date <= end).length,
+  });
+  const bucket = (y: number, month: number, cap: string) => {
+    const start = `${y}-${pad(month)}-01`;
+    if (start > cap) return null;
+    const end = lastDay(y, month) > cap ? cap : lastDay(y, month);
+    return { start, end, ...summarizeAttendance(here, start, end) };
+  };
+  return {
+    site,
+    year,
+    partial,
+    from,
+    through,
+    previousFrom,
+    previousThrough,
+    firstWorkout: here[0].date,
+    current: stats(from, through),
+    previous: stats(previousFrom, previousThrough),
+    // The chart shows all of last year so the months still ahead are visible.
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      current: bucket(year, i + 1, through),
+      previous: bucket(year - 1, i + 1, `${year - 1}-12-31`),
+    })),
   };
 }

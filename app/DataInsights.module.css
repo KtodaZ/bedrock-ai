@@ -1353,3 +1353,21 @@
 .aoStats dd.pulseDown {
   color: #f0a58f;
 }
+.yoyHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.yoyHead p {
+  color: #b6a6c8;
+  font-size: 13px;
+}
+.yoy .aoStats {
+  margin-top: 12px;
+}
+.yoyChange {
+  font-size: 13px;
+  font-weight: 600;
+}

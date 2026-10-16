@@ -99,3 +99,44 @@ test('Monthly activity fills empty months from the first post through asOf', () 
   ]);
   assert.deepEqual(activity.monthlyActivity([], '2026-10-14'), []);
 });
+
+test('Year over year compares the same dates last year and withholds thin percentages', () => {
+  const d = data([
+    // 2026 through asOf (Oct 14): three workouts of 3, 2, 4 PAX.
+    row('A', '2026-01-05'), row('B', '2026-01-05'), row('C', '2026-01-05'),
+    row('A', '2026-06-01'), row('B', '2026-06-01'),
+    row('A', '2026-10-12'), row('B', '2026-10-12'), row('C', '2026-10-12'), row('New', '2026-10-12', { fng: true }),
+    // 2025: three workouts of 2 PAX by Oct 14, plus one after it that the totals skip.
+    row('A', '2025-02-03'), row('B', '2025-02-03'),
+    row('A', '2025-07-07'), row('C', '2025-07-07'),
+    row('A', '2025-10-13'), row('B', '2025-10-13'),
+    row('A', '2025-11-03'), row('B', '2025-11-03'), row('C', '2025-11-03'), row('D', '2025-11-03'), row('E', '2025-11-03'),
+    // 2024: one workout only.
+    row('A', '2024-03-04'),
+    row('Echo', '2026-03-02', { site: 'Pinnacle' }),
+  ], [{ name: 'New', region: 'Bedrock', ehBy: null }]);
+  const workouts = trends.attendanceWorkouts(d);
+  assert.deepEqual(ao.aoYears(workouts, 'Divento'), [2026, 2025, 2024]);
+  const now = ao.aoYearOverYear(d, workouts, 'Divento', 2026);
+  assert.equal(now.partial, true); assert.equal(now.firstWorkout, '2024-03-04');
+  assert.deepEqual([now.from, now.through, now.previousFrom, now.previousThrough], ['2026-01-01', '2026-10-14', '2025-01-01', '2025-10-14']);
+  assert.deepEqual(now.current, { posts: 9, pax: 4, workouts: 3, average: 3, fngs: 1 });
+  assert.deepEqual(now.previous, { posts: 6, pax: 3, workouts: 3, average: 2, fngs: 0 });
+  assert.equal(Math.round(ao.yearChange(now.current.average, now.previous.average, { current: 3, previous: 3 })), 50);
+  // Months after asOf are empty this year; last year's chart keeps November.
+  assert.equal(now.months[10].current, null);
+  assert.equal(now.months[10].previous.average, 5);
+  assert.equal(now.months[9].current.end, '2026-10-14');
+  // A full past year compares whole years; one 2024 workout is too thin for a percent.
+  const past = ao.aoYearOverYear(d, workouts, 'Divento', 2025);
+  assert.equal(past.partial, false);
+  assert.equal(past.previousThrough, '2024-12-31');
+  assert.equal(past.current.workouts, 4);
+  assert.equal(ao.yearChange(past.current.posts, past.previous.posts, { current: 4, previous: 1 }), null);
+});
+
+test('Year over year maps Feb 29 to Feb 28 the year before', () => {
+  const d = { ...data([row('A', '2028-02-28'), row('A', '2027-02-27')]), asOf: '2028-02-29' };
+  const yoy = ao.aoYearOverYear(d, trends.attendanceWorkouts(d), 'Divento', 2028);
+  assert.equal(yoy.previousThrough, '2027-02-28');
+});
