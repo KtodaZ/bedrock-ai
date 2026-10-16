@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useSyncExternalStore } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
 import EhChallenge from "./EhChallenge";
 import DataExplorer from "./DataExplorer";
@@ -54,8 +54,36 @@ function subscribeViewport(listener: () => void) {
 }
 
 
+// Answers only link inside this app; anything else renders as plain text.
+const MARKDOWN: Components = {
+  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+  ul: ({ children }) => <ul className="mb-3 last:mb-0 space-y-1 pl-1">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-3 last:mb-0 space-y-1 pl-1 list-decimal list-inside">{children}</ol>,
+  li: ({ children }) => (
+    <li className="flex gap-2 items-start">
+      <span className="mt-1.5 w-1 h-1 rounded-full bg-violet-400/70 flex-shrink-0" />
+      <span>{children}</span>
+    </li>
+  ),
+  strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+  em: ({ children }) => <em className="italic text-white/60">{children}</em>,
+  h1: ({ children }) => <h1 className="text-base font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-sm font-bold text-white/90 mt-3 mb-1.5 first:mt-0">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wide mt-3 mb-1.5 first:mt-0">{children}</h3>,
+  code: ({ children }) => <code className="bg-white/10 rounded px-1 text-xs font-mono">{children}</code>,
+  hr: () => <hr className="border-white/8 my-3" />,
+  a: ({ href, children }) =>
+    href && href.startsWith("/") && !href.startsWith("//") ? (
+      <Link href={href} className="text-violet-300 underline underline-offset-2 hover:text-violet-200">
+        {children}
+      </Link>
+    ) : (
+      <>{children}</>
+    ),
+};
+
 export default function Home() {
-  const { session, messages, input, loading, phaseLabel, conversations, activeId, reasoningLevel, ready, storageError } = useChatSession();
+  const { session, messages, input, loading, phaseLabel, partialAnswer, conversations, activeId, reasoningLevel, ready, storageError } = useChatSession();
   const setInput = session.setInput;
   const setReasoningLevel = session.setReasoningLevel;
   const sendMessage = (question: string) => session.sendMessage(question);
@@ -119,9 +147,11 @@ export default function Home() {
   }, [settingsOpen]);
 
 
+  // Scroll once when an answer starts streaming, not on every word.
+  const streaming = Boolean(partialAnswer);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, streaming]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -468,28 +498,7 @@ export default function Home() {
                           }
                         >
                           {msg.role === "assistant" ? (
-                            <ReactMarkdown
-                              components={{
-                                p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                                ul: ({ children }) => <ul className="mb-3 last:mb-0 space-y-1 pl-1">{children}</ul>,
-                                ol: ({ children }) => <ol className="mb-3 last:mb-0 space-y-1 pl-1 list-decimal list-inside">{children}</ol>,
-                                li: ({ children }) => (
-                                  <li className="flex gap-2 items-start">
-                                    <span className="mt-1.5 w-1 h-1 rounded-full bg-violet-400/70 flex-shrink-0" />
-                                    <span>{children}</span>
-                                  </li>
-                                ),
-                                strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-                                em: ({ children }) => <em className="italic text-white/60">{children}</em>,
-                                h1: ({ children }) => <h1 className="text-base font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h1>,
-                                h2: ({ children }) => <h2 className="text-sm font-bold text-white/90 mt-3 mb-1.5 first:mt-0">{children}</h2>,
-                                h3: ({ children }) => <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wide mt-3 mb-1.5 first:mt-0">{children}</h3>,
-                                code: ({ children }) => <code className="bg-white/10 rounded px-1 text-xs font-mono">{children}</code>,
-                                hr: () => <hr className="border-white/8 my-3" />,
-                              }}
-                            >
-                              {msg.content}
-                            </ReactMarkdown>
+                            <ReactMarkdown components={MARKDOWN}>{msg.content}</ReactMarkdown>
                           ) : (
                             msg.content
                           )}
@@ -559,7 +568,7 @@ export default function Home() {
                               >
                                 <polyline points="9 18 15 12 9 6" />
                               </svg>
-                              {msg.queryLog.length} {msg.queryLog.length === 1 ? "query" : "queries"}
+                              {msg.queryLog.length} {msg.queryLog.length === 1 ? "lookup" : "lookups"}
                             </button>
                             {expandedQueries.has(i) && (
                               <div className="mt-2 flex flex-col gap-2">
@@ -601,7 +610,17 @@ export default function Home() {
                       >
                         B
                       </div>
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-1.5 max-w-[80%] min-w-0">
+                        {partialAnswer ? (
+                          <div
+                            aria-live="polite"
+                            className="rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed"
+                            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.85)" }}
+                          >
+                            <ReactMarkdown components={MARKDOWN}>{partialAnswer}</ReactMarkdown>
+                          </div>
+                        ) : (
+                        <>
                         {phaseLabel && (
                           <p className="text-xs text-white/35 italic pl-1">{phaseLabel}</p>
                         )}
@@ -617,6 +636,8 @@ export default function Home() {
                             />
                           ))}
                         </div>
+                        </>
+                        )}
                       </div>
                     </div>
                   )}

@@ -150,3 +150,37 @@ test('HTTP rejection is saved and clears pending state', async () => {
   assert.equal(saved(disk)[0].messages[1].content, 'Daily limit reached');
   assert.equal(saved(disk)[0].pending, false);
 });
+
+test('streamed text shows while pending, resets between rounds, and late suggestions attach to the answer', async () => {
+  const { session, disk, calls } = setup();
+  const pending = session.sendMessage('How is Clove doing?');
+  const id = session.getSnapshot().activeId;
+  const flush = () => new Promise(r => setTimeout(r, 0));
+  calls[0].send({ type: 'delta', text: 'Draft' });
+  await flush();
+  assert.equal(session.getSnapshot().partials[id], 'Draft');
+  calls[0].send({ type: 'reset' });
+  calls[0].send({ type: 'delta', text: '**Clove** has ' });
+  calls[0].send({ type: 'delta', text: '5 posts.' });
+  await flush();
+  assert.equal(session.getSnapshot().partials[id], '**Clove** has 5 posts.');
+  assert.equal(disk.getItem('bedrock-conversations').includes('5 posts'), false, 'partial text is never saved');
+  calls[0].send({ type: 'done', answer: '**Clove** has 5 posts.', suggestions: [] });
+  await pending;
+  assert.equal(session.getSnapshot().partials[id], undefined);
+  assert.equal(session.getSnapshot().conversations[0].pending, false);
+  // The chat is free before suggestions arrive.
+  const next = session.sendMessage('And Bono?');
+  assert.equal(calls.length, 2);
+  calls[0].send({ type: 'suggestions', suggestions: ['Who posts with Clove most?', 7] });
+  await flush();
+  // A newer question in the same chat means the old suggestions no longer apply.
+  assert.equal(saved(disk)[0].messages[1].suggestions.length, 0);
+  calls[1].send({ type: 'done', answer: 'Bono has 3.' });
+  await next;
+  calls[1].send({ type: 'suggestions', suggestions: ['What about Spartan?'] });
+  calls[1].close();
+  await flush();
+  assert.deepEqual(saved(disk)[0].messages.at(-1).suggestions, ['What about Spartan?']);
+  calls[0].close();
+});

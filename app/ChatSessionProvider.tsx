@@ -17,5 +17,6 @@ export function useChatSession() {
   const conversation = state.conversations.find(c => c.id === state.activeId);
   return { ...state, session, messages: conversation?.messages ?? [],
     input: state.drafts[state.activeId ?? "new"] ?? "",
-    loading: Boolean(conversation?.pending), phaseLabel: state.phases[state.activeId ?? ""] ?? "" };
+    loading: Boolean(conversation?.pending), phaseLabel: state.phases[state.activeId ?? ""] ?? "",
+    partialAnswer: state.partials[state.activeId ?? ""] ?? "" };
 }

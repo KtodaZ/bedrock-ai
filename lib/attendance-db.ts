@@ -1,4 +1,5 @@
 import path from "path";
+import { isPublicDataName } from "./dataExplorer";
 
 // ── Google Sheet source ────────────────────────────────────────────────────
 const SHEET_ID = "11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0";
@@ -86,6 +87,7 @@ export async function getDatabase(csv: string): Promise<SqlJsDatabase> {
   }
 
   const dateColIndex = headers.indexOf("Date");
+  const paxColIndex = headers.indexOf("PAX Name");
   const integerCols = new Set(["FNG", "Post", "Q", "QS", "QS-Q", "Year", "Month"]);
   const columnDefs = headers
     .map((h) => `"${h}" ${integerCols.has(h) ? "INTEGER" : "TEXT"}`)
@@ -102,6 +104,9 @@ export async function getDatabase(csv: string): Promise<SqlJsDatabase> {
     if (!line.trim()) continue;
     const row = parseCSVLine(line);
     if (row.length < headers.length) continue;
+
+    // Match the Data pages: under-18 and archived names are never queryable.
+    if (paxColIndex >= 0 && !isPublicDataName((row[paxColIndex] ?? "").replace(/^"|"$/g, ""))) continue;
 
     // Skip junk/metadata rows: year out of reasonable range or date converts to null
     if (dateColIndex >= 0) {

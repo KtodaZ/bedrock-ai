@@ -358,7 +358,8 @@ export function aoYearOverYear(
   site: string,
   year: number,
 ): AoYearOverYear | null {
-  const here = workouts.filter((w) => w.site === site);
+  // An empty site compares the whole region.
+  const here = site ? workouts.filter((w) => w.site === site) : workouts;
   if (!here.length) return null;
   const partial = year === Number(data.asOf.slice(0, 4));
   const from = `${year}-01-01`;
@@ -366,7 +367,7 @@ export function aoYearOverYear(
   const previousFrom = `${year - 1}-01-01`;
   const previousThrough = sameDayLastYear(through);
   const fngs = [...bedrockFngDates(data).values()].filter(
-    (f) => f.site === site,
+    (f) => !site || f.site === site,
   );
   const stats = (start: string, end: string): AoYearStats => ({
     ...summarizeAttendance(here, start, end),

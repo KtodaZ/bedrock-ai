@@ -138,24 +138,27 @@ The run-site vs beatdown section uses AO types supplied by the region in `lib/co
 
 1. Validate the request: question 1–2,000 characters, last 12 history messages with valid roles and at most 16,000 content characters, body at most 32,000 characters (plus a preliminary Content-Length check).
 2. Reserve quota using `lib/aiRateLimit.ts`, before any OpenAI call. An accepted reservation counts even if the later question fails; there is no refund step.
-3. In Auto mode, `gpt-5-nano` selects low/medium/high reasoning. Explicit choices skip classification.
-4. Fetch attendance and prepare SQLite. Send the system prompt, recent chat, and question to `gpt-6.1-sol` through the OpenAI Responses API.
-5. Run requested SQL and feed results back. Allow at most six model rounds; the sixth disables tools. Each round caps output at 6,000 tokens, including reasoning. Each tool result is truncated to 24,000 characters before returning to the model. Multiple tool calls can occur in a round; six rounds does not mean six SQL statements.
-6. If an answer is returned, ask `gpt-5-mini` for follow-up suggestions, capped at 1,024 output tokens. Classifier output is capped at 512. OpenAI client calls use a 60-second timeout and no SDK retries.
-7. Send the final answer and suggestions. If no final answer is produced within the loop, return an error asking for a narrower question.
+3. In parallel: in Auto mode, `gpt-5-nano` selects low/medium/high reasoning (explicit choices skip it); `loadExplorerData()` reads attendance, Roster, and Sites (the same data as `/api/data`); and SQLite is prepared.
+4. Send the system prompt, data facts from `chatDataFacts()` (attendance coverage through `asOf`, every AO with type, city, usual days, and quiet status), recent chat, and question to `gpt-6.1-sol` through the OpenAI Responses API with streaming.
+5. The model calls lookup tools from `lib/chatTools.ts` or `run_sql`, in parallel within a round. Lookup tools reuse the Data page, AO page, Community, Milestones, and EH Challenge code: `pax_profile`, `ao_profile`, `year_over_year`, `ao_rankings`, `period_summary`, `pax_list` (Kotter, Q Kotter, Qsource, first-Q candidates, regular Q ratio, run-site Qs), `fng_follow_through`, `family_tree`, `milestones`, and `eh_challenge`. Each resolves misspelled PAX/AO names, returns compact JSON, and includes a `link` to the page with the same numbers; the prompt allows only those links, and the client renders only in-app paths. `run_sql` accepts a single read-only `SELECT`/`WITH` (`isReadOnlySelect()`); anything else returns an error without touching the shared in-memory table. Allow at most six model rounds; the sixth disables tools. Each round caps output at 6,000 tokens, including reasoning. Each tool result is truncated to 24,000 characters.
+6. Stream answer text as it is written. Text written in a round that ends with tool calls is discarded with a `reset` event.
+7. Save the log and send `done` with the final answer, then ask `gpt-5-mini` for follow-up suggestions (given the question and the start of the answer, capped at 1,024 output tokens) and send them as a separate `suggestions` event. Classifier output is capped at 512. OpenAI client calls use a 60-second timeout and no SDK retries. If no final answer is produced within the loop, return an error asking for a narrower question.
 
 The response is SSE (`data: <JSON>\n\n`) with these application events:
 
 | Event | Fields | Client behavior |
 | --- | --- | --- |
 | `phase` | `label` | Show progress |
-| `query` | `index`, `reason`, `sql` | Record inspectable query details; index identifies the query batch |
-| `done` | `answer`, `suggestions`, `reasoningLevel` | Render the completed answer and save the chat |
+| `query` | `index`, `reason`, `sql` | Record inspectable details; for lookup tools `sql` is the tool name and JSON arguments |
+| `delta` | `text` | Append to the in-progress answer (memory only, never saved) |
+| `reset` | — | Clear the in-progress answer |
+| `done` | `answer`, `suggestions` (empty), `reasoningLevel` | Render the completed answer, save the chat, and free the chat for the next question |
+| `suggestions` | `suggestions` | Attach follow-ups to that answer if it is still the latest message; read in the background for up to 30 seconds |
 | `error` | `message` | Show an error |
 
-This streams progress and query events, not answer tokens. The answer arrives in the final event after the follow-up attempt. Validation/quota failures return ordinary JSON HTTP errors before SSE; the client checks `res.ok` first.
+Validation/quota failures return ordinary JSON HTTP errors before SSE; the client checks `res.ok` first.
 
-Chat executes model SQL through `runSQL()`. The explicit `isReadOnlySelect()` gate is used by MCP, not the chat tool loop. Do not describe that MCP guard as protecting every SQL call. SQL results are evidence for the model, not a correctness guarantee.
+Chat and MCP both gate model SQL with `isReadOnlySelect()`. The SQL table excludes under-18 and archived names like the Data pages, but it has no Roster region, so SQL FNG counts include visitors; Bedrock FNG questions should go through the lookup tools. Tool and SQL results are evidence for the model, not a correctness guarantee.
 
 Homepage `/api/suggestions` returns six static questions with CDN caching and makes no AI calls. This is separate from paid post-answer follow-ups.
 

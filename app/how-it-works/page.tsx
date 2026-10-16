@@ -48,14 +48,16 @@ export default function HowItWorksPage() {
             How Bedrock Data Works
           </h1>
           <p className="text-base leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-            Ask about F3 attendance in plain English. Bedrock queries the attendance sheet and shows the results, along with the SQL it used.
+            Ask about F3 attendance in plain English. Bedrock looks up the attendance sheet and shows what it checked under each answer.
           </p>
         </div>
 
         <Section title="From question to answer">
           <p>
-            Bedrock loads attendance records from Google Sheets into an in-memory SQLite database. The AI writes SQL,
-            reads the results, and can run more queries before answering. You can inspect those queries below each response.
+            Bedrock loads attendance, Roster, and Sites records from Google Sheets. The AI first uses lookups built on the
+            same code as the Data, AO, Community, Milestones, and EH Challenge pages, so its numbers match those pages, and
+            links to the page it used. For anything else it writes a read-only SQL query against an in-memory SQLite copy.
+            You can inspect every lookup and query below each response.
           </p>
           <Diagram />
           <p>
@@ -64,13 +66,13 @@ export default function HowItWorksPage() {
           </p>
           <KeyValue items={[
             ["Step 1", "Load the attendance records"],
-            ["Step 2", "Write and run a SQL query"],
-            ["Step 3", "Read the results and query again if needed"],
-            ["Step 4", "Return an answer and show the queries"],
+            ["Step 2", "Run page lookups or a read-only SQL query"],
+            ["Step 3", "Read the results and look up more if needed"],
+            ["Step 4", "Write the answer as you watch, with page links"],
           ]} />
           <p>
-            Query results give the model records to work from, but it can still make mistakes. Check the queries and
-            source sheet when a number looks wrong or an answer matters.
+            Lookup and query results give the model records to work from, but it can still make mistakes. Check the
+            linked page, the queries, and the source sheet when a number looks wrong or an answer matters.
           </p>
         </Section>
 
@@ -88,8 +90,8 @@ export default function HowItWorksPage() {
 
         <Section title="What you see while it works">
           <p>
-            Status updates show when the app is loading data, querying it, or checking results. The response includes
-            the answer, the SQL queries, and suggested follow-up questions.
+            Status updates show when the app is loading data or looking things up. The answer appears as it is written,
+            followed by the lookups and queries it used and suggested follow-up questions.
           </p>
           <p>
             Each question allows up to six model rounds. If it cannot finish within that limit, the app asks you to
@@ -220,8 +222,8 @@ function Diagram() {
     { label: "Google Sheet", sub: "live attendance data" },
     { label: "Data Loader", sub: "fetched & cached 10 min" },
     { label: "In-Memory DB", sub: "cached up to 10 min" },
-    { label: "AI Agent Loop", sub: "query → read → repeat" },
-    { label: "Response stream", sub: "live progress updates" },
+    { label: "AI Agent Loop", sub: "look up → read → repeat" },
+    { label: "Response stream", sub: "progress and answer text" },
     { label: "Chat UI", sub: "your browser" },
   ];
 

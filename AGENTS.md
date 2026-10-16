@@ -19,6 +19,7 @@ Read [README.md](README.md) for the product and local setup, [docs/architecture.
 | Profile month/year/over-time views | `app/PaxActivity.tsx`, `lib/paxActivity.ts`, `app/SwipeViews.tsx` |
 | Public data snapshot and source fields | `app/api/data/route.ts`, `lib/dataExplorerSource.ts` |
 | AI model, prompts, tool loop, SSE events | `app/api/chat/route.ts` |
+| Chat lookup tools, name resolution, page links | `lib/chatTools.ts` |
 | AI quota and paid-call rejection | `lib/aiRateLimit.ts` |
 | Attendance CSV, SQLite schema, SQL helpers | `lib/attendance-db.ts` |
 | Roster, region eligibility, EH and return attributions | `lib/sheet.ts` |

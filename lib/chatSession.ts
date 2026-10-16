@@ -29,6 +29,8 @@ interface SessionState {
   drafts: Record<string, string>;
   reasoningLevel: Reasoning;
   phases: Record<string, string>;
+  /** Answer text received so far for each in-flight conversation; never persisted. */
+  partials: Record<string, string>;
   ready: boolean;
   storageError: boolean;
 }
@@ -37,7 +39,7 @@ const SESSION_KEY = "bedrock-chat-session";
 const NEW_DRAFT = "new";
 export const INITIAL_CHAT_STATE: SessionState = {
   conversations: [], activeId: null, drafts: {}, reasoningLevel: "auto",
-  phases: {}, ready: false, storageError: false,
+  phases: {}, partials: {}, ready: false, storageError: false,
 };
 const interruptedMessage: Message = {
   role: "assistant", isError: true,
@@ -120,9 +122,11 @@ export class ChatSession {
     controller?.abort();
     const drafts = { ...this.state.drafts };
     const phases = { ...this.state.phases };
+    const partials = { ...this.state.partials };
     delete drafts[id];
     delete phases[id];
-    this.commit({ conversations: this.state.conversations.filter(c => c.id !== id), drafts, phases,
+    delete partials[id];
+    this.commit({ conversations: this.state.conversations.filter(c => c.id !== id), drafts, phases, partials,
       activeId: this.state.activeId === id ? null : this.state.activeId });
   };
 
@@ -143,12 +147,26 @@ export class ChatSession {
       phases: { ...this.state.phases, [id]: "Starting..." } });
     const queryLog: QueryLogEntry[] = [];
     const isCurrent = () => this.requests.get(id) === controller;
+    let finished = false;
     const finish = (message: Message) => {
-      if (!isCurrent()) return;
+      if (!isCurrent() || finished) return;
+      finished = true;
       const phases = { ...this.state.phases };
+      const partials = { ...this.state.partials };
       delete phases[id];
-      this.commit({ phases, conversations: this.state.conversations.map(c => c.id === id
+      delete partials[id];
+      this.commit({ phases, partials, conversations: this.state.conversations.map(c => c.id === id
         ? { ...c, messages: [...messages, message], pending: false, updatedAt: Date.now() } : c) });
+      // The chat is free for the next question while late suggestions finish streaming.
+      this.requests.delete(id);
+    };
+    // Suggestions can arrive after the answer; attach them to that answer.
+    const addSuggestions = (suggestions: string[]) => {
+      this.commit({ conversations: this.state.conversations.map(c => {
+        const last = c.messages.at(-1);
+        return c.id === id && last?.role === "assistant" && !last.isError && c.messages.length === messages.length + 1
+          ? { ...c, messages: [...c.messages.slice(0, -1), { ...last, suggestions }] } : c;
+      }) });
     };
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
@@ -171,30 +189,87 @@ export class ChatSession {
         const parts = buffer.split(/\r?\n\r?\n/);
         buffer = parts.pop() ?? "";
         if (done && buffer.trim()) parts.push(buffer);
+        let partial = this.state.partials[id] ?? "";
+        const partialBefore = partial;
         for (const part of parts) {
-          const line = part.split(/\r?\n/).find(l => l.startsWith("data: "));
-          if (!line) continue;
-          let event;
-          try { event = JSON.parse(line.slice(6)); } catch { continue; }
+          const event = parseEvent(part);
+          if (!event) continue;
+          if (finished) {
+            if (event.type === "suggestions") addSuggestions(suggestionList(event.suggestions));
+            continue;
+          }
           if (!isCurrent()) return;
-          if (event.type === "phase" && typeof event.label === "string") {
+          if (event.type === "delta" && typeof event.text === "string") {
+            partial += event.text;
+          } else if (event.type === "reset") {
+            partial = "";
+          } else if (event.type === "phase" && typeof event.label === "string") {
             this.commit({ phases: { ...this.state.phases, [id]: event.label } }, false);
           } else if (event.type === "query") {
-            queryLog.push({ index: event.index, reason: event.reason, sql: event.sql });
+            queryLog.push({ index: event.index ?? queryLog.length + 1, reason: event.reason ?? "", sql: event.sql ?? "" });
           } else if (event.type === "done") {
-            finish({ role: "assistant", content: event.answer ?? "No answer returned.", suggestions: event.suggestions ?? [], queryLog, reasoningUsed: event.reasoningLevel });
-            return;
+            finish({ role: "assistant", content: event.answer ?? "No answer returned.", suggestions: suggestionList(event.suggestions), queryLog, reasoningUsed: event.reasoningLevel });
           } else if (event.type === "error") {
             throw new Error(event.message ?? "Something went wrong. Please try again.");
           }
         }
+        if (finished) {
+          // Resolve now; keep reading in the background for follow-up suggestions.
+          if (!done) { void drainLate(reader, decoder, buffer, addSuggestions); reader = undefined; }
+          return;
+        }
+        if (partial !== partialBefore)
+          this.commit({ partials: { ...this.state.partials, [id]: partial } }, false);
         if (done) throw new Error("The connection ended before an answer arrived. Your question is saved; send it again to try again.");
       }
     } catch (error) {
-      finish({ role: "assistant", content: error instanceof Error ? error.message : "Failed to reach the server.", isError: true });
+      if (!finished) finish({ role: "assistant", content: error instanceof Error ? error.message : "Failed to reach the server.", isError: true });
     } finally {
       if (isCurrent()) this.requests.delete(id);
       await reader?.cancel().catch(() => {});
     }
+  }
+}
+
+interface StreamEvent {
+  type?: string;
+  text?: string;
+  label?: string;
+  index?: number;
+  reason?: string;
+  sql?: string;
+  answer?: string;
+  message?: string;
+  reasoningLevel?: string;
+  suggestions?: unknown;
+}
+function parseEvent(part: string): StreamEvent | null {
+  const line = part.split(/\r?\n/).find(l => l.startsWith("data: "));
+  if (!line) return null;
+  try { return JSON.parse(line.slice(6)); } catch { return null; }
+}
+const suggestionList = (value: unknown) =>
+  Array.isArray(value) ? value.filter((s): s is string => typeof s === "string").slice(0, 3) : [];
+/** Reads events after the answer (just suggestions), giving up after 30 seconds. */
+async function drainLate(reader: ReadableStreamDefaultReader<Uint8Array>, decoder: TextDecoder, buffer: string, onSuggestions: (s: string[]) => void) {
+  const timer = setTimeout(() => { reader.cancel().catch(() => {}); }, 30_000);
+  // Don't hold a Node test process open; browsers ignore this.
+  (timer as unknown as { unref?: () => void }).unref?.();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+      const parts = buffer.split(/\r?\n\r?\n/);
+      buffer = parts.pop() ?? "";
+      if (done && buffer.trim()) parts.push(buffer);
+      for (const part of parts) {
+        const event = parseEvent(part);
+        if (event?.type === "suggestions") onSuggestions(suggestionList(event.suggestions));
+      }
+      if (done) return;
+    }
+  } catch {} finally {
+    clearTimeout(timer);
+    reader.cancel().catch(() => {});
   }
 }

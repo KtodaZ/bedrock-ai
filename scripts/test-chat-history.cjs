@@ -73,15 +73,23 @@ for (const fails of [false, true]) test(`Chat logging saves the full ${fails ? '
   let round = 0;
   class FakeAI { responses = { async create(options) {
     if (options.model === 'gpt-5-mini') return { output_text: '[]' };
-    if (round++ === 0) return { output: [{ type: 'function_call', call_id: 'one', arguments: JSON.stringify({ sql: 'SELECT 1', reason: 'Count posts' }) }] };
+    const stream = ({ output, output_text: text }) => (async function* () {
+      yield { type: 'response.completed', response: { output: text ? [{ type: 'message', content: [{ type: 'output_text', text }] }, ...output] : output } };
+    })();
+    if (round++ === 0) return stream({ output: [{ type: 'function_call', name: 'run_sql', call_id: 'one', arguments: JSON.stringify({ sql: 'SELECT 1', reason: 'Count posts' }) }] });
     if (fails) throw new Error('Test model failure');
-    return { output: [], output_text: 'A complete attendance answer.' };
+    return stream({ output: [], output_text: 'A complete attendance answer.' });
   } }; }
   const route = load('app/api/chat/route.ts', {
     openai: { default: FakeAI },
     '@/lib/chatLogStore': { saveChatLog: async log => saved.push(structuredClone(log)) },
-    '@/lib/attendance-db': { fetchCSV: async () => 'csv', getDatabase: async () => ({}), runSQL: () => '1' },
+    '@/lib/attendance-db': { fetchCSV: async () => 'csv', getDatabase: async () => ({}), runSQL: () => '1', isReadOnlySelect: () => true },
     '@/lib/aiRateLimit': { reserveAiRequest: async () => ({ allowed: true }) },
+    '@/lib/dataExplorerSource': { loadExplorerData: async () => ({ rows: [], people: [], sites: [], asOf: '2026-10-14', loadedAt: '' }) },
+    '@/lib/attendanceTrends': { attendanceWorkouts: () => [] },
+    '@/lib/chatTools': { CHAT_TOOLS: [], chatDataFacts: () => '', isChatTool: () => false, runChatTool: async () => ({ output: '{}' }) },
+    '@/lib/ehChallenge': { computeChallenge: () => ({}) },
+    '@/lib/sheet': { fetchAttendance: async () => [], fetchEhAttributions: async () => [], fetchResurrectionAttributions: async () => [] },
   });
   const response = await route.POST(new Request('https://bedrock.test/api/chat', { method: 'POST', body: JSON.stringify({ question: 'Who posted?', conversationId: 'test-conversation', reasoningLevel: 'low', history: [{ role: 'user', content: 'Earlier question' }] }) }));
   await response.text();

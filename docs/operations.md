@@ -108,7 +108,8 @@ npm run build
 | Test script | Coverage |
 | --- | --- |
 | `scripts/test-ai-rate-limit.cjs` | Per-IP/daily limits, concurrent reservations, storage failure, rejecting before OpenAI, bounded mock chat calls, free homepage suggestions |
-| `scripts/test-chat-session.cjs` | Immediate saves, active-chat/draft restoration, background and parallel completion, deletion races, interrupted streams, storage failures, legacy history |
+| `scripts/test-chat-session.cjs` | Immediate saves, active-chat/draft restoration, background and parallel completion, deletion races, interrupted streams, storage failures, legacy history, streamed text, late suggestions |
+| `scripts/test-chat-tools.cjs` | Strict tool schemas, PAX/AO name resolution, lookup results matching the Data/AO/Community/Milestones/EH code, page links, error handling |
 | `scripts/test-data-insights.cjs` | Milestone boundaries, pace/sample thresholds, exact reached dates, protected records, UTC weeks, weighted turnout, comparisons, gaps, and raw attendance links |
 | `scripts/test-ao-profile.cjs` | AO detail rankings and growth windows, AO list ordering, run/beatdown Q mix, major milestones, monthly profile activity |
 | `scripts/test-data-explorer.cjs` | Public data fields/exclusions, CSV parsing, active Sites, combined filters, PAX/Qsource counts, inactivity thresholds, streaks, shared workouts, URL filters, and safe exports |
@@ -122,7 +123,7 @@ These tests use mocks and synthetic records. They do not prove current sheet con
 | Symptom or question | Inspect | Likely explanation / next check |
 | --- | --- | --- |
 | Why are there no EH points? | Attendance FNG flag, matching Roster Region, EH'er, selected period | Competition points exist only in the 2026 Challenge view for FNGs joining Oct 15–Dec 31. Stats views intentionally award zero points. A visitor is not automatically a Bedrock FNG; a blank EH'er leaves challenge workout points unassigned. Check distinct Post dates. |
-| Chat FNG count differs from leaderboard | SQL query versus `lib/sheet.ts` eligibility | Chat has raw attendance without Roster region filtering; challenge uses a Bedrock cohort. |
+| Chat FNG count differs from leaderboard | Query details under the answer | Lookup tools (`fng_follow_through`, `eh_challenge`, `period_summary`) apply the Bedrock rule; a `run_sql` FNG count has no Roster region and includes visitors. |
 | Sheet change has not appeared | Server CSV caches and browser challenge query | Attendance TTL is 10 minutes; Roster TTL one minute; browser staleTime five minutes. Reload/refetch after cache expiry rather than creating a new tab/source. |
 | Theme or year seems wrong | Latest parsed attendance date | Periods and theme status follow `asOf`, not the wall clock. Check the source's latest valid date. |
 | Resurrection has no credit | `Brought back by`, `Return date`, prior/current Post dates | Require the exact recorded return date, 180-day gap, theme window, and Bedrock region; original EH'er is insufficient. |

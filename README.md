@@ -12,22 +12,22 @@ Live app: https://data.f3bedrock.com
 
 ## How it works
 
-Ask a question about F3 attendance in plain English. Bedrock loads the attendance sheet into an in-memory SQLite database, lets the AI query it, and returns an answer with the SQL underneath. You can inspect the queries when you want to check a number.
+Ask a question about F3 attendance in plain English. Bedrock answers with lookups built on the same code as the Data, AO, Community, Milestones, and EH Challenge pages, so its numbers match those pages, and links to the page it used. For anything those don't cover, the AI writes a read-only SQL query against an in-memory SQLite copy of the sheet. You can inspect every lookup and query under the answer.
 
 ```text
-Google Sheet → cached attendance → SQLite → AI queries → answer + SQL
+Google Sheet → cached attendance + Roster → page lookups or SQL → streamed answer + links
 ```
 
 ### From question to answer
 
 1. The app checks request limits before making any paid AI calls.
-2. It loads attendance records, reusing a cached copy for up to 10 minutes.
-3. `gpt-6.1-sol` writes SQL, reads the results, and can query again before answering.
-4. The app returns the answer, query details, and suggested follow-up questions.
+2. It loads attendance, Roster, and Sites records, reusing cached copies, and tells the AI the latest attendance date and every AO up front.
+3. `gpt-6.1-sol` calls lookups (PAX profile, AO profile, year over year, AO rankings, date range summary, Kotter and Q lists, FNG follow-through, EH family tree, milestones, EH standings) or SQL, several at once when it can.
+4. The answer appears as it is written, with links to the matching pages; query details and suggested follow-up questions follow.
 
-Each question allows up to six model rounds, with capped outputs. Auto mode uses a smaller model to choose the reasoning level; you can also select Low, Medium, or High. The app shows progress while it works.
+Each question allows up to six model rounds, with capped outputs. Auto mode uses a smaller model to choose the reasoning level; you can also select Low, Medium, or High.
 
-Query results give the AI records to work from, but it can still make mistakes. Check the SQL and source sheet when a number looks wrong or an answer matters.
+Lookup and query results give the AI records to work from, but it can still make mistakes. Check the linked page, the query details, and the source sheet when a number looks wrong or an answer matters.
 
 ### EH Challenge
 

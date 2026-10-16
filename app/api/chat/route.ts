@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { fetchCSV, getDatabase, runSQL } from "@/lib/attendance-db";
+import { fetchCSV, getDatabase, isReadOnlySelect, runSQL } from "@/lib/attendance-db";
+import { loadExplorerData } from "@/lib/dataExplorerSource";
+import { attendanceWorkouts } from "@/lib/attendanceTrends";
+import { CHAT_TOOLS, chatDataFacts, isChatTool, runChatTool, type ChatToolContext } from "@/lib/chatTools";
+import { computeChallenge, type ChallengeResult, type Period } from "@/lib/ehChallenge";
+import { fetchAttendance, fetchEhAttributions, fetchResurrectionAttributions } from "@/lib/sheet";
 
 import { randomUUID } from "node:crypto";
 import { saveChatLog, type ChatLog } from "@/lib/chatLogStore";
@@ -10,118 +15,87 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 0, t
 
 type HistoryMessage = { role: "user" | "assistant"; content: string };
 
-const SYSTEM_PROMPT = `You are Bedrock Data AI — an expert data analyst for an F3 Nation workout group. You answer questions by running precise SQL queries against an in-memory SQLite database populated from the group's attendance records.
+const SYSTEM_PROMPT = `You are Bedrock Data — an expert data analyst for F3 Bedrock, an F3 Nation region. You answer questions about recorded workout attendance using lookup tools and, when needed, SQL against an in-memory SQLite copy of the attendance sheet.
 
-DATABASE SCHEMA — Table: attendance
-Columns:
-- "PAX Name" TEXT — participant name
-- "Site Name" TEXT — workout location (Grizzly Bar, Rattlesnake Ridge, Hilltop, Divento, Spartan, Trailhead, Outpost)
-- "FNG" INTEGER — 1 if first-time attendee, 0 otherwise
-- "Post" INTEGER — 1 if attended this workout (always filter WHERE "Post" = 1 for actual attendance)
-- "Q" INTEGER — 1 if led this workout as Q leader
-- "QS" INTEGER — Qsource indicator
-- "QS-Q" INTEGER — Qsource Q indicator
-- "Date" TEXT — ISO date string YYYY-MM-DD, sortable lexicographically
-- "Month" INTEGER — month number (1–12)
-- "Year" INTEGER — calendar year
-- "Month_1" TEXT — month name (January, February, etc.) — the second Month column
-- "Day of the Week" TEXT — day name
-- "City" TEXT — city name (Granite Bay, Roseville)
+TOOLS — prefer the lookup tools. They use the same rules as the Data pages and EH Challenge page, so answers match what PAX see there, and each resolves misspelled names and AOs itself:
+- pax_profile — anything about one PAX (posts, Qs, streak, AOs, monthly history, EH'er, milestones, who he posts with). Pass from/to for a date range.
+- ao_profile — one AO's turnout, regulars, Qs, best draw, biggest workouts, weekday turnout, and growth; optionally vs another AO.
+- year_over_year — this year vs last year for an AO or the whole region.
+- ao_rankings — every AO side by side and growth over recent weeks or year to date ("this year"); also the last 7 days.
+- period_summary — totals, top posters, top Qs, FNGs, and AO breakdown for any date range.
+- pax_list — Kotter, Q Kotter, Qsource, first-Q candidates, Q ratio among regulars, run-site vs beatdown Qs.
+- fng_follow_through — how each month's Bedrock FNGs came back.
+- family_tree — Roster EH links (who EH'd whom).
+- milestones — post milestone forecasts and recent milestones.
+- eh_challenge — leaderboard points, FNGs, and a PAX's EH standing.
+- run_sql — only when no tool answers the question (custom cross-tabs, specific dates, unusual comparisons).
+Call independent tools together in one round. Use the fewest calls that answer precisely. Tool results are already validated; re-check with SQL only if two results conflict. If a tool returns "closest" names, pick the clearly intended one and call again, or list them and ask.
+
+LINKS — tool results include a "link" to the page showing the same numbers. End the answer with one line holding up to two of them as Markdown links, e.g. [Open Clove's profile](/data?period=all&pax=Clove). Copy links exactly from tool results; never write a link a tool didn't return.
+
+SQL TABLE (run_sql) — Table: attendance
+- "PAX Name" TEXT — participant name (under-18 and archived names are already excluded)
+- "Site Name" TEXT — the AO
+- "FNG" INTEGER — 1 if the row is flagged FNG (the table has no Roster region, so SQL FNG counts include visitors from other regions; use the tools for Bedrock FNGs)
+- "Post" INTEGER — 1 if he posted (always filter WHERE "Post" = 1 for attendance)
+- "Q" INTEGER — 1 if he Q'd
+- "QS" INTEGER — Qsource post; "QS-Q" INTEGER — Qsource Q
+- "Date" TEXT — ISO YYYY-MM-DD
+- "Month" INTEGER, "Year" INTEGER, "Month_1" TEXT (month name), "Day of the Week" TEXT, "City" TEXT
+SQL tips: date("Date", '-30 days') and strftime() for date math; ISO strings compare correctly; count a PAX's posts as distinct dates with Post = 1. Names have mixed casing: match with LOWER(...) LIKE LOWER('%name%').
 
 F3 TERMINOLOGY:
-- PAX = participants/members of the workout group
-- Q = the workout leader for a given session
-- FNG = First 'N' Guy — a first-time attendee (FNG = 1)
-- Post = attending a workout (Post = 1)
-- HIM = High Impact Man (how F3 refers to members)
-- Kotter List = PAX who have posted at least once ever, but NOT in the last 30 days
-- Reach-out list = PAX with 60+ day gap after a history of regular attendance
-- Site Q (SiteQ) = the ongoing leader/owner of a specific AO, distinct from a one-time Q
+- PAX = participants; HIM = how F3 refers to members
+- Q = the workout leader; Site Q = the ongoing leader of an AO
+- FNG = First 'N' Guy. A Bedrock FNG has an FNG-flagged attendance row and Roster region Bedrock.
+- Post = attending a workout
+- Kotter List = Bedrock PAX whose last post was 15–364 days ago (pax_list kotter)
+- EH = inviting someone new; the Roster EH'er column records who EH'd each PAX
 
-CRITICAL ANALYTICAL RULES:
-1. ALWAYS begin by querying the most recent date in the dataset:
-   SELECT MAX("Date") as max_date FROM attendance
-   Use this as your reference point — never use today's calendar date.
-2. "Last X days" = WHERE "Date" >= date(max_date, '-X days')
-3. "Posted" requires WHERE "Post" = 1 — rows exist for every PAX at every session even if they didn't post
-4. For Kotter List: SELECT DISTINCT "PAX Name" WHERE MAX("Date" WHERE "Post"=1) < date(max_date, '-30 days') AND COUNT("Post"=1) >= 1
-5. VALIDATE important results with a follow-up query — if a number seems surprising, verify it
-6. For rankings, always include the exact count/total (e.g., "12 posts")
-7. Always state the specific date range your answer covers (e.g., "Jan 1 – Mar 15, 2025")
-8. Run as many queries as needed — precision matters more than speed
-9. When asked about a specific PAX, look up their exact attendance history before answering
-10. Cross-check: if you count X people, spot-check a few entries to confirm accuracy
-
-SQL TIPS:
-- Use date() and strftime() for date arithmetic: date("Date", '-30 days')
-- To count posts: SUM(CASE WHEN "Post" = 1 THEN 1 ELSE 0 END) or COUNT with WHERE
-- For "most recent post" per PAX: MAX("Date") WHERE "Post" = 1 GROUP BY "PAX Name"
-- SQLite date comparison works on ISO strings: "Date" >= '2025-01-01'
-- HAVING clause for filtering aggregated results
+ANALYTICAL RULES:
+- "Today" means the latest attendance date given below, not the calendar date. "Last X days" ends there.
+- For rankings, always include the exact count (e.g., "12 posts").
+- State the date range the answer covers once, at the top.
+- If the data doesn't cover the full requested window, say so.
+- When the user gives new facts (e.g. "he posted Mar 8 at Spartan"), treat them as true without re-querying.
+- Resolve pronouns and "same AO" from earlier messages before calling tools.
+- Records show what happened, not why. Don't invent reasons such as injuries or travel; suggest a check-in instead.
 
 RESPONSE FORMATTING RULES:
-- Never mention SQL, databases, queries, or any technical details
-- Respond naturally as if you have expert knowledge of the group
-- Lead with the direct answer — no preamble or "Great question!"
-- State the date range covered once, briefly, at the top (e.g. "**Jan 1 – Mar 7, 2026**")
-- Use **bold** for PAX names throughout
-- Use ### headers to separate distinct sections (e.g. ### Top Posters, ### Sites)
-- Use bullet lists for any list of people or data — one item per line, no walls of text
-- Each bullet: name + key stat + one short detail (e.g. "- **Clove** — 18 posts, last on Mar 5")
-- Always show the data behind the answer — if the answer is a count, list what was counted; if it's a ranking, show the numbers; never return a bare conclusion without the supporting detail
-- Use --- to divide major sections only when the response has 3+ distinct sections
-- Keep commentary tight — one sentence of context per section max, no lengthy paragraphs
-- Include counts and totals always; never just list names without numbers
-- Be encouraging and community-focused, but keep it brief
+- Never mention SQL, databases, queries, tools, or JSON
+- Lead with the direct answer — no preamble
+- State the date range once, briefly, at the top (e.g. "**Jan 1 – Mar 7, 2026**")
+- Use **bold** for PAX names
+- Use ### headers to separate distinct sections
+- Use bullet lists for people or data; each bullet: name + key stat + one short detail (e.g. "- **Clove** — 18 posts, last on Mar 5")
+- Always show the numbers behind the answer; never a bare conclusion
+- Never use markdown tables; they don't render. Use bullets instead
+- For long lists, show the top 15 and give the total plus the page link for the rest
+- Use --- only when the response has 3+ distinct sections
+- One sentence of context per section max
+- Be encouraging and community-focused, but brief
 
-DATE RULES — always include specific dates wherever relevant:
-- First post date when mentioning a PAX's history or milestone (e.g. "first post Mar 5, 2025")
-- Last post date for any PAX on the Kotter list or reach-out list
-- Exact date for any "most recent" or "first time" event
-- Date of peak attendance, FNG records, or any superlative
-- When projecting future milestones, state the projected date explicitly
-- Format dates as human-readable (e.g. "Mar 7, 2026" not "2026-03-07")
-- "All time" queries must state the full dataset range (first date – last date)
+DATE RULES:
+- Include first post dates for PAX histories, last post dates for Kotter/reach-out lists, and exact dates for superlatives and "most recent" events
+- When projecting milestones, give the projected date and the pace assumption (e.g. "at 3.2 posts/week over the last 90 days")
+- Format dates as "Mar 7, 2026", never "2026-03-07"
 
-DATA ACCURACY RULES:
-- PAX names are stored with mixed casing — always do an initial lookup to find the exact stored form before querying for stats
-- When looking up a PAX by name: FIRST run SELECT DISTINCT "PAX Name" FROM attendance WHERE LOWER("PAX Name") LIKE LOWER('%name%') to find the exact stored name(s). Then use the exact stored name for all subsequent queries.
-- If the fuzzy lookup returns multiple matches, query stats for each and present them — do NOT ask the user to clarify casing unless truly ambiguous (e.g. two clearly different people with similar names)
-- If the LIKE search returns no results, run SELECT DISTINCT "PAX Name" FROM attendance ORDER BY "PAX Name" to get the full name list, then identify the closest-sounding name (consider phonetics, common typos, abbreviations, missing/swapped letters) — if one is clearly close, proceed with that name and note "Showing results for [matched name]" at the top of your answer
-- Only report a PAX as truly not found if the full name list contains nothing plausibly similar
-- If a PAX name has variants in the data (e.g. "Peekaboo" vs "Peekaboo (<18)"), treat them as distinct PAX unless the user clarifies
-- Never return silent zero counts — if no data is found after fuzzy search, say so explicitly
-- If the dataset doesn't cover the full requested window (e.g. user asks "last 6 months" but data only goes back 4), state that clearly in the answer
+NAMES:
+- If a tool says "Showing results for X", start the answer with that note.
+- Treat name variants (e.g. "Peekaboo" vs "Peekaboo 2.0") as different PAX unless the user says otherwise.
+- Never return a silent zero; if nothing matches, say so and offer the closest names.
 
-CONVERSATIONAL CONTEXT:
-- When the user references someone by pronoun or nickname from earlier in the conversation (e.g. "what about him?", "same site"), resolve the reference from conversation history before querying
-- When the user provides new facts in their message (e.g. "he posted Mar 8 at Spartan"), treat that as ground truth and incorporate it into your analysis without re-querying for it
-
-PROJECTIONS AND FORECASTING:
-- Always state your assumptions explicitly (e.g. "based on his last 30-day pace of 3.2 posts/week, assuming no breaks")
-- Show the math briefly inline (e.g. "11 posts needed ÷ 3.2/week ≈ 3.4 weeks")
-- Give a specific projected date or narrow date range, not just "a few weeks"
-- Note any caveats (attendance streaks, holidays, etc.) only if directly relevant
-
-F3 LANGUAGE — use correct F3 terminology throughout:
-- "AO" not "site" or "location"
-- "Q" not "leader" or "instructor"
-- "PAX" not "member", "person", or "attendee"
-- "post" not "attend", "show up", or "participate"
-- "FNG" not "new member" or "first-timer"
-- "HIM" when referring to members generally
-- "EH" for recruiting/inviting someone new
-- "Site Q" (or "SiteQ") = the PAX responsible for leading/managing a specific AO — not just a one-time Q, but the ongoing leader of that location
+F3 LANGUAGE — "AO" not site/location, "Q" not leader/instructor, "PAX" not member/attendee, "post" not attend/show up, "FNG" not new member, "EH" for inviting someone new.
 
 OFF-TOPIC HANDLING:
-If asked about anything unrelated to F3 attendance data (workout planning, nutrition, general fitness, etc.), respond:
-"I'm Bedrock Data AI — I specialize in F3 attendance and participation data. I can help with attendance stats, workout leaders, participation trends, the Kotter List, FNG counts, site rankings, and more. What would you like to know about your crew?"`;
+If asked about anything unrelated to F3 attendance data (contact info, workout planning, nutrition, general fitness), respond:
+"I'm Bedrock Data — I answer questions about F3 Bedrock attendance: posts, Qs, FNGs, AO trends, the Kotter List, milestones, and the EH Challenge. What would you like to know about your crew?"`;
 
 const RUN_SQL_TOOL: OpenAI.Responses.Tool = {
   type: "function",
   name: "run_sql",
   description:
-    "Execute a SQL SELECT query against the F3 attendance database. Returns the result rows as a formatted table. Use this to retrieve any data needed to answer the user's question. You may call this multiple times.",
+    "Run one read-only SQL SELECT against the attendance table. Use only when no lookup tool answers the question. Returns rows as a table.",
   parameters: {
     type: "object" as const,
     properties: {
@@ -162,6 +136,58 @@ Question: "${question}"`,
     if (level === "low" || level === "medium" || level === "high") return level;
   } catch {}
   return "medium"; // safe default on failure
+}
+
+function responseText(response: OpenAI.Responses.Response) {
+  return response.output
+    .flatMap((item) => (item.type === "message" ? item.content : []))
+    .map((part) => (part.type === "output_text" ? part.text : ""))
+    .join("");
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  pax_profile: "PAX profile",
+  ao_profile: "AO profile",
+  year_over_year: "Year over year",
+  ao_rankings: "AO rankings",
+  period_summary: "Date range summary",
+  pax_list: "PAX list",
+  fng_follow_through: "FNG follow-through",
+  family_tree: "EH family tree",
+  milestones: "Milestones",
+  eh_challenge: "EH Challenge standings",
+};
+
+async function suggestFollowUps(question: string, answer: string): Promise<string[]> {
+  try {
+    const res = await openai.responses.create({
+      model: "gpt-5-mini",
+      max_output_tokens: 1024,
+      reasoning: { effort: "low" },
+      input: [
+        {
+          role: "user",
+          content: `Bedrock Data answers questions about F3 Bedrock workout attendance: PAX histories, post and Q counts, AO turnout and growth, year-over-year comparisons, FNG follow-through, the Kotter List, first-Q candidates, milestones, the EH family tree, and EH Challenge standings.
+
+A leader asked: "${question}"
+The answer began: """${answer.slice(0, 1200)}"""
+
+Generate exactly 3 natural follow-up questions they might ask next. Rules:
+- Answerable from attendance data — no contact info, waivers, scheduling, or off-topic
+- Complete and self-contained, naming the PAX or AO when relevant — no placeholders like [name]
+- Conversational, varied, and not already answered above
+- Short (under 12 words) and in F3 terms: "post" not attend, "Q" or "Q'd" not lead/served as Q, "AO" not location/site, "PAX" not members
+
+Return ONLY a JSON array of 3 strings, no explanation.`,
+        },
+      ],
+    });
+    const raw = res.output_text?.trim() ?? "[]";
+    const parsed = JSON.parse(raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim());
+    return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === "string").slice(0, 3) : [];
+  } catch {
+    return [];
+  }
 }
 
 // Discord webhook queue — retries with exponential backoff, never blocks requests
@@ -245,117 +271,127 @@ export async function POST(req: NextRequest) {
 
       try {
         await saveChatLog(log);
-        const reasoningLevel =
-          clientLevel === "auto" ? await classifyReasoning(question) : clientLevel;
+        send({ type: "phase", label: "Loading attendance data..." });
+        // The classifier, sheet reads, and SQL setup don't depend on each other.
+        const [reasoningLevel, data, db] = await Promise.all([
+          clientLevel === "auto" ? classifyReasoning(question) : Promise.resolve(clientLevel),
+          loadExplorerData(),
+          fetchCSV().then(getDatabase),
+        ]);
         log.reasoningLevel = reasoningLevel;
         const startTime = Date.now();
         console.log(`[chat] question="${question}" reasoning=${reasoningLevel} historyLen=${history.length}`);
         notifyDiscord(`❓ **${question}** _(${reasoningLevel} reasoning)_`);
 
-        send({ type: "phase", label: "Loading attendance data..." });
-        const csv = await fetchCSV();
-
-        send({ type: "phase", label: "Preparing database..." });
-        const db = await getDatabase(csv);
+        const workouts = attendanceWorkouts(data);
+        const challenges = new Map<Period, Promise<ChallengeResult>>();
+        const ctx: ChatToolContext = {
+          data,
+          workouts,
+          challenge: (period) => {
+            if (!challenges.has(period))
+              challenges.set(period, Promise.all([fetchAttendance(), fetchEhAttributions(), fetchResurrectionAttributions()])
+                .then(([rows, ehLog, resurrections]) => computeChallenge(rows, ehLog, period, resurrections)));
+            return challenges.get(period)!;
+          },
+        };
 
         send({ type: "phase", label: "Analyzing your question..." });
-
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-        const systemWithDate = `${SYSTEM_PROMPT}\n\nToday's date: ${today}. All dates in the database are stored in ISO format (YYYY-MM-DD). The dataset may not extend to today — always query MAX("Date") first to find the actual latest record.`;
-
+        const systemWithFacts = `${SYSTEM_PROMPT}\n\nDATA FACTS:\n${chatDataFacts(data, workouts)}`;
         const input: OpenAI.Responses.ResponseInput = [
-          { role: "system", content: systemWithDate },
+          { role: "system", content: systemWithFacts },
           ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
           { role: "user", content: question },
         ];
 
         let finalAnswer = "";
         let queryBatch = 0;
+        let queryIndex = 0;
 
         // Bound paid work, even if the model keeps requesting tools.
         for (let round = 0; round < 6; round++) {
-          const response = await openai.responses.create({
+          const stream = await openai.responses.create({
             model: "gpt-6.1-sol",
             max_output_tokens: 6000,
             reasoning: { effort: reasoningLevel },
             input,
-            tools: [RUN_SQL_TOOL],
+            tools: [RUN_SQL_TOOL, ...(CHAT_TOOLS as OpenAI.Responses.Tool[])],
+            parallel_tool_calls: true,
+            stream: true,
             ...(round === 5 ? { tool_choice: "none" as const } : {}),
           });
+          let response: OpenAI.Responses.Response | undefined;
+          let streamedText = "";
+          for await (const event of stream) {
+            if (event.type === "response.output_text.delta") {
+              streamedText += event.delta;
+              send({ type: "delta", text: event.delta });
+            } else if (event.type === "response.completed" || event.type === "response.incomplete") {
+              response = event.response;
+            } else if (event.type === "response.failed") {
+              throw new Error(event.response.error?.message ?? "The answer could not be completed.");
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            }
+          }
+          if (!response) throw new Error("The answer stream ended early. Please try again.");
 
           const toolCalls = response.output.filter((o) => o.type === "function_call") as OpenAI.Responses.ResponseFunctionToolCallItem[];
 
           if (toolCalls.length === 0) {
-            // No more tool calls — final answer is ready
-            finalAnswer = response.output_text ?? "";
+            // Streamed responses don't carry the SDK's output_text shortcut.
+            finalAnswer = responseText(response) || streamedText;
             break;
           }
+          // Text written alongside tool calls is a draft; the next round replaces it.
+          if (streamedText) send({ type: "reset" });
 
           queryBatch++;
-          if (queryBatch === 1) {
-            send({ type: "phase", label: "Querying attendance data..." });
-          } else if (queryBatch === 2) {
-            send({ type: "phase", label: "Validating results..." });
-          } else {
-            send({ type: "phase", label: `Cross-checking (query ${queryBatch})...` });
-          }
+          send({ type: "phase", label: queryBatch === 1 ? "Looking up attendance..." : `Checking more details (${queryBatch})...` });
 
-          // Add all model output to input (includes reasoning + function_call items)
           input.push(...(response.output as OpenAI.Responses.ResponseInput));
 
-          // Execute each SQL tool call and add results
-          for (const call of toolCalls) {
-            let args: { sql: string; reason: string };
+          const outputs = await Promise.all(toolCalls.map(async (call) => {
+            let args: Record<string, unknown>;
             try {
               args = JSON.parse(call.arguments);
             } catch {
               args = { sql: call.arguments, reason: "" };
             }
-            console.log(`[chat] sql_query=${queryBatch} reason="${args.reason}" sql="${args.sql.replace(/\s+/g, " ").trim()}"`);
-            send({ type: "query", index: queryBatch, reason: args.reason, sql: args.sql.trim() });
-            log.queries.push({ sql: args.sql, reason: args.reason });
-            const result = runSQL(db, args.sql);
+            let output: string;
+            let sql: string;
+            let reason: string;
+            if (call.name === "run_sql") {
+              sql = String(args.sql ?? "").trim();
+              reason = String(args.reason ?? "");
+              // The SQL copy is shared across requests, so never let a question change it.
+              output = isReadOnlySelect(sql) ? runSQL(db, sql) : "SQL Error: only a single read-only SELECT or WITH query is allowed.";
+            } else {
+              sql = `${call.name}(${JSON.stringify(args)})`;
+              reason = TOOL_LABELS[call.name] ?? "Lookup";
+              output = isChatTool(call.name) ? (await runChatTool(ctx, call.name, args)).output : JSON.stringify({ error: `Unknown tool ${call.name}.` });
+            }
+            return { call, sql, reason, output };
+          }));
+          for (const { call, sql, reason, output } of outputs) {
+            queryIndex++;
+            console.log(`[chat] call=${queryIndex} round=${queryBatch} reason="${reason}" call="${sql.replace(/\s+/g, " ").slice(0, 500)}"`);
+            send({ type: "query", index: queryIndex, reason, sql });
+            log.queries.push({ sql, reason });
             input.push({
               type: "function_call_output",
               call_id: call.call_id,
-              output: result.slice(0, 24000),
+              output: output.slice(0, 24000),
             } as OpenAI.Responses.ResponseInputItem.FunctionCallOutput);
           }
         }
 
         if (!finalAnswer) throw new Error("This question needs more analysis than one request allows. Try a narrower question.");
 
-        // Generate follow-up suggestions (lightweight, no CSV needed)
-        let suggestions: string[] = [];
-        try {
-          const suggestionsRes = await openai.responses.create({
-            model: "gpt-5-mini",
-            max_output_tokens: 1024,
-            input: [
-              {
-                role: "user",
-                content: `Bedrock Data AI answers questions about F3 workout attendance data: post counts, Q counts, FNG counts, trends, AO rankings, Kotter List, reach-out lists, PAX histories, and site comparisons.
-
-A leader just asked: "${question}"
-
-Generate exactly 3 natural follow-up questions they might ask next. Rules:
-- Must be answerable from attendance data — no contact info, waivers, scheduling, or off-topic
-- Complete and self-contained — no placeholder text like [name] or [date]
-- Conversational, not analytical-sounding
-- Vary phrasing and topic across the 3 questions
-
-Return ONLY a JSON array of 3 strings, no explanation.`,
-              },
-            ],
-          });
-          const raw = suggestionsRes.output_text?.trim() ?? "[]";
-          const json = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-          suggestions = JSON.parse(json);
-        } catch {}
-
         const ms = Date.now() - startTime;
-        console.log(`[chat] done queries=${queryBatch} ms=${ms} answerLen=${finalAnswer.length}`);
+        console.log(`[chat] done rounds=${queryBatch} calls=${queryIndex} ms=${ms} answerLen=${finalAnswer.length}`);
         const plainAnswer = finalAnswer
+          .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
           .replace(/^#{1,6}\s+/gm, "")
           .replace(/\*\*(.+?)\*\*/g, "$1")
           .replace(/\*(.+?)\*/g, "$1")
@@ -364,10 +400,13 @@ Return ONLY a JSON array of 3 strings, no explanation.`,
           .replace(/^-{3,}$/gm, "")
           .replace(/\n{3,}/g, "\n\n")
           .trim();
-        notifyDiscord(`✅ Done — ${queryBatch} quer${queryBatch === 1 ? "y" : "ies"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${plainAnswer.slice(0, 500)}${plainAnswer.length > 500 ? "…" : ""}\n\`\`\``);
+        notifyDiscord(`✅ Done — ${queryIndex} lookup${queryIndex === 1 ? "" : "s"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${plainAnswer.slice(0, 500)}${plainAnswer.length > 500 ? "…" : ""}\n\`\`\``);
         Object.assign(log, { status: "success", answer: finalAnswer, durationMs: Date.now() - started, updatedAt: new Date() });
         await saveChatLog(log);
-        send({ type: "done", answer: finalAnswer, suggestions, reasoningLevel });
+        // Show the answer now; follow-up suggestions arrive after it.
+        send({ type: "done", answer: finalAnswer, suggestions: [], reasoningLevel });
+        const suggestions = await suggestFollowUps(question, finalAnswer);
+        if (suggestions.length) send({ type: "suggestions", suggestions });
       } catch (err) {
         Object.assign(log, { status: "error", error: String(err).slice(0, 2000), durationMs: Date.now() - started, updatedAt: new Date() });
         await saveChatLog(log);
