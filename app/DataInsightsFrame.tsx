@@ -20,7 +20,7 @@ export default function DataInsightsFrame({
   description,
   children,
 }: {
-  page: "trends" | "milestones";
+  page: "trends" | "milestones" | "community";
   title: string;
   description: string;
   children: (data: ExplorerData) => ReactNode;

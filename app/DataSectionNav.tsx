@@ -4,7 +4,7 @@ import styles from "./DataInsights.module.css";
 export default function DataSectionNav({
   active,
 }: {
-  active: "attendance" | "trends" | "milestones";
+  active: "attendance" | "trends" | "milestones" | "community";
 }) {
   return (
     <nav aria-label="Data pages" className={styles.dataNav}>
@@ -13,6 +13,7 @@ export default function DataSectionNav({
           ["attendance", "/data", "Attendance"],
           ["trends", "/data/trends", "Trends"],
           ["milestones", "/data/milestones", "Milestones"],
+          ["community", "/data/community", "Community"],
         ] as const
       ).map(([key, href, label]) => (
         <Link

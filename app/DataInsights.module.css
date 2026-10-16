@@ -607,3 +607,493 @@
     margin-top: 19px;
   }
 }
+
+/* Data nav: four links stay on one line and scroll on narrow phones. */
+.dataNav {
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.dataNav a {
+  flex-shrink: 0;
+}
+
+/* Tiny weekly bar charts in tables and lists. */
+.sparkCell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.sparkCell svg {
+  flex-shrink: 0;
+  display: block;
+}
+.sparkCell > span {
+  min-width: 3ch;
+  text-align: right;
+}
+
+/* Last 7 days strip on the attendance page. */
+.pulse {
+  border: 1px solid #30253e;
+  border-radius: 12px;
+  background: #110d1b;
+  padding: 14px 18px 16px;
+  margin: 4px 0 22px;
+}
+.pulseHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pulseHeading h2 {
+  font-size: 14px !important;
+  font-weight: 600;
+  color: #eee6ff;
+  letter-spacing: 0 !important;
+}
+.pulseHeading h2 span {
+  margin-left: 6px;
+  font-weight: 400;
+  color: #b5a5c8;
+  font-size: 12px;
+}
+.pulseHeading a {
+  color: #c9a5fb;
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pulse dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 22px;
+  margin-top: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pulse dt {
+  color: #b6a6c8;
+  font-size: 12px;
+}
+.pulse dd {
+  margin-top: 4px;
+  color: #f2ebff;
+  font-size: 22px;
+  font-weight: 600;
+}
+.pulse dd.pulseAO {
+  font-size: 16px;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pulse small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.pulseUp {
+  color: #7fdcbf;
+}
+.pulseDown {
+  color: #f0a58f;
+}
+.pulseFlat {
+  color: #a99bbb;
+}
+
+/* AO growth ranking on Trends. */
+.growthSection,
+.weekdaySection {
+  margin-top: 34px;
+}
+.growthList {
+  list-style: none;
+  margin: 14px 0 10px;
+  padding: 0;
+  border-top: 1px solid #30253e;
+}
+.growthList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 60px;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1px solid #251d31;
+  font-variant-numeric: tabular-nums;
+}
+.growthName {
+  min-width: 0;
+}
+.growthName strong {
+  display: block;
+  color: #eee6ff;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.growthName small {
+  color: #ab9dbd;
+  font-size: 11px;
+}
+.growthList li > span:nth-child(3) {
+  text-align: right;
+  font-weight: 600;
+  font-size: 14px;
+}
+.growthNone {
+  color: #a99bbb;
+  font-weight: 400 !important;
+  font-size: 12px !important;
+}
+.growthList button[aria-pressed="true"] {
+  color: #7fdcbf !important;
+}
+.growthName small {
+  white-space: nowrap;
+}
+.growthList button {
+  min-height: 0 !important;
+  padding-block: 4px !important;
+  font-size: 11px !important;
+}
+.growthList li > span:nth-child(3) small {
+  display: block;
+  white-space: nowrap;
+  color: #ab9dbd;
+  font-size: 11px;
+  font-weight: 400;
+}
+.growthList .sparkCell > span {
+  min-width: 4ch;
+}
+
+/* Turnout by weekday. */
+.weekdayBars {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: grid;
+  gap: 8px;
+}
+.weekdayBars li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 40px 90px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #c9bddb;
+  font-variant-numeric: tabular-nums;
+}
+.weekdayTrack {
+  height: 14px;
+  background: #1b1428;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.weekdayFill {
+  display: block;
+  height: 100%;
+  background: #986ccc;
+  border-radius: 4px;
+}
+.weekdayBars strong {
+  color: #eee6ff;
+  text-align: right;
+}
+.weekdayBars small {
+  color: #ab9dbd;
+  font-size: 11px;
+}
+
+/* FNG follow-through. */
+.stageLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  font-size: 12px;
+  color: #c3b5d3;
+}
+.stageLegend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stageLegend span {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.stageOne {
+  background: #3d2f52;
+}
+.stageFew {
+  background: #6a4c93;
+}
+.stageSome {
+  background: #9c74d6;
+}
+.stageTen {
+  background: #4eae8d;
+}
+.cohorts {
+  border-top: 1px solid #30253e;
+}
+.cohort {
+  border-bottom: 1px solid #251d31;
+}
+.cohort > summary {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 104px;
+  align-items: center;
+  gap: 14px;
+  min-height: 54px;
+  padding: 6px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.cohort > summary::-webkit-details-marker {
+  display: none;
+}
+.cohort > summary:focus-visible {
+  outline: 2px solid #bca0ff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.cohortMonth {
+  color: #eee6ff;
+  font-size: 13px;
+  font-weight: 500;
+}
+.cohortMonth em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 400;
+  color: #e3b877;
+}
+.cohortBar {
+  display: flex;
+  height: 22px;
+  border-radius: 5px;
+  overflow: hidden;
+  gap: 2px;
+}
+.cohortBar > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  flex-basis: 0;
+  font-size: 11px;
+  color: #f4eeff;
+  font-variant-numeric: tabular-nums;
+}
+.cohortCount {
+  text-align: right;
+  color: #eee6ff;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.cohortCount small {
+  display: block;
+  color: #ab9dbd;
+  font-size: 11px;
+}
+.cohortPeople,
+.readyList {
+  list-style: none;
+  padding: 0 0 12px;
+  margin: 0;
+}
+.cohortPeople li,
+.readyList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 12px;
+  padding: 6px 0;
+  border-top: 1px solid #1f182a;
+  font-size: 13px;
+  color: #d6cce5;
+  font-variant-numeric: tabular-nums;
+}
+.cohortPeople li > span,
+.readyList li > span {
+  text-align: right;
+  align-self: center;
+}
+.cohortPeople small,
+.readyList small {
+  grid-column: 1 / -1;
+  color: #ab9dbd;
+  font-size: 11px;
+}
+.readyList {
+  margin-top: 12px;
+  border-top: 1px solid #30253e;
+}
+.qRatioSection {
+  margin-top: 30px;
+}
+.qRatioSection .tableScroll,
+.qRatioSection > div[role="region"] {
+  margin-top: 12px;
+}
+
+.fngSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 24px;
+  border-block: 1px solid #30253e;
+  margin: 22px 0 26px;
+  padding: 18px 0;
+  font-variant-numeric: tabular-nums;
+}
+.fngSummary dt {
+  color: #b6a6c8;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.fngSummary dd {
+  margin-top: 6px;
+  color: #eee6ff;
+  font-size: 21px;
+  font-weight: 600;
+}
+
+/* Family tree. */
+.treeRoots {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  border-top: 1px solid #30253e;
+}
+.treeRoots > li {
+  border-bottom: 1px solid #251d31;
+}
+.treeRoots summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  cursor: pointer;
+}
+.treeRoots summary strong {
+  color: #eee6ff;
+  font-weight: 500;
+}
+.treeRoots summary span {
+  color: #b5a5c8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.treeLink {
+  margin: -6px 0 6px 14px;
+  font-size: 12px;
+}
+.treeLink .nameLink {
+  display: inline;
+  white-space: nowrap;
+}
+.treeBranch {
+  list-style: none;
+  margin: 0 0 10px 6px;
+  padding-left: 16px;
+  border-left: 2px solid #3a2b4f;
+}
+.treeBranch li {
+  padding: 3px 0;
+}
+.treeBranch li > small {
+  margin-left: 8px;
+  color: #ab9dbd;
+  font-size: 11px;
+}
+.treeBranch .nameLink {
+  display: inline;
+}
+.treeBranch .treeBranch {
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+.treeHit {
+  background: #4a3460;
+  border-radius: 3px;
+  padding: 0 3px;
+  color: #fff !important;
+}
+
+@media (max-width: 540px) {
+  .dataNav {
+    gap: 20px;
+  }
+  .pulse {
+    padding: 12px 14px 14px;
+  }
+  .pulse dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pulse dd {
+    font-size: 20px;
+  }
+  .growthList li {
+    grid-template-columns: minmax(0, 1fr) auto 62px;
+    gap: 10px;
+  }
+  .weekdayBars li {
+    grid-template-columns: 32px minmax(0, 1fr) 34px 72px;
+    gap: 8px;
+  }
+  .fngSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fngSummary dd {
+    font-size: 19px;
+  }
+  .cohort > summary {
+    grid-template-columns: 74px minmax(0, 1fr) 76px;
+    gap: 10px;
+  }
+}
+
+/* Expand markers for tree and cohort rows. */
+.treeRoots summary,
+.cohort > summary {
+  list-style: none;
+}
+.treeRoots summary::-webkit-details-marker {
+  display: none;
+}
+.treeRoots summary strong::before,
+.cohortMonth::before {
+  content: "›";
+  display: inline-block;
+  width: 14px;
+  color: #a98bd6;
+  transition: transform 0.15s ease;
+}
+.treeRoots details[open] > summary strong::before,
+.cohort[open] .cohortMonth::before {
+  transform: rotate(90deg);
+}
+.cohortMonth em {
+  margin-left: 14px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .treeRoots summary strong::before,
+  .cohortMonth::before {
+    transition: none;
+  }
+}

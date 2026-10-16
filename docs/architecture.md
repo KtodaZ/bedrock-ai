@@ -35,8 +35,9 @@ Chat uses AI to query attendance. The leaderboard computes scores directly in Ty
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Public Chat, EH Challenge, and Data tabs |
 | `/data` | `app/DataExplorer.tsx` | Public attendance explorer; also available in the home Data tab |
-| `/data/trends` | `app/AttendanceTrends.tsx`, `lib/attendanceTrends.ts` | Attendance-only graphs, up to four AO comparisons, weekly turnout heatmap |
+| `/data/trends` | `app/AttendanceTrends.tsx`, `lib/attendanceTrends.ts` | Attendance-only graphs, up to four AO comparisons, AO growth ranking, turnout by weekday, weekly turnout heatmap |
 | `/data/milestones` | `app/Milestones.tsx`, `lib/milestones.ts` | Pace-based next-hundred forecasts, 500/1,000 emphasis, actual reached milestones |
+| `/data/community` | `app/Community.tsx`, `lib/community.ts` | FNG follow-through by month, Roster EH family tree, first-Q candidates, Q ratio among regulars |
 | `GET /api/data` | `app/api/data/route.ts` | Allowlisted attendance, Roster names/regions/EH credit, and active Sites; no AI calls |
 | `/how-it-works` | `app/how-it-works/page.tsx` | Public product explanation |
 | `/connect` | `app/connect/page.tsx` | Public connector instructions; no real key in HTML |
@@ -108,9 +109,21 @@ Data pages share `app/DataPageShell.tsx`, `app/DataSectionNav.tsx`, and the `lib
 
 Trends group public `Post = 1` rows into workouts by date + AO. Turnout counts distinct normalized PAX per workout; post totals retain source rows. Region average turnout is weighted by workouts. Unique PAX deduplicates names across the selected weeks/AOs. Compare up to four AOs over the same 13/26/52 Monday–Sunday weeks. The final week ends at `asOf`; weeks without records remain gaps, not claimed zero turnout. The heatmap always shows average turnout and links to raw attendance for that AO/week. No AO directory, schedule, city, or leadership details are added.
 
+AO growth compares each AO’s average turnout in the selected weeks with the same number of weeks just before; a percentage needs at least three workouts in both windows, and an AO with no earlier workouts is “New.” Compare on a growth row adds that AO to the graph (still up to four). Turnout by day averages distinct PAX per workout for each weekday over the selected weeks and AO selection.
+
+The attendance page’s “Last 7 days” strip compares the seven days ending at `asOf` with the seven before: posts, unique PAX, Bedrock FNGs (same rule as the challenge), and the AO with the highest average turnout. The PAX view’s “Last 12 wks” column shows posts in trailing 7-day buckets ending at `asOf`, following the AO filter but not the period; it is sortable and exported.
+
 Milestone totals include all recorded workout posts, including multiple posts on one day, but not Qsource-only attendance. The default next target is the next strictly larger multiple of 100; filters can instead project the next 500 or 1,000. Exact multiples of 1,000 receive the strongest emphasis, then other multiples of 500. Actual reached dates come from the corresponding numbered post.
 
 Forecasts divide the remaining posts by the 90-day posts-per-calendar-day rate, using a shorter denominator for PAX whose first recorded post was more recent. No forecast date is returned with fewer than four posts in the inclusive 90-day window, fewer than 14 days of observation, or no post in the inclusive 30-day window. Earlier/later dates compare 30-day and 90-day pace; they are not statistical confidence bounds or schedule predictions. Forecast windows, recent periods, and timelines follow `asOf`, never the wall clock. Counts are this sheet’s recorded history, not a claim about lifetime posts outside it. Search, milestone interval, period, region, and AO selections persist in page URLs.
+
+### Community
+
+`/data/community?tab=fngs|tree|q` reuses `/api/data` with no AI, storage, or sheet writes, and awards no points. FNG follow-through groups Bedrock FNGs (earliest FNG-flagged row plus Bedrock Roster region, as in the challenge) by FNG month and counts distinct post dates from the FNG date through `asOf`; “still posting” means a post in the last 30 days, and months ending fewer than 90 days before `asOf` are marked “Still early.” Under-18 names are absent from the public snapshot, so totals can be lower than the EH Challenge’s region FNG count.
+
+The family tree uses Roster `EH'er` exactly as written, matched by normalized name like the leaderboard. An unmatched spelling becomes its own root; loops are broken rather than followed. Names with public posts link to their profiles.
+
+Ready for a first Q lists PAX with no recorded Q, 10+ posts, and 2+ posts in the 30 days ending `asOf`, excluding 2.0s, with the AO they posted at most in the last 90 days. Q ratio among regulars covers PAX with 13+ posts in the 90 days ending `asOf` (recorded Qs ÷ posts in that window). Region is not required for either list because most regulars have a blank Roster region.
 
 ## Chat request lifecycle
 

@@ -2,16 +2,19 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  aoGrowth,
   attendanceBuckets,
   attendanceValue,
   attendanceWorkouts,
   rawAttendanceURL,
   summarizeAttendance,
+  weekdayTurnout,
   type AttendanceBucket,
   type TrendMetric,
 } from "../lib/attendanceTrends";
 import { type ExplorerData } from "../lib/dataExplorer";
 import DataInsightsFrame, { insightDate } from "./DataInsightsFrame";
+import Sparkline from "./Sparkline";
 import common from "./DataExplorer.module.css";
 import styles from "./DataInsights.module.css";
 
@@ -256,6 +259,22 @@ function TrendsContent({ data }: { data: ExplorerData }) {
   );
   const setSites = (values: string[]) =>
     setOptions((o) => ({ ...o, sites: values }));
+  const growth = useMemo(
+    () => aoGrowth(workouts, data.asOf, weeks, allSites),
+    [workouts, data.asOf, weeks, allSites],
+  );
+  const [allGrowth, setAllGrowth] = useState(false);
+  const weekdays = weekdayTurnout(workouts, first, data.asOf, selectedSites);
+  const weekdayMax = Math.max(1, ...weekdays.map((d) => d.average ?? 0));
+  const chartHeading = useRef<HTMLHeadingElement>(null);
+  const toggleCompare = (site: string) => {
+    const next = selectedSites.includes(site)
+      ? selectedSites.filter((s) => s !== site)
+      : [...selectedSites, site];
+    setSites(next);
+    if (next.length > selectedSites.length)
+      chartHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   return (
     <>
       <div className={`${styles.controls} ${styles.trendControls}`}>
@@ -373,7 +392,7 @@ function TrendsContent({ data }: { data: ExplorerData }) {
         aria-labelledby="attendance-trend-heading"
       >
         <div className={styles.chartTitle}>
-          <h2 id="attendance-trend-heading">
+          <h2 id="attendance-trend-heading" ref={chartHeading}>
             {METRICS.find((m) => m.key === metric)!.label}
           </h2>
           <p>
@@ -435,6 +454,112 @@ function TrendsContent({ data }: { data: ExplorerData }) {
             </table>
           </div>
         </details>
+      </section>
+      <section
+        className={styles.growthSection}
+        aria-labelledby="ao-growth-heading"
+      >
+        <div className={styles.chartTitle}>
+          <h2 id="ao-growth-heading">AO growth</h2>
+          <p>
+            Average PAX per workout, last {weeks} weeks vs the {weeks} weeks
+            before
+          </p>
+        </div>
+        <ol className={styles.growthList}>
+          {growth.slice(0, allGrowth ? undefined : 6).map((g) => {
+            const comparing = selectedSites.includes(g.site);
+            return (
+              <li key={g.site}>
+                <div className={styles.growthName}>
+                  <strong>{g.site}</strong>
+                  <small>
+                    {g.workouts} {g.workouts === 1 ? "workout" : "workouts"}
+                    {" · "}
+                    <button
+                      className={styles.textButton}
+                      aria-pressed={comparing}
+                      disabled={!comparing && selectedSites.length >= 4}
+                      onClick={() => toggleCompare(g.site)}
+                      aria-label={`${comparing ? "Remove" : "Compare"} ${g.site} ${comparing ? "from" : "on"} the graph`}
+                    >
+                      {comparing ? "Remove" : "Compare"}
+                    </button>
+                  </small>
+                </div>
+                <Sparkline
+                  values={g.buckets.map((b) => b.average)}
+                  total={g.current == null ? "—" : g.current.toFixed(1)}
+                />
+                <span
+                  className={
+                    g.change == null
+                      ? styles.growthNone
+                      : g.change >= 0
+                        ? styles.pulseUp
+                        : styles.pulseDown
+                  }
+                >
+                  {g.change == null
+                    ? g.previous == null
+                      ? "New"
+                      : "Too few"
+                    : `${g.change >= 0 ? "+" : "−"}${Math.abs(g.change).toFixed(0)}%`}
+                  {g.change != null && g.previous != null && (
+                    <small>from {g.previous.toFixed(1)}</small>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        {growth.length > 6 && (
+          <button
+            className={styles.textButton}
+            onClick={() => setAllGrowth((v) => !v)}
+          >
+            {allGrowth ? "Show top 6" : `Show all ${growth.length} AOs`}
+          </button>
+        )}
+        <p className={styles.note}>
+          Growth needs at least 3 workouts in both periods; “New” means no
+          workouts in the earlier period. Compare adds the AO to the graph
+          above, up to four.
+        </p>
+      </section>
+      <section
+        className={styles.weekdaySection}
+        aria-labelledby="weekday-heading"
+      >
+        <div className={styles.chartTitle}>
+          <h2 id="weekday-heading">Turnout by day</h2>
+          <p>
+            Average PAX per workout ·{" "}
+            {selectedSites.length ? selectedSites.join(", ") : "all AOs"} · last{" "}
+            {weeks} weeks
+          </p>
+        </div>
+        <ul className={styles.weekdayBars}>
+          {weekdays.map((d) => (
+            <li key={d.day}>
+              <span>{d.day}</span>
+              <span className={styles.weekdayTrack}>
+                {d.average != null && (
+                  <span
+                    className={styles.weekdayFill}
+                    style={{ width: `${(d.average / weekdayMax) * 100}%` }}
+                  />
+                )}
+              </span>
+              <strong>{d.average == null ? "" : d.average.toFixed(1)}</strong>
+              <small>
+                {d.workouts
+                  ? `${d.workouts} ${d.workouts === 1 ? "workout" : "workouts"}`
+                  : "No workouts"}
+              </small>
+            </li>
+          ))}
+        </ul>
       </section>
       <section
         className={styles.heatSection}

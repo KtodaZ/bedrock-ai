@@ -11,7 +11,8 @@ function load(file, dependencies = {}) {
 }
 const dataLib = load('lib/dataExplorer.ts');
 const milestones = load('lib/milestones.ts', { './dataExplorer': dataLib });
-const trends = load('lib/attendanceTrends.ts', { './dataExplorer': dataLib, './milestones': milestones });
+const community = load('lib/community.ts', { './dataExplorer': dataLib, './milestones': milestones });
+const trends = load('lib/attendanceTrends.ts', { './dataExplorer': dataLib, './milestones': milestones, './community': community });
 const row = (pax, date, extra = {}) => ({ pax, date, site: 'Divento', post: true, q: false, qs: false, qsq: false, fng: false, city: '', ...extra });
 const source = rows => ({ rows, people: [{ name: 'Alex', region: 'Bedrock', ehBy: null }], sites: [], asOf: '2026-10-15', loadedAt: '2026-10-15T00:00:00Z' });
 const old = (count, name = 'Alex') => Array.from({ length: count }, (_, i) => row(name, milestones.addDataDays('2025-01-01', i)));

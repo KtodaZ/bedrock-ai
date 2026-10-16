@@ -54,6 +54,8 @@ export interface PaxStats {
   aos: number;
   aoPercent: number;
   days: number;
+  /** Posts in the 12 weeks ending at the latest attendance date (PAX view only). */
+  recent?: number;
 }
 export const normalizeDataName = (name: string) =>
   name.trim().toLowerCase().replace(/\s+/g, " ");

@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useExplorerData } from "../lib/useExplorerData";
 import { nextPostMilestone } from "../lib/milestones";
 import DataSectionNav from "./DataSectionNav";
+import RegionPulse from "./RegionPulse";
+import Sparkline from "./Sparkline";
+import { weeklyPostCounts } from "../lib/attendanceTrends";
 import {
   companions,
   dataCSV,
@@ -62,6 +65,7 @@ const formatDate = (date: string) =>
       })
     : "—";
 const number = (n: number) => n.toLocaleString("en-US");
+const TREND_WEEKS = 12;
 function Icon({ kind }: { kind: "download" | "link" | "arrow" | "search" }) {
   const paths = {
     download: (
@@ -123,7 +127,7 @@ const RAW_COLUMNS: { key: keyof DataRow; label: string }[] = [
 type Column = {
   key: keyof PaxStats;
   label: string;
-  format?: "date" | "percent";
+  format?: "date" | "percent" | "spark";
 };
 const baseColumns: Column[] = [
   { key: "name", label: "PAX" },
@@ -159,6 +163,7 @@ function statColumns(view: DataView): Column[] {
     ];
   return [
     ...baseColumns,
+    { key: "recent", label: "Last 12 wks", format: "spark" },
     { key: "first", label: "First in view", format: "date" },
     { key: "attendance", label: "Post %", format: "percent" },
     { key: "streak", label: "Best streak" },
@@ -298,7 +303,21 @@ function Explorer({
     });
   };
   const raw = useMemo(() => filterDataRows(data, filters), [data, filters]);
-  const stats = useMemo(() => summarizePax(data, filters), [data, filters]);
+  const weekly = useMemo(
+    () => weeklyPostCounts(data, TREND_WEEKS, filters.site),
+    [data, filters.site],
+  );
+  const stats = useMemo(
+    () =>
+      summarizePax(data, filters).map((s) => ({
+        ...s,
+        recent: (weekly.get(normalizeDataName(s.name)) ?? []).reduce(
+          (sum, n) => sum + n,
+          0,
+        ),
+      })),
+    [data, filters, weekly],
+  );
   const isRaw = filters.view === "raw";
   const columns = isRaw ? RAW_COLUMNS : statColumns(filters.view);
   const sortKey = columns.some((c) => c.key === sort.key)
@@ -415,6 +434,7 @@ function Explorer({
           onFocus={(e) => e.currentTarget.select()}
         />
       )}
+      {!selected && <RegionPulse data={data} />}
       {selected ? (
         selectedExists ? (
           <PaxDetail
@@ -621,6 +641,12 @@ function Explorer({
                 : "Select a name for all-time attendance"}
             </span>
           </div>
+          {filters.view === "pax" && (
+            <p className={styles.viewNote}>
+              Last 12 wks shows posts per week for the 12 weeks ending{" "}
+              {formatDate(data.asOf)}, whatever period is selected.
+            </p>
+          )}
           {filters.view === "kotter" && (
             <p className={styles.viewNote}>
               Bedrock PAX, excluding 2.0s, whose last recorded post was more
@@ -737,6 +763,17 @@ function Explorer({
                                   </span>
                                 ) : format === "date" ? (
                                   formatDate(String(value))
+                                ) : format === "spark" ? (
+                                  <Sparkline
+                                    values={
+                                      weekly.get(
+                                        normalizeDataName(
+                                          String(row[columns[0].key as keyof typeof row]),
+                                        ),
+                                      ) ?? Array(TREND_WEEKS).fill(0)
+                                    }
+                                    total={number(Number(value))}
+                                  />
                                 ) : format === "percent" ? (
                                   `${Number(value).toFixed(1)}%`
                                 ) : typeof value === "number" ? (
