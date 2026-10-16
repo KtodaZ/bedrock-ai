@@ -54,14 +54,6 @@ export default function DataInsightsFrame({
               >
                 {query.isFetching ? "Loading…" : "Reload data"}
               </button>
-              <a
-                className={common.sourceLink}
-                href="https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/edit#gid=729344821"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open source spreadsheet
-              </a>
             </div>
             {query.isRefetchError && (
               <p className={common.notice} role="alert">

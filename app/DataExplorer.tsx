@@ -392,7 +392,6 @@ function Explorer({
         <button disabled={refreshing} onClick={refresh}>
           {refreshing ? "Loading…" : "Reload data"}
         </button>
-        <a className={styles.sourceLink} href="https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/edit#gid=729344821" target="_blank" rel="noopener noreferrer">Open source spreadsheet</a>
         <span className={styles.cacheNote}>
           Sheet changes may take up to 10 minutes to appear.
         </span>
@@ -847,14 +846,6 @@ function Explorer({
                 rel="noreferrer"
               >
                 F3 Data Tools
-              </a>
-              . Source:{" "}
-              <a
-                href="https://docs.google.com/spreadsheets/d/11fIBnwzcVU2F-OZu7zECq8xROJC6hMY4MryHR4KbUj0/edit"
-                target="_blank"
-                rel="noreferrer"
-              >
-                F3 Bedrock spreadsheet
               </a>
               .
             </p>
