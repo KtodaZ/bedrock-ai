@@ -97,6 +97,10 @@ export default function SwipeViews({
         className={styles.swipeTrack}
         style={height ? { height } : undefined}
         onScroll={onScroll}
+        // A direct swipe takes over from a tab tap's smooth scroll.
+        onPointerDown={() => (target.current = null)}
+        onTouchStart={() => (target.current = null)}
+        onWheel={() => (target.current = null)}
       >
         {views.map((v, i) => (
           <div

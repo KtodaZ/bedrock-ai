@@ -214,7 +214,9 @@ function Explorer({
   );
   const [selected, setSelected] = useState(() => searchParams.get("pax") ?? "");
   // URLs this view wrote itself; anything else is a link to a different view.
-  const written = useRef(new Set([search]));
+  // URLs this component wrote and is waiting to see echoed back through useSearchParams.
+  const synced = useRef(search);
+  const pending = useRef<string[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
   const resultsScroll = useRef(0);
   const [extraFiltersOpen, setExtraFiltersOpen] = useState(() =>
@@ -251,7 +253,8 @@ function Explorer({
     const params = dataFilterParams(filters);
     if (window.location.pathname === "/") params.set("tab", "data");
     if (selected) params.set("pax", selected);
-    written.current.add(params.toString());
+    if (params.toString() !== synced.current)
+      pending.current.push(params.toString());
     window.history.replaceState(
       null,
       "",
@@ -259,8 +262,14 @@ function Explorer({
     );
   }, [filters, selected]);
   useEffect(() => {
-    if (written.current.has(search)) return;
-    written.current = new Set([search]);
+    if (search === synced.current) return;
+    synced.current = search;
+    const own = pending.current.indexOf(search);
+    if (own >= 0) {
+      pending.current.splice(0, own + 1);
+      return;
+    }
+    pending.current = [];
     const params = new URLSearchParams(search);
     setFilters(readDataFilters(params, data.asOf));
     setSelected(params.get("pax") ?? "");

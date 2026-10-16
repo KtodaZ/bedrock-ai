@@ -40,6 +40,16 @@ test('FNG follow-through uses Bedrock Roster FNGs, distinct post dates, and the 
   assert.deepEqual(community.fngTotals([cohorts[0], cohorts[3]].flatMap(c => c.fngs)), { count: 2, returned: 1, ten: 0, active: 2 });
 });
 
+test('A blank-Post FNG row still counts as the first post when he returns', () => {
+  const returns = (n) => Array.from({ length: n }, (_, i) => row('Quiet', milestones.addDataDays('2026-05-01', 7 * (i + 1))));
+  const people = [{ name: 'Quiet', region: 'Bedrock', ehBy: null }];
+  const once = community.fngCohorts(data([row('Quiet', '2026-05-01', { fng: true, post: false }), ...returns(1)], people))[0].fngs[0];
+  assert.equal(once.posts, 2);
+  assert.deepEqual(community.fngTotals([once]), { count: 1, returned: 1, ten: 0, active: 0 });
+  const nine = community.fngCohorts(data([row('Quiet', '2026-05-01', { fng: true, post: false }), ...returns(9)], people))[0].fngs[0];
+  assert.equal(nine.posts, 10);
+});
+
 test('Family tree follows Roster EH’er spellings, keeps unmatched EH’ers as roots, and survives loops', () => {
   const d = data([row('Child', day(3)), row('Root', day(3))], [
     { name: 'Root', region: 'Bedrock', ehBy: null },

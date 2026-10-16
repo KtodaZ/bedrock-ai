@@ -76,9 +76,13 @@ export function fngCohorts(data: ExplorerData): FngCohort[] {
     .slice(0, 7);
   const cohorts = new Map<string, FngFollowThrough[]>();
   for (const [key, first] of bedrockFngDates(data)) {
-    const mine = [...(dates.get(key) ?? [])]
-      .filter((d) => d >= first.date)
-      .sort();
+    // The FNG row itself counts as a post even if Post was left blank.
+    const mine = [
+      ...new Set([
+        first.date,
+        ...[...(dates.get(key) ?? [])].filter((d) => d >= first.date),
+      ]),
+    ].sort();
     const lastPost = mine.at(-1) ?? first.date;
     const person = names.get(key);
     const month = first.date.slice(0, 7);
@@ -86,8 +90,7 @@ export function fngCohorts(data: ExplorerData): FngCohort[] {
     list.push({
       name: person?.name ?? first.name,
       fngDate: first.date,
-      // The FNG row itself counts as a post even if Post was left blank.
-      posts: Math.max(1, mine.length),
+      posts: mine.length,
       lastPost,
       active: lastPost >= activeFrom,
       ehBy: person?.ehBy ?? null,
