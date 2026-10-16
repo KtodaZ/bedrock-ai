@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ACTIVE_DAYS,
@@ -42,11 +43,8 @@ const monthLabel = (month: string) =>
   });
 const percent = (n: number, of: number) =>
   of ? `${Math.round((n / of) * 100)}%` : "—";
-function readTab(): Tab {
-  const tab =
-    typeof window === "undefined"
-      ? ""
-      : new URLSearchParams(window.location.search).get("tab");
+function readTab(params: URLSearchParams): Tab {
+  const tab = params.get("tab");
   return TABS.some((t) => t.key === tab) ? (tab as Tab) : "fngs";
 }
 
@@ -62,12 +60,16 @@ export default function Community() {
   );
 }
 function CommunityContent({ data }: { data: ExplorerData }) {
-  const [tab, setTab] = useState<Tab>(readTab);
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() =>
+    readTab(new URLSearchParams(searchParams.toString())),
+  );
   useEffect(() => {
     window.history.replaceState(null, "", "/data/community?tab=" + tab);
   }, [tab]);
   useEffect(() => {
-    const pop = () => setTab(readTab());
+    const pop = () =>
+      setTab(readTab(new URLSearchParams(window.location.search)));
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   aoGrowth,
@@ -25,10 +26,8 @@ const METRICS: { key: TrendMetric; label: string }[] = [
   { key: "pax", label: "Unique PAX / week" },
   { key: "workouts", label: "Recorded workouts / week" },
 ];
-function readOptions() {
-  const p = new URLSearchParams(
-    typeof window === "undefined" ? "" : window.location.search,
-  );
+function readOptions(search: string) {
+  const p = new URLSearchParams(search);
   return {
     weeks: [13, 26, 52].includes(Number(p.get("weeks")))
       ? Number(p.get("weeks"))
@@ -191,7 +190,10 @@ export default function AttendanceTrends() {
   );
 }
 function TrendsContent({ data }: { data: ExplorerData }) {
-  const [options, setOptions] = useState(readOptions),
+  const searchParams = useSearchParams();
+  const [options, setOptions] = useState(() =>
+    readOptions(searchParams.toString()),
+  ),
     [aoSearch, setAoSearch] = useState("");
   const { weeks, metric, sites } = options;
   const workouts = useMemo(() => attendanceWorkouts(data), [data]);
@@ -207,7 +209,7 @@ function TrendsContent({ data }: { data: ExplorerData }) {
     window.history.replaceState(null, "", "/data/trends?" + params);
   }, [weeks, metric, sites]);
   useEffect(() => {
-    const pop = () => setOptions(readOptions());
+    const pop = () => setOptions(readOptions(window.location.search));
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useExplorerData } from "../lib/useExplorerData";
 import { nextPostMilestone } from "../lib/milestones";
 import DataSectionNav from "./DataSectionNav";
@@ -210,19 +211,15 @@ function Explorer({
   refresh: () => void;
   refreshError: boolean;
 }) {
+  // Next updates window.location after a client navigation renders, so read its params.
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
   const [filters, setFilters] = useState(() =>
-    readDataFilters(
-      new URLSearchParams(
-        typeof window === "undefined" ? "" : window.location.search,
-      ),
-      data.asOf,
-    ),
+    readDataFilters(new URLSearchParams(search), data.asOf),
   );
-  const [selected, setSelected] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (new URLSearchParams(window.location.search).get("pax") ?? ""),
-  );
+  const [selected, setSelected] = useState(() => searchParams.get("pax") ?? "");
+  // URLs this view wrote itself; anything else is a link to a different view.
+  const written = useRef(new Set([search]));
   const contentRef = useRef<HTMLDivElement>(null);
   const resultsScroll = useRef(0);
   const [extraFiltersOpen, setExtraFiltersOpen] = useState(() =>
@@ -259,12 +256,21 @@ function Explorer({
     const params = dataFilterParams(filters);
     if (window.location.pathname === "/") params.set("tab", "data");
     if (selected) params.set("pax", selected);
+    written.current.add(params.toString());
     window.history.replaceState(
       null,
       "",
       `${window.location.pathname}?${params}`,
     );
   }, [filters, selected]);
+  useEffect(() => {
+    if (written.current.has(search)) return;
+    written.current = new Set([search]);
+    const params = new URLSearchParams(search);
+    setFilters(readDataFilters(params, data.asOf));
+    setSelected(params.get("pax") ?? "");
+    setPage(0);
+  }, [search, data.asOf]);
   useEffect(() => {
     const pop = () => {
       const params = new URLSearchParams(window.location.search);
@@ -1015,7 +1021,7 @@ function PaxDetail({
           ["Qs", number(posts.filter((r) => r.q).length)],
           ["First post", formatDate(posts[0]?.date ?? "")],
           ["Last post", formatDate(posts.at(-1)?.date ?? "")],
-          ["Best streak", `${profile?.streak ?? 0} days`],
+          ["Best streak", `${profile?.streak ?? 0} day${profile?.streak === 1 ? "" : "s"}`],
           ["Q ratio", `${(profile?.qRatio ?? 0).toFixed(1)}%`],
           [
             "Qsource posts / Qs",

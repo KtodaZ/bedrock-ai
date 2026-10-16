@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   dataCSV,
@@ -19,10 +20,8 @@ import common from "./DataExplorer.module.css";
 import styles from "./DataInsights.module.css";
 
 type Mode = "forecast" | "reached" | "unprojected";
-function readOptions() {
-  const p = new URLSearchParams(
-    typeof window === "undefined" ? "" : window.location.search,
-  );
+function readOptions(search: string) {
+  const p = new URLSearchParams(search);
   return {
     search: (p.get("search") ?? "").slice(0, 200),
     step: [100, 500, 1000].includes(Number(p.get("step")))
@@ -77,7 +76,10 @@ export default function Milestones() {
   );
 }
 function MilestoneContent({ data }: { data: ExplorerData }) {
-  const [options, setOptions] = useState(readOptions),
+  const searchParams = useSearchParams();
+  const [options, setOptions] = useState(() =>
+    readOptions(searchParams.toString()),
+  ),
     [sort, setSort] = useState("soonest"),
     [week, setWeek] = useState(""),
     [page, setPage] = useState(0);
@@ -95,7 +97,7 @@ function MilestoneContent({ data }: { data: ExplorerData }) {
   }, [search, step, horizon, mode, region]);
   useEffect(() => {
     const pop = () => {
-      setOptions(readOptions());
+      setOptions(readOptions(window.location.search));
       setWeek("");
       setPage(0);
     };
