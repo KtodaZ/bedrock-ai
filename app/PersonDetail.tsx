@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchChallenge } from "@/lib/challenge-client";
 import { buildPersonProfile, nextMilestone, personURL } from "@/lib/ehProfile";
 import { formatDay, PERIODS, PERIOD_LABELS, type FngEntry, type Period } from "@/lib/ehChallenge";
+import { useLinkedSection } from "@/lib/useLinkedSection";
 import EhCorrectionForm from "./EhCorrectionForm";
 
 const periodLabel = PERIOD_LABELS;
@@ -26,6 +27,7 @@ function Milestone({ fng, scoring }: { fng: FngEntry; scoring: boolean }) {
 
 export default function PersonDetail({ name, period }: { name: string; period: Period }) {
   const { data, isLoading, error, refetch } = useQuery({ queryKey: ["eh-challenge", period], queryFn: () => fetchChallenge(period), staleTime: 5 * 60 * 1000 });
+  useLinkedSection(Boolean(data));
   const profile = data ? buildPersonProfile(data, name) : null;
   const scoring = period === "challenge";
   const back = <Link href={`/eh-challenge?period=${period}`} className={`inline-flex items-center min-h-11 text-sm text-violet-300 hover:text-violet-200 ${focus}`}>← Leaderboard</Link>;

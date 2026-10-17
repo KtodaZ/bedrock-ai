@@ -80,7 +80,9 @@ function MilestoneContent({ data }: { data: ExplorerData }) {
   const [options, setOptions] = useState(() =>
     readOptions(searchParams.toString()),
   ),
-    [sort, setSort] = useState("soonest"),
+    [sort, setSort] = useState(() =>
+      searchParams.get("sort") === "remaining" ? "remaining" : "soonest",
+    ),
     [week, setWeek] = useState(""),
     [page, setPage] = useState(0);
   const { search, step, horizon, mode, region } = options;
@@ -93,8 +95,9 @@ function MilestoneContent({ data }: { data: ExplorerData }) {
     const params = new URLSearchParams({ mode, step: String(step), horizon });
     if (search) params.set("search", search);
     if (region) params.set("region", region);
+    if (sort !== "soonest") params.set("sort", sort);
     window.history.replaceState(null, "", "/data/milestones?" + params);
-  }, [search, step, horizon, mode, region]);
+  }, [search, step, horizon, mode, region, sort]);
   useEffect(() => {
     const pop = () => {
       setOptions(readOptions(window.location.search));

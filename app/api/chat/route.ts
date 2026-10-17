@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { fetchCSV, getDatabase, isReadOnlySelect, runSQL } from "@/lib/attendance-db";
 import { loadExplorerData } from "@/lib/dataExplorerSource";
+import { isPublicDataName, type ExplorerData } from "@/lib/dataExplorer";
 import { attendanceWorkouts } from "@/lib/attendanceTrends";
 import { CHAT_TOOLS, chatDataFacts, isChatTool, runChatTool, type ChatToolContext } from "@/lib/chatTools";
-import { finalizeLinks, PAGES_PROMPT } from "@/lib/chatPages";
+import { finalizeLinks, PAGES_PROMPT, type LinkNames } from "@/lib/chatPages";
 import { computeChallenge, type ChallengeResult, type Period } from "@/lib/ehChallenge";
 import { fetchAttendance, fetchEhAttributions, fetchResurrectionAttributions } from "@/lib/sheet";
 
@@ -34,9 +35,9 @@ TOOLS — prefer the lookup tools. They use the same rules as the Data pages and
 - run_sql — only when no tool answers the question (custom cross-tabs, specific dates, unusual comparisons).
 Call independent tools together in one round. Use the fewest calls that answer precisely. Tool results are already validated; re-check with SQL only if two results conflict. If a tool returns "closest" names, pick the clearly intended one and call again, or list them and ask.
 
-LINKS — point the reader to the Data page where they can see and explore the answer. End the answer with one line of up to two Markdown links, most relevant first, e.g. [Clove's profile](/data?period=all&pax=Clove) · [Q leaders](/data/community?tab=q); the app shows that line as buttons. Use a tool result's "link" for a specific PAX, AO, or date range, copied exactly. Otherwise use one of these pages, exactly as written:
+LINKS — point the reader to the page view that shows the answer. End the answer with one line of up to two Markdown links, most relevant first, e.g. [Clove's Qs led](/data?period=all&pax=Clove&rel=led#companions-heading) · [Q leaders](/data/community?tab=q#first-q-heading); the app shows that line as buttons. You may also link a name or number inline. Use a tool result's "link" as given, or build a link from the pages below, picking the parameters that open exactly the view, filter, list, or section behind your numbers (e.g. raw rows for one AO and date range, a profile's people list, an AO's top Qs, a year-over-year chart). Use exact PAX and AO names. Links with any other path, parameter, value, or section are removed. Skip links for off-topic questions.
+PAGES (path — contents; then parameters; then #sections):
 ${PAGES_PROMPT}
-Never write any other path or add query parameters. Skip links for off-topic questions.
 
 SQL TABLE (run_sql) — Table: attendance
 - "PAX Name" TEXT — participant name (under-18 and archived names are already excluded)
@@ -237,6 +238,12 @@ function notifyDiscord(content: string) {
   flushDiscordQueue(); // fire-and-forget flush
 }
 
+/** Real PAX and AO names, so links in answers open profiles and AOs that exist. */
+function linkNames(data: ExplorerData): LinkNames {
+  const pax = new Set([...data.people.map((p) => p.name), ...data.rows.map((r) => r.pax)].filter(isPublicDataName));
+  return { pax: [...pax], aos: [...new Set([...data.rows.map((r) => r.site), ...data.sites.map((s) => s.name)].filter(Boolean))] };
+}
+
 export async function POST(req: NextRequest) {
   if (Number(req.headers.get("content-length")) > 32_000) return NextResponse.json({ error: "Question is too long." }, { status: 413 });
   let body;
@@ -407,7 +414,7 @@ export async function POST(req: NextRequest) {
 
         if (!finalAnswer) throw new Error("This question needs more analysis than one request allows. Try a narrower question.");
         // Drop links to pages that don't exist; the closing links line becomes page buttons.
-        const { answer: linkedAnswer, pages } = finalizeLinks(finalAnswer, toolLinks);
+        const { answer: linkedAnswer, pages } = finalizeLinks(finalAnswer, toolLinks, linkNames(data));
         finalAnswer = linkedAnswer;
 
         const ms = Date.now() - startTime;

@@ -21,7 +21,7 @@ Read [README.md](README.md) for the product and local setup, [docs/architecture.
 | AI model, prompts, tool loop, SSE events | `app/api/chat/route.ts` |
 | Chat lookup tools, name resolution, page links | `lib/chatTools.ts` |
 | AI quota and paid-call rejection | `lib/aiRateLimit.ts` |
-| Chat page buttons and the pages the AI may link | `lib/chatPages.ts` |
+| Chat page buttons, deep-link schema (`LINK_ROUTES`), link checks | `lib/chatPages.ts`, `lib/useLinkedSection.ts` |
 | Saved chats, streaming, answer recovery after dropped connections | `lib/chatSession.ts`, `app/api/chat/result/route.ts` |
 | Attendance CSV, SQLite schema, SQL helpers | `lib/attendance-db.ts` |
 | Roster, region eligibility, EH and return attributions | `lib/sheet.ts` |

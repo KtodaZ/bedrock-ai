@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useLinkedSection } from "../lib/useLinkedSection";
 import { useExplorerData } from "../lib/useExplorerData";
 import { nextPostMilestone } from "../lib/milestones";
 import DataSectionNav from "./DataSectionNav";
@@ -933,15 +934,35 @@ function PaxDetail({
       }).find((p) => normalizeDataName(p.name) === key),
     [data, displayName, key],
   );
-  const [month, setMonth] = useState(
-    (rows.at(-1)?.date ?? data.asOf).slice(0, 7),
-  );
-  const [activityView, setActivityView] = useState(0),
-    [activityYear, setActivityYear] = useState(() =>
-      Number((rows.at(-1)?.date ?? data.asOf).slice(0, 4)),
-    );
-  const [relation, setRelation] = useState<"with" | "by" | "led">("with"),
-    [range, setRange] = useState("all");
+  // Links can open a specific view of the profile; see PROFILE_PARAMS in lib/chatPages.ts.
+  const linked = useSearchParams();
+  useLinkedSection(true);
+  const [month, setMonth] = useState(() => {
+    const m = linked.get("pmonth") ?? "";
+    return /^20\d{2}-(0[1-9]|1[0-2])$/.test(m)
+      ? m
+      : (rows.at(-1)?.date ?? data.asOf).slice(0, 7);
+  });
+  const [activityView, setActivityView] = useState(() =>
+      Math.max(0, ["month", "year", "trend"].indexOf(linked.get("pview") ?? "")),
+    ),
+    [activityYear, setActivityYear] = useState(() => {
+      const y = linked.get("pyear") ?? "";
+      return /^20\d{2}$/.test(y)
+        ? Number(y)
+        : Number((rows.at(-1)?.date ?? data.asOf).slice(0, 4));
+    });
+  const [relation, setRelation] = useState<"with" | "by" | "led">(() => {
+      const r = linked.get("rel");
+      return r === "by" || r === "led" ? r : "with";
+    }),
+    [range, setRange] = useState(() => {
+      const r = linked.get("prange") ?? "";
+      return r === "recent" ||
+        (/^\d+$/.test(r) && Number(r) % 100 === 0 && Number(r) < posts.length)
+        ? r
+        : "all";
+    });
   const start =
     range === "recent"
       ? Math.max(0, posts.length - 100)
@@ -1197,7 +1218,7 @@ function PaxDetail({
           />
         </section>
         <section className={styles.locations}>
-          <h3>Posts by AO</h3>
+          <h3 id="pax-aos-heading">Posts by AO</h3>
           <div className={styles.listScroll}>
             <table className={styles.table}>
               <thead>
@@ -1229,7 +1250,7 @@ function PaxDetail({
       </div>
       <section className={styles.companions}>
         <div className={styles.sectionHeading}>
-          <h3>Who you post with</h3>
+          <h3 id="companions-heading">Who you post with</h3>
           <div className={styles.peerFilters}>
             <label className={styles.srOnly} htmlFor="peer-relation">
               Relationship
@@ -1279,7 +1300,7 @@ function PaxDetail({
         )}
       </section>
       <section className={styles.milestones}>
-        <h3>100-post milestones</h3>
+        <h3 id="post-milestones-heading">100-post milestones</h3>
         <Link className={styles.sourceLink} href={`/data/milestones?search=${encodeURIComponent(displayName)}&horizon=all`}>See milestone forecast</Link>
         <p>
           {number(nextMilestone - posts.length)} more posts to{" "}

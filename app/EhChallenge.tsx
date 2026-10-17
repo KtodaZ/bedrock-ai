@@ -7,6 +7,7 @@ import { attendanceIsBehindToday, buildBandText, formatDay, sortLeaderboard, typ
 import { fetchChallenge } from "@/lib/challenge-client";
 import { matchesPerson, normalizePerson, personURL } from "@/lib/ehProfile";
 import PointsGuide from "./PointsGuide";
+import { useLinkedSection } from "@/lib/useLinkedSection";
 import EhCorrectionForm from "./EhCorrectionForm";
 
 const PERIOD_OPTIONS = PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }));
@@ -22,6 +23,10 @@ function subscribePeriod(onChange: () => void) {
     window.removeEventListener("storage", onChange);
     window.removeEventListener(PERIOD_EVENT, onChange);
   };
+}
+
+function linkedParam(name: string) {
+  return typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get(name) ?? "";
 }
 
 function readPeriod(): Period {
@@ -44,14 +49,16 @@ export default function EhChallenge() {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const [showAllFngs, setShowAllFngs] = useState(false);
-  const [sort, setSort] = useState<LeaderboardSort>("points");
-  const [search, setSearch] = useState("");
+  // Links can open the leaderboard sorted or searched; this content renders only in the browser, after data loads.
+  const [sort, setSort] = useState<LeaderboardSort>(() => linkedParam("sort") === "fngs" ? "fngs" : "points");
+  const [search, setSearch] = useState(() => linkedParam("search").slice(0, 200));
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["eh-challenge", period],
     queryFn: () => fetchChallenge(period),
     staleTime: 5 * 60 * 1000,
   });
+  useLinkedSection(Boolean(data));
 
   function choosePeriod(p: Period) {
     setSelectedPeriod(p);
@@ -192,7 +199,7 @@ export default function EhChallenge() {
 
             <section className="rounded-2xl overflow-hidden" style={card}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-                <h2 className="text-sm font-semibold text-white/80">{scoring ? "Challenge standings" : "FNGs invited"}</h2>
+                <h2 id="eh-standings-heading" className="text-sm font-semibold text-white/80">{scoring ? "Challenge standings" : "FNGs invited"}</h2>
                 <button
                   onClick={copyForBand}
                   className="text-xs text-white/50 hover:text-white/90 border border-white/10 hover:border-white/25 rounded-full px-3 py-1 transition-colors cursor-pointer"
@@ -247,7 +254,7 @@ export default function EhChallenge() {
 
             <section className="rounded-2xl overflow-hidden" style={card}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-                <h2 className="text-sm font-semibold text-white/80">FNGs</h2>
+                <h2 id="eh-fngs-heading" className="text-sm font-semibold text-white/80">FNGs</h2>
                 {unassigned > 0 && (
                   <span className="text-xs text-amber-300/80">
                     {unassigned} need an EH&apos;er{scoring && <> · {data.unassignedPoints} pts unclaimed</>}

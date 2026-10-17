@@ -131,7 +131,7 @@ function FngFollowThrough({ data }: { data: ExplorerData }) {
         ))}
       </dl>
       <div className={styles.chartTitle}>
-        <h2>FNGs by month</h2>
+        <h2 id="fng-months-heading">FNGs by month</h2>
         <p>Posts each FNG has recorded since his first post · tap a month</p>
       </div>
       <ul className={styles.stageLegend} aria-label="Post count colors">
@@ -229,7 +229,8 @@ function Cohort({ cohort }: { cohort: FngCohort }) {
 
 function FamilyTree({ data }: { data: ExplorerData }) {
   const roots = useMemo(() => familyTree(data), [data]);
-  const [search, setSearch] = useState("");
+  const linked = useSearchParams().get("search");
+  const [search, setSearch] = useState(() => (linked ?? "").slice(0, 200));
   const [showAll, setShowAll] = useState(false);
   const term = normalizeDataName(search);
   const shown = term ? roots.filter((r) => treeMatches(r, term)) : roots;
@@ -248,7 +249,7 @@ function FamilyTree({ data }: { data: ExplorerData }) {
         </label>
       </div>
       <div className={styles.chartTitle}>
-        <h2>Who EH’d whom</h2>
+        <h2 id="family-tree-heading">Who EH’d whom</h2>
         <p>
           {links} Roster EH’er links · {roots.length} family trees
         </p>

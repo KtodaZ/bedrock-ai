@@ -551,7 +551,7 @@ function aoRankings(ctx: ChatToolContext, args: Json): ChatToolResult {
       last7Days: pulse.current,
       previous7Days: pulse.previous,
     }),
-    link: "/data/trends" + (ytd || weeks === 13 || weeks === 4 ? "" : `?weeks=${weeks}`),
+    link: "/data/trends" + (ytd || weeks === 13 || weeks === 4 ? "" : `?weeks=${weeks}`) + "#ao-growth-heading",
   };
 }
 
@@ -679,6 +679,7 @@ function paxList(ctx: ChatToolContext, args: Json): ChatToolResult {
       columns: ["name", "posts", "postsLast30", "lastPost", "usualAO"],
       rows: rows.slice(0, limit).map((r) => [r.name, r.posts, r.recent30, r.lastPost, r.usualAO]),
     };
+    link += "#first-q-heading";
   } else if (list === "q_ratio_regulars") {
     const rows = regularQRatios(data);
     result = {
@@ -689,6 +690,7 @@ function paxList(ctx: ChatToolContext, args: Json): ChatToolResult {
         .slice(0, limit)
         .map((r) => [r.name, round(r.ratio), r.qs90, r.posts90, r.lastQ || null]),
     };
+    link += "#q-ratio-heading";
   } else if (list === "run_site_qs") {
     const mix = qMix(data);
     result = {
@@ -702,6 +704,7 @@ function paxList(ctx: ChatToolContext, args: Json): ChatToolResult {
         .map((m) => [m.name, m.run, m.beatdown, Math.round(m.runShare)]),
       mixColumns: ["name", "runQs", "beatdownQs", "runSharePct"],
     };
+    link += "#run-only-heading";
   } else return { output: JSON.stringify({ error: "Unknown list." }) };
   return { output: JSON.stringify({ asOf: data.asOf, list, ...result }), link };
 }
@@ -725,7 +728,7 @@ function fngFollowThrough(ctx: ChatToolContext, args: Json): ChatToolResult {
         fngs: c.fngs.map((f) => [f.name, f.posts, f.lastPost, f.active, f.ehBy]),
       })),
     }),
-    link: "/data/community",
+    link: "/data/community#fng-months-heading",
   };
 }
 
@@ -745,7 +748,7 @@ function familyTreeTool(ctx: ChatToolContext, args: Json): ChatToolResult {
         rule: "Roster EH'er links as written; nothing inferred.",
         largest: roots.slice(0, 10).map((r) => trim(r, 1)),
       }),
-      link: "/data/community?tab=tree",
+      link: "/data/community?tab=tree#family-tree-heading",
     };
   const nodes = new Map<string, { node: TreeNode; parent: string | null }>();
   const walk = (n: TreeNode, parent: string | null) => {
@@ -772,7 +775,7 @@ function familyTreeTool(ctx: ChatToolContext, args: Json): ChatToolResult {
       ehChainUpward: chain,
       tree: trim(entry.node, 4),
     }),
-    link: "/data/community?tab=tree",
+    link: `/data/community?${new URLSearchParams({ tab: "tree", search: found.name })}#family-tree-heading`,
   };
 }
 
@@ -796,6 +799,8 @@ function milestonesTool(ctx: ChatToolContext, args: Json): ChatToolResult {
   };
   const link =
     "/data/milestones" + (step === "major" ? "" : `?step=${step}`);
+  const personLink = (name: string) =>
+    `/data/milestones?${new URLSearchParams({ ...(step === "major" ? {} : { step: String(step) }), horizon: "all", search: name })}`;
   if (args.name) {
     const found = resolveName(
       String(args.name),
@@ -815,7 +820,7 @@ function milestonesTool(ctx: ChatToolContext, args: Json): ChatToolResult {
           .filter((m) => normalizeDataName(m.name) === key)
           .map((m) => [m.name, m.target, m.date]),
       }),
-      link,
+      link: personLink(found.name),
     };
   }
   return {

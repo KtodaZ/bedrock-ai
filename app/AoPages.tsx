@@ -121,7 +121,7 @@ function AoIndex({ data }: { data: ExplorerData }) {
         </label>
       </div>
       <div className={styles.chartTitle}>
-        <h2>Active AOs</h2>
+        <h2 id="active-aos-heading">Active AOs</h2>
         <p>Average PAX per workout, last 13 weeks</p>
       </div>
       {active.length ? (
@@ -146,6 +146,8 @@ function AoIndex({ data }: { data: ExplorerData }) {
   );
 }
 
+/** The People lists, in order; `list=` in the URL opens one. */
+const AO_LISTS = ["pax", "qs", "draw", "biggest"];
 function setParams(patch: Record<string, string>) {
   const params = new URLSearchParams(window.location.search);
   for (const [k, v] of Object.entries(patch))
@@ -170,7 +172,9 @@ function AoProfile({ data, site }: { data: ExplorerData; site: string }) {
     const v = params.get("vs") ?? "";
     return v !== site && sites.some((s) => s.site === v) ? v : "";
   });
-  const [list, setList] = useState(0);
+  const [list, setList] = useState(() =>
+    Math.max(0, AO_LISTS.indexOf(params.get("list") ?? "")),
+  );
   // The first recorded year has nothing to compare with unless it's the only one.
   const years = useMemo(() => {
     const all = aoYears(workouts, site);
@@ -288,7 +292,7 @@ function AoProfile({ data, site }: { data: ExplorerData; site: string }) {
       />
       <section className={styles.aoLists} aria-label="People at this AO">
         <div className={styles.chartTitle}>
-          <h2>People</h2>
+          <h2 id="ao-people-heading">People</h2>
           <p>
             {insightDate(detail.from, true)} –{" "}
             {insightDate(detail.through, true)}
@@ -297,7 +301,10 @@ function AoProfile({ data, site }: { data: ExplorerData; site: string }) {
         <SwipeViews
           label="People at this AO"
           index={list}
-          onIndexChange={setList}
+          onIndexChange={(i) => {
+            setList(i);
+            setParams({ list: i ? AO_LISTS[i] : "" });
+          }}
           views={[
             {
               key: "pax",

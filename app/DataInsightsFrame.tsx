@@ -1,6 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { useExplorerData } from "../lib/useExplorerData";
+import { useLinkedSection } from "../lib/useLinkedSection";
 import type { ExplorerData } from "../lib/dataExplorer";
 import DataSectionNav from "./DataSectionNav";
 import common from "./DataExplorer.module.css";
@@ -26,6 +27,7 @@ export default function DataInsightsFrame({
   children: (data: ExplorerData) => ReactNode;
 }) {
   const query = useExplorerData();
+  useLinkedSection(Boolean(query.data));
   return (
     <main className={common.shell} aria-label={title}>
       <div className={common.content}>

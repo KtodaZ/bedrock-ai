@@ -5,7 +5,7 @@ const ts = require('typescript');
 function load(file, deps = {}) {
   const exports = {};
   const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  new Function('require', 'exports', js)((key) => deps[key] ?? (key === '@/lib/chatPages' ? load('lib/chatPages.ts') : require(key)), exports);
+  new Function('require', 'exports', js)((key) => deps[key] ?? (['@/lib/chatPages', '@/lib/dataExplorer'].includes(key) ? load(key.slice(2) + '.ts') : require(key)), exports);
   return exports;
 }
 
