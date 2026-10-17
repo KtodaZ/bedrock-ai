@@ -191,20 +191,26 @@ A nonblank Roster EH'er is authoritative. With no EH'er, the FNG still appears, 
 
 Referral example: You EH Alex; Alex EHs Ben. You receive a +5 upstream referral bonus for Ben, while Alex receives Ben's workout points. Both Alex and Ben must belong to the Oct 15–Dec 31 challenge cohort. The code awards this per qualifying downstream FNG, not as an unlimited multigeneration chain.
 
-The annual goal is 100 FNGs; the challenge goal is 50. Double Down means two FNGs at one workout and normal points only: two first posts earn 10 total. No extra award or separate tracking is implemented. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
+The annual goal is 100 FNGs; the challenge goal is 50. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
 
-### Provisional themed bonuses configured for 2026
+### 2026 themed weeks
 
-Clove’s exact weekly calendar, whether other themes add bonus points, and the three-month Resurrection definition/window await confirmation. The existing configuration below is retained; dates are labeled provisional in the UI and copied standings. Do not treat this table as a newly approved calendar.
+Clove’s calendar sets the dates and descriptions. It names a point total only for Double Down (20 for two FNGs); the other bonused themes keep the +5 already configured. Themes that depend on facts the sheet doesn't record use regular scoring.
 
 | Dates (inclusive) | Theme | Award |
 | --- | --- | --- |
-| Nov 2–8 | Free for All | Regular scoring; no extra bonus |
-| Nov 9–15 | Family Tree | +5 to the inviter for his first recorded FNG |
-| Nov 16–22 | Resurrection Week | +5 to the recorded person bringing a PAX back |
-| Dec 18–31 | The Christmas Gift | +5 to the EH'er for each qualifying FNG joining in the window |
+| Oct 15–24 | Free for All | Regular scoring |
+| Oct 25–31 | The Resurrection | +5 to the recorded person bringing back a PAX whose previous post was on or before Jul 25, 2026 |
+| Nov 1–7 | Double Down Week | +5 to the EH'er for each FNG first post (two FNGs = 20 points) |
+| Nov 8–14 | The Family Tree | +5 to the inviter for his first recorded FNG |
+| Nov 15–21 | The Cold Call | Regular scoring; not checkable from the sheet |
+| Nov 22–28 | Turkey Hook | +5 to the EH'er for each FNG first post |
+| Nov 29–Dec 5 | The Wild Card | Regular scoring; not checkable from the sheet |
+| Dec 6–12 | Office Space | Regular scoring; not checkable from the sheet |
+| Dec 13–19 | Neighborly Nudge | Regular scoring; not checkable from the sheet |
+| Dec 20–31 | The Christmas Gift | +5 to the EH'er for each FNG first post |
 
-There are no October themes. Family Tree finds each inviter's earliest FNG across the loaded eligible history, not just the displayed period; it is separate from the upstream referral bonus. Resurrection requires a Bedrock Roster entry with both return fields, a matching recorded post, and at least 180 days since the previous recorded post. It credits `Brought back by`, never guesses from the original EH'er, and credits a returning PAX once per theme. Theme status is based on `asOf`, so a stale sheet can show a theme as upcoming even after the calendar advances.
+Family Tree finds each inviter's earliest FNG across the loaded eligible history, not just the displayed period; it is separate from the upstream referral bonus. Resurrection requires a Bedrock Roster entry with both return fields, a `Return date` in the theme week matching a recorded post, and a previous recorded post on or before Jul 25, 2026. It credits `Brought back by`, never guesses from the original EH'er, and credits a returning PAX once per theme. Theme status is based on `asOf`, so a stale sheet can show a theme as upcoming even after the calendar advances.
 
 Person profiles use the same challenge result and selected cohort. `lib/ehProfile.ts` derives badges and the next workout milestone; those displays award no extra points.
 

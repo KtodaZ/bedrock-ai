@@ -52,7 +52,7 @@ export default function PointsGuide() {
 
       <section aria-labelledby="double-down-title" className="border-t border-violet-300/20 mt-8 pt-7">
         <h2 id="double-down-title" className="text-xl sm:text-2xl font-semibold text-white">Double Down</h2>
-        <p className="text-sm leading-relaxed text-violet-100/80 mt-3">Bring two FNGs to the same workout. Two first posts earn 10 points total: 5 each. There&apos;s no extra bonus or separate Double Down tracking.</p>
+        <p className="text-sm leading-relaxed text-violet-100/80 mt-3">During Double Down Week (Nov 1–7), each FNG&apos;s first post earns a +5 bonus on top of the regular 5. Two FNGs&apos; first posts earn 20 points.</p>
       </section>
 
       <footer className="border-t border-violet-300/20 mt-7 pt-5 text-sm text-violet-100/80 leading-relaxed">

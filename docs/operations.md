@@ -127,7 +127,7 @@ These tests use mocks and synthetic records. They do not prove current sheet con
 | Chat FNG count differs from leaderboard | Query details under the answer | Lookup tools (`fng_follow_through`, `eh_challenge`, `period_summary`) apply the Bedrock rule; a `run_sql` FNG count has no Roster region and includes visitors. |
 | Sheet change has not appeared | Server CSV caches and browser challenge query | Attendance TTL is 10 minutes; Roster TTL one minute; browser staleTime five minutes. Reload/refetch after cache expiry rather than creating a new tab/source. |
 | Theme or year seems wrong | Latest parsed attendance date | Periods and theme status follow `asOf`, not the wall clock. Check the source's latest valid date. |
-| Resurrection has no credit | `Brought back by`, `Return date`, prior/current Post dates | Require the exact recorded return date, 180-day gap, theme window, and Bedrock region; original EH'er is insufficient. |
+| Resurrection has no credit | `Brought back by`, `Return date`, prior/current Post dates | Require the exact recorded return date inside Oct 25–31, a previous post on or before Jul 25, 2026, and Bedrock region; original EH'er is insufficient. |
 | Correction is saved but standings unchanged | Roster and public history | Expected until the maintainer updates the sheet. “Matches current Roster” is a comparison, not a review decision. |
 | Discord alert pending | Saved notification state, webhook, delivery errors | Retry the same submission ID. No background delivery worker runs; do not delete/recreate the saved record. |
 | Chat returns 429 | Firewall and durable quota | Either layer can reject. App errors include Retry-After; daily quota resets at midnight UTC. Do not clear counters to bypass it. |

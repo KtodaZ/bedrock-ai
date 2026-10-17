@@ -17,15 +17,19 @@ const profiles = loadTS('lib/ehProfile.ts', { './ehChallenge': scoring });
 const post = (pax, date, fng = false) => ({ pax, date, fng, post: true, site: 'Test' });
 
 test('Resurrection credits the recorded bring-back person, never guesses the original EH’er', () => {
-  const rows = [post('Returnee', '2026-01-01'), post('Returnee', '2026-11-16'), post('Returnee', '2026-11-19')];
+  const rows = [post('Returnee', '2026-07-25'), post('Returnee', '2026-10-25'), post('Returnee', '2026-10-28')];
   const original = [{ pax: 'Returnee', ehBy: 'Original' }];
   assert.equal(scoring.computeChallenge(rows, original, 'challenge').leaderboard.length, 0);
-  const record = { pax: 'Returnee', broughtBy: 'Rescuer', date: '2026-11-16' };
+  const record = { pax: 'Returnee', broughtBy: 'Rescuer', date: '2026-10-25' };
   const result = scoring.computeChallenge(rows, original, 'challenge', [record, record]);
   assert.deepEqual(result.leaderboard.map((p) => [p.name, p.total]), [['Rescuer', 5]]);
-  for (const date of ['2026-11-17', '2026-11-19']) {
+  for (const date of ['2026-10-26', '2026-10-28']) {
     assert.equal(scoring.computeChallenge(rows, original, 'challenge', [{ ...record, date }]).leaderboard.length, 0);
   }
+  const recent = [post('Returnee', '2026-07-26'), post('Returnee', '2026-10-25')];
+  assert.equal(scoring.computeChallenge(recent, original, 'challenge', [record]).leaderboard.length, 0);
+  const lateRows = [post('Returnee', '2026-01-01'), post('Returnee', '2026-11-16')];
+  assert.equal(scoring.computeChallenge(lateRows, original, 'challenge', [{ ...record, date: '2026-11-16' }]).leaderboard.length, 0);
 });
 
 test('Family Tree credits the first-time inviter once, separately from upstream referrals', () => {
@@ -93,7 +97,12 @@ test('Annual stats have a 100-FNG goal and never award historical competition po
 
 });
 
-test('Double Down earns only normal first-post points and upstream referral remains +5', () => {
+test('Double Down Week adds +5 per FNG, other weeks earn normal points, and upstream referral remains +5', () => {
+  const week = scoring.computeChallenge([post('Alex', '2026-11-01', true), post('Ben', '2026-11-07', true)], [
+    { pax: 'Alex', ehBy: 'Inviter' }, { pax: 'Ben', ehBy: 'Inviter' },
+  ], 'challenge');
+  assert.equal(week.leaderboard[0].total, 20);
+  assert.equal(week.leaderboard[0].breakdown.themes, 10);
   const double = scoring.computeChallenge([post('Alex', '2026-10-15', true), post('Ben', '2026-10-15', true)], [
     { pax: 'Alex', ehBy: 'Inviter' }, { pax: 'Ben', ehBy: 'Inviter' },
   ], 'challenge');
@@ -139,4 +148,22 @@ test('Missing-today notice follows the Pacific calendar day, not UTC or the chal
   assert.equal(scoring.attendanceIsBehindToday('2026-10-15', beforeMidnight), false);
   assert.equal(scoring.attendanceIsBehindToday('2026-10-15', afterMidnight), true);
   assert.equal(scoring.attendanceIsBehindToday('2026-10-16', afterMidnight), false);
+});
+
+test('Theme calendar covers the challenge without gaps or overlaps, and only checkable themes add bonuses', () => {
+  let next = scoring.CHALLENGE_START;
+  for (const t of scoring.THEMES) {
+    assert.equal(t.start, next, t.name);
+    assert.ok(t.end >= t.start, t.name);
+    const d = new Date(`${t.end}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1);
+    next = d.toISOString().slice(0, 10);
+  }
+  assert.equal(scoring.THEMES.at(-1).end, scoring.CHALLENGE_END);
+  for (const name of ['The Cold Call', 'The Wild Card', 'Office Space', 'Neighborly Nudge']) {
+    assert.deepEqual(scoring.THEMES.filter((t) => t.name === name).map((t) => [t.kind, t.bonus]), [['open', 0]]);
+  }
+  const r = scoring.computeChallenge([post('Alex', '2026-11-15', true), post('Ben', '2026-11-23', true), post('Cal', '2026-12-20', true)],
+    ['Alex', 'Ben', 'Cal'].map((pax) => ({ pax, ehBy: 'Old Hand' })), 'challenge');
+  assert.equal(r.leaderboard[0].breakdown.themes, 10);
+  assert.doesNotMatch(r.bandText, /provisional/i);
 });

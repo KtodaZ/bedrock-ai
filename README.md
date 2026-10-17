@@ -35,7 +35,7 @@ The leaderboard calculates points from recorded attendance and the EH’er liste
 
 The two EH views are **2026 Challenge** (first and the default), for Oct 15–Dec 31 scoring and its 50-FNG goal, and **This Year**, with a 100-FNG annual goal and invitation stats without competition points. Earlier FNGs and workouts after Dec 31 do not earn challenge points. Sort challenge standings by points or FNG count, search for a person, or open a profile for milestones, badges, and suggested next invitations. Badges do not add points. The [points guide](https://data.f3bedrock.com/eh-challenge/points) explains workout and referral scoring.
 
-Double Down means two FNGs at the same workout: two first posts earn 10 normal points, with no extra bonus or separate tracking. Upstream referral credit remains +5. The existing weekly calendar and Resurrection rules are provisional pending Clove’s clarification; this update does not change their configured dates or bonuses.
+Weekly themes follow Clove’s 2026 calendar. The Resurrection, Double Down Week, The Family Tree, Turkey Hook, and The Christmas Gift add +5 bonuses; during Double Down Week two FNGs earn 20 points. Themes the sheet can't check (meeting someone new, work, neighborhood, unexpected place) use regular scoring. Upstream referral credit remains +5.
 
 EH corrections are saved for review and posted to Discord. Names and notes appear in the public correction history. Submissions do not change standings; the sheet maintainer must update the Roster.
 

@@ -36,10 +36,10 @@ export const CHALLENGE_FNG_GOAL = 50;
 export const ANNUAL_FNG_GOAL = 100;
 
 type ThemeKind =
-  | "open" // standard scoring without a themed bonus
+  | "open" // regular scoring; theme can't be checked from the sheet or has no bonus
   | "fng" // any FNG whose first post falls in the window
   | "familyTree" // a PAX EHs his first-ever FNG in the window
-  | "resurrection"; // a logged PAX returns after 180+ days away
+  | "resurrection"; // a logged PAX returns after no posts since lastPostBy
 
 export interface Theme {
   name: string;
@@ -48,41 +48,25 @@ export interface Theme {
   description: string;
   kind: ThemeKind;
   bonus: number;
+  lastPostBy?: string; // resurrection: previous post must be on or before this date
 }
 
+// Clove's 2026 calendar. Bonus amounts are not on the calendar except Double Down's
+// 20-point total; other bonused themes keep the existing +5.
 export const THEMES: Theme[] = [
+  { name: "Free for All", start: "2026-10-15", end: "2026-10-24", description: "Invite an FNG", kind: "open", bonus: 0 },
   {
-    name: "Free for All",
-    start: "2026-11-02",
-    end: "2026-11-08",
-    description: "Bring any new guy to a Bedrock workout.",
-    kind: "open",
-    bonus: 0,
+    name: "The Resurrection", start: "2026-10-25", end: "2026-10-31",
+    description: "Bring back a guy who hasn't posted since Jul 25, 2026", kind: "resurrection", bonus: 5, lastPostBy: "2026-07-25",
   },
-  {
-    name: "Family Tree",
-    start: "2026-11-09",
-    end: "2026-11-15",
-    description: "Get an existing PAX to EH his first FNG",
-    kind: "familyTree",
-    bonus: 5,
-  },
-  {
-    name: "Resurrection Week",
-    start: "2026-11-16",
-    end: "2026-11-22",
-    description: "Bring a former PAX back after at least 180 days away",
-    kind: "resurrection",
-    bonus: 5,
-  },
-  {
-    name: "The Christmas Gift",
-    start: "2026-12-18",
-    end: "2026-12-31",
-    description: "Bring an FNG in the final 2 weeks of December",
-    kind: "fng",
-    bonus: 5,
-  },
+  { name: "Double Down Week", start: "2026-11-01", end: "2026-11-07", description: "Invite 2 FNGs for a total of 20 pts", kind: "fng", bonus: 5 },
+  { name: "The Family Tree", start: "2026-11-08", end: "2026-11-14", description: "VQ EH: invite your very first FNG", kind: "familyTree", bonus: 5 },
+  { name: "The Cold Call", start: "2026-11-15", end: "2026-11-21", description: "Invite someone you've never met", kind: "open", bonus: 0 },
+  { name: "Turkey Hook", start: "2026-11-22", end: "2026-11-28", description: "Invite an FNG during Thanksgiving week", kind: "fng", bonus: 5 },
+  { name: "The Wild Card", start: "2026-11-29", end: "2026-12-05", description: "EH a guy from an unexpected place", kind: "open", bonus: 0 },
+  { name: "Office Space", start: "2026-12-06", end: "2026-12-12", description: "Invite a guy from work", kind: "open", bonus: 0 },
+  { name: "Neighborly Nudge", start: "2026-12-13", end: "2026-12-19", description: "EH someone who lives in your neighborhood", kind: "open", bonus: 0 },
+  { name: "The Christmas Gift", start: "2026-12-20", end: "2026-12-31", description: "EH an FNG in the last 2 weeks of December", kind: "fng", bonus: 5 },
 ];
 
 export interface EhLogEntry {
@@ -95,8 +79,6 @@ export interface ResurrectionEntry {
   broughtBy: string;
   date: string;
 }
-
-const RESURRECTION_GAP_DAYS = 180;
 
 // ── Scoring ──────────────────────────────────────────────────────────────────
 
@@ -160,10 +142,6 @@ function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
-}
-
-function daysBetween(a: string, b: string): number {
-  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
 
 export function formatDay(iso: string): string {
@@ -286,7 +264,7 @@ export function computeChallenge(
         if (!key || !recruiter || !inTheme(record.date) || credited.has(key)) continue;
         const posts = postDates.get(key) ?? [];
         const i = posts.indexOf(record.date);
-        if (i > 0 && daysBetween(posts[i - 1], record.date) >= RESURRECTION_GAP_DAYS) {
+        if (i > 0 && t.lastPostBy && posts[i - 1] <= t.lastPostBy) {
           events.push({ who: recruiter, date: record.date, points: t.bonus, kind: "themes" });
           credited.add(key);
         }
@@ -354,7 +332,6 @@ export function buildBandText(r: Omit<ChallengeResult, "bandText">, sort: Leader
   if (r.scoringEnabled && theme) {
     lines.push(
       "",
-      "Weekly calendar provisional; awaiting confirmation.",
       `🔥 ${theme.status === "active" ? "This week" : "Coming up"}: ${theme.name} (${formatDay(theme.start)} – ${formatDay(theme.end)})`,
       theme.description
     );

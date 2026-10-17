@@ -162,8 +162,7 @@ export default function EhChallenge() {
               <div className="rounded-2xl p-4" style={card}>
                 {!scoring ? <><div className="text-xs text-white/65">2026 EH Challenge</div><p className="text-sm text-white/85 mt-2">Oct 15–Dec 31 · 50 FNG goal</p><button onClick={() => choosePeriod("challenge")} className="text-sm text-violet-200 underline underline-offset-4 min-h-11 cursor-pointer focus-visible:outline-2 focus-visible:outline-violet-400">View challenge standings →</button></> : theme ? (
                   <>
-                    <div className="text-xs text-white/65">Provisional calendar · dates being confirmed</div>
-                    <div className="text-xs text-white/65 mt-2">
+                    <div className="text-xs text-white/65">
                       {theme.status === "active" ? "This week's theme" : "Next theme"} · {formatDay(theme.start)} – {formatDay(theme.end)}
                     </div>
                     <div className="text-base font-semibold text-white/90 mt-1">{theme.name}</div>
