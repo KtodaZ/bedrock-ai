@@ -331,3 +331,15 @@ test('streamed text shows while pending, resets between rounds, and late suggest
   assert.deepEqual(saved(disk)[0].messages.at(-1).suggestions, ['What about Spartan?']);
   calls[0].close();
 });
+
+test('page buttons are saved with the answer, survive recovery, and only allow in-app paths', async () => {
+  const { session, disk, calls } = setup(undefined, () => json({ status: 'success', answer: 'Recovered', pages: [{ href: '/data/trends', label: 'Attendance trends' }, { href: 'https://evil.test', label: 'Bad' }] }));
+  const first = session.sendMessage('Trends?');
+  calls[0].send({ type: 'done', answer: 'Up 4%.', pages: [{ href: '/data/aos?ao=Hilltop', label: 'Hilltop AO page' }, { href: '//evil.test', label: 'Bad' }, { href: 'javascript:alert(1)', label: 'Bad' }] });
+  await first;
+  assert.deepEqual(saved(disk)[0].messages[1].pages, [{ href: '/data/aos?ao=Hilltop', label: 'Hilltop AO page' }]);
+  const second = session.sendMessage('Again?');
+  calls[1].close();
+  await second;
+  assert.deepEqual(saved(disk)[0].messages.at(-1).pages, [{ href: '/data/trends', label: 'Attendance trends' }]);
+});

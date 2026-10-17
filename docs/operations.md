@@ -108,6 +108,7 @@ npm run build
 | Test script | Coverage |
 | --- | --- |
 | `scripts/test-ai-rate-limit.cjs` | Per-IP/daily limits, concurrent reservations, storage failure, rejecting before OpenAI, bounded mock chat calls, free homepage suggestions |
+| `scripts/test-chat-pages.cjs` | Links-only last line becomes page buttons, made-up paths dropped, lookup-link fallback and labels, directory pages are real routes |
 | `scripts/test-chat-session.cjs` | Immediate saves, active-chat/draft restoration, background and parallel completion, deletion races, answer recovery after dropped, silent, or reloaded streams, Try again replacement, storage failures, legacy history, streamed text, late suggestions |
 | `scripts/test-chat-tools.cjs` | Strict tool schemas, PAX/AO name resolution, lookup results matching the Data/AO/Community/Milestones/EH code, page links, error handling |
 | `scripts/test-data-insights.cjs` | Milestone boundaries, pace/sample thresholds, exact reached dates, protected records, UTC weeks, weighted turnout, comparisons, gaps, and raw attendance links |

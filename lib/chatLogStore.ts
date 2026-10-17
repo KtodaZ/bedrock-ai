@@ -15,6 +15,7 @@ export type ChatLog = {
   durationMs?: number;
   queries: { sql: string; reason: string }[];
   suggestions?: string[];
+  pages?: { href: string; label: string }[];
 };
 
 /** Browser-generated request IDs are random UUIDs; holding one is what lets a browser read its answer back. */
@@ -70,16 +71,16 @@ export async function claimChatLog(log: ChatLog): Promise<"claimed" | "duplicate
   }
 }
 
-export type ChatResult = Pick<ChatLog, "status" | "answer" | "error" | "reasoningLevel" | "queries" | "suggestions">;
+export type ChatResult = Pick<ChatLog, "status" | "answer" | "error" | "reasoningLevel" | "queries" | "suggestions" | "pages">;
 /** The answer for one recent request, without its conversation history; null when absent or expired. */
 export async function readChatResult(id: string): Promise<ChatResult | null> {
   const log = await (await chatLogs()).findOne(
     { _id: id, createdAt: { $gte: new Date(Date.now() - RESULT_TTL_MS) } },
-    { projection: { status: 1, answer: 1, error: 1, reasoningLevel: 1, queries: 1, suggestions: 1 } },
+    { projection: { status: 1, answer: 1, error: 1, reasoningLevel: 1, queries: 1, suggestions: 1, pages: 1 } },
   );
   if (!log) return null;
   return { status: log.status, answer: log.answer, error: log.error, reasoningLevel: log.reasoningLevel,
-    queries: log.queries ?? [], suggestions: log.suggestions ?? [] };
+    queries: log.queries ?? [], suggestions: log.suggestions ?? [], pages: log.pages ?? [] };
 }
 
 export function historyFilter(params: URLSearchParams): Filter<ChatLog> {

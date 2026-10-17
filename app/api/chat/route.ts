@@ -4,6 +4,7 @@ import { fetchCSV, getDatabase, isReadOnlySelect, runSQL } from "@/lib/attendanc
 import { loadExplorerData } from "@/lib/dataExplorerSource";
 import { attendanceWorkouts } from "@/lib/attendanceTrends";
 import { CHAT_TOOLS, chatDataFacts, isChatTool, runChatTool, type ChatToolContext } from "@/lib/chatTools";
+import { finalizeLinks, PAGES_PROMPT } from "@/lib/chatPages";
 import { computeChallenge, type ChallengeResult, type Period } from "@/lib/ehChallenge";
 import { fetchAttendance, fetchEhAttributions, fetchResurrectionAttributions } from "@/lib/sheet";
 
@@ -33,7 +34,9 @@ TOOLS — prefer the lookup tools. They use the same rules as the Data pages and
 - run_sql — only when no tool answers the question (custom cross-tabs, specific dates, unusual comparisons).
 Call independent tools together in one round. Use the fewest calls that answer precisely. Tool results are already validated; re-check with SQL only if two results conflict. If a tool returns "closest" names, pick the clearly intended one and call again, or list them and ask.
 
-LINKS — tool results include a "link" to the page showing the same numbers. End the answer with one line holding up to two of them as Markdown links, e.g. [Open Clove's profile](/data?period=all&pax=Clove). Copy links exactly from tool results; never write a link a tool didn't return.
+LINKS — point the reader to the Data page where they can see and explore the answer. End the answer with one line of up to two Markdown links, most relevant first, e.g. [Clove's profile](/data?period=all&pax=Clove) · [Q leaders](/data/community?tab=q); the app shows that line as buttons. Use a tool result's "link" for a specific PAX, AO, or date range, copied exactly. Otherwise use one of these pages, exactly as written:
+${PAGES_PROMPT}
+Never write any other path or add query parameters. Skip links for off-topic questions.
 
 SQL TABLE (run_sql) — Table: attendance
 - "PAX Name" TEXT — participant name (under-18 and archived names are already excluded)
@@ -318,6 +321,7 @@ export async function POST(req: NextRequest) {
         ];
 
         let finalAnswer = "";
+        const toolLinks: string[] = [];
         let queryBatch = 0;
         let queryIndex = 0;
 
@@ -382,7 +386,9 @@ export async function POST(req: NextRequest) {
             } else {
               sql = `${call.name}(${JSON.stringify(args)})`;
               reason = TOOL_LABELS[call.name] ?? "Lookup";
-              output = isChatTool(call.name) ? (await runChatTool(ctx, call.name, args)).output : JSON.stringify({ error: `Unknown tool ${call.name}.` });
+              const result = isChatTool(call.name) ? await runChatTool(ctx, call.name, args) : { output: JSON.stringify({ error: `Unknown tool ${call.name}.` }) };
+              output = result.output;
+              if ("link" in result && result.link) toolLinks.push(result.link);
             }
             return { call, sql, reason, output };
           }));
@@ -400,6 +406,9 @@ export async function POST(req: NextRequest) {
         }
 
         if (!finalAnswer) throw new Error("This question needs more analysis than one request allows. Try a narrower question.");
+        // Drop links to pages that don't exist; the closing links line becomes page buttons.
+        const { answer: linkedAnswer, pages } = finalizeLinks(finalAnswer, toolLinks);
+        finalAnswer = linkedAnswer;
 
         const ms = Date.now() - startTime;
         console.log(`[chat] done rounds=${queryBatch} calls=${queryIndex} ms=${ms} answerLen=${finalAnswer.length}`);
@@ -414,10 +423,10 @@ export async function POST(req: NextRequest) {
           .replace(/\n{3,}/g, "\n\n")
           .trim();
         notifyDiscord(`✅ Done — ${queryIndex} lookup${queryIndex === 1 ? "" : "s"} in ${(ms / 1000).toFixed(1)}s\n\`\`\`\n${plainAnswer.slice(0, 500)}${plainAnswer.length > 500 ? "…" : ""}\n\`\`\``);
-        Object.assign(log, { status: "success", answer: finalAnswer, durationMs: Date.now() - started, updatedAt: new Date() });
+        Object.assign(log, { status: "success", answer: finalAnswer, pages, durationMs: Date.now() - started, updatedAt: new Date() });
         await saveChatLog(log);
         // Show the answer now; follow-up suggestions arrive after it.
-        send({ type: "done", answer: finalAnswer, suggestions: [], reasoningLevel });
+        send({ type: "done", answer: finalAnswer, pages, suggestions: [], reasoningLevel });
         const suggestions = await suggestFollowUps(question, finalAnswer);
         if (suggestions.length) {
           send({ type: "suggestions", suggestions });

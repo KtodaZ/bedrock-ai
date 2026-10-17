@@ -503,6 +503,27 @@ export default function Home() {
                             msg.content
                           )}
                         </div>
+                        {msg.role === "assistant" && msg.pages && msg.pages.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5" aria-label="Pages with this data">
+                            {msg.pages.map((p) => (
+                              <Link
+                                key={p.href}
+                                href={p.href}
+                                className="flex items-center gap-1.5 min-h-8 px-3 py-1.5 rounded-xl border border-violet-400/25 text-xs text-violet-200/90 hover:text-white hover:border-violet-400/50 hover:bg-violet-500/10 transition-all duration-150"
+                                style={{ background: "rgba(124,58,237,0.08)" }}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M3 3v18h18" />
+                                  <path d="M7 15l4-4 3 3 5-6" />
+                                </svg>
+                                {p.label}
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="opacity-60">
+                                  <path d="M5 12h14M13 6l6 6-6 6" />
+                                </svg>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                         {msg.role === "assistant" && (
                           <div className="flex items-center gap-2">
                           {msg.reasoningUsed && !msg.isError && (

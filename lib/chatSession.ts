@@ -4,10 +4,17 @@ export interface QueryLogEntry {
   sql: string;
 }
 
+export interface PageLink {
+  href: string;
+  label: string;
+}
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
   suggestions?: string[];
+  /** In-app pages that show the answer, offered as buttons. */
+  pages?: PageLink[];
   queryLog?: QueryLogEntry[];
   reasoningUsed?: string;
   isError?: boolean;
@@ -70,6 +77,7 @@ interface SavedResult {
   error?: string;
   queries?: { sql?: string; reason?: string }[];
   suggestions?: unknown;
+  pages?: unknown;
   reasoningLevel?: string;
 }
 
@@ -79,7 +87,8 @@ function isMessage(value: unknown): value is Message {
   return (m.role === "user" || m.role === "assistant") && typeof m.content === "string"
     && (m.suggestions === undefined || (Array.isArray(m.suggestions) && m.suggestions.every(s => typeof s === "string")))
     && (m.queryLog === undefined || (Array.isArray(m.queryLog) && m.queryLog.every(q => q && typeof q.index === "number" && typeof q.sql === "string" && typeof q.reason === "string")))
-    && (m.requestId === undefined || typeof m.requestId === "string");
+    && (m.requestId === undefined || typeof m.requestId === "string")
+    && (m.pages === undefined || (Array.isArray(m.pages) && m.pages.every(p => p && typeof p.href === "string" && typeof p.label === "string")));
 }
 function isConversation(value: unknown): value is Conversation {
   if (!value || typeof value !== "object") return false;
@@ -331,7 +340,7 @@ export class ChatSession {
           } else if (event.type === "query") {
             queryLog.push({ index: event.index ?? queryLog.length + 1, reason: event.reason ?? "", sql: event.sql ?? "" });
           } else if (event.type === "done") {
-            finish({ role: "assistant", content: event.answer ?? "No answer returned.", suggestions: suggestionList(event.suggestions), queryLog, reasoningUsed: event.reasoningLevel });
+            finish({ role: "assistant", content: event.answer ?? "No answer returned.", suggestions: suggestionList(event.suggestions), pages: pageList(event.pages), queryLog, reasoningUsed: event.reasoningLevel });
           } else if (event.type === "error") {
             throw new ServerError(event.message ?? "Something went wrong. Please try again.");
           }
@@ -373,6 +382,7 @@ interface StreamEvent {
   message?: string;
   reasoningLevel?: string;
   suggestions?: unknown;
+  pages?: unknown;
 }
 function parseEvent(part: string): StreamEvent | null {
   const line = part.split(/\r?\n/).find(l => l.startsWith("data: "));
@@ -404,7 +414,7 @@ function savedMessage(result: SavedResult, queryLog: QueryLogEntry[]): Message {
   const queries = Array.isArray(result.queries) ? result.queries : [];
   return { role: "assistant", content: result.answer, suggestions: suggestionList(result.suggestions),
     queryLog: queries.length ? queries.map((q, i) => ({ index: i + 1, reason: String(q?.reason ?? ""), sql: String(q?.sql ?? "") })) : queryLog,
-    reasoningUsed: result.reasoningLevel };
+    pages: pageList(result.pages), reasoningUsed: result.reasoningLevel };
 }
 function wait(ms: number, signal: AbortSignal) {
   return new Promise<void>(resolve => {
@@ -413,6 +423,10 @@ function wait(ms: number, signal: AbortSignal) {
     signal.addEventListener("abort", done);
   });
 }
+/** Only in-app paths, so a saved or streamed value can never become an outside link. */
+const pageList = (value: unknown): PageLink[] =>
+  Array.isArray(value) ? value.filter((p): p is PageLink => Boolean(p) && typeof p.label === "string"
+    && typeof p.href === "string" && p.href.startsWith("/") && !p.href.startsWith("//")).slice(0, 3) : [];
 const suggestionList = (value: unknown) =>
   Array.isArray(value) ? value.filter((s): s is string => typeof s === "string").slice(0, 3) : [];
 /** Reads events after the answer (just suggestions), giving up after 30 seconds. */

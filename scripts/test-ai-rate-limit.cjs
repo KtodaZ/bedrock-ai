@@ -5,7 +5,7 @@ const ts = require('typescript');
 function load(file, deps = {}) {
   const exports = {};
   const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  new Function('require', 'exports', js)((key) => deps[key] ?? require(key), exports);
+  new Function('require', 'exports', js)((key) => deps[key] ?? (key === '@/lib/chatPages' ? load('lib/chatPages.ts') : require(key)), exports);
   return exports;
 }
 function setup() {
@@ -111,13 +111,13 @@ test('Chat streams the answer, runs lookup tools, refuses writes, and sends sugg
       { type: 'function_call', name: 'pax_profile', call_id: 'a', arguments: JSON.stringify({ name: 'Clove', from: null, to: null }) },
       { type: 'function_call', name: 'run_sql', call_id: 'b', arguments: JSON.stringify({ sql: 'DROP TABLE attendance', reason: 'Bad' }) },
     ] }, 'Thinking…');
-    return streamOf({ output: [], output_text: '**Clove** has 3 posts. [Open Clove’s profile](/data?pax=A)' });
+    return streamOf({ output: [], output_text: '**Clove** has 3 posts.\n\n[Open Clove’s profile](/data?period=all&pax=Clove) · [Made-up page](/data/nope)' });
   } }; }
   const chat = load('app/api/chat/route.ts', chatDeps({
     openai: { default: FakeAI },
     '@/lib/aiRateLimit': { reserveAiRequest: async () => ({ allowed: true }) },
     '@/lib/attendance-db': { fetchCSV: async () => 'csv', getDatabase: async () => ({}), runSQL: (db, q) => { sql.push(q); return '1'; }, isReadOnlySelect: (q) => /^select/i.test(q) },
-    '@/lib/chatTools': { CHAT_TOOLS: [{ type: 'function', name: 'pax_profile' }], chatDataFacts: () => 'Latest attendance date 2026-10-14.', isChatTool: (n) => n === 'pax_profile', runChatTool: async (ctx, name, args) => { tools.push([name, args]); return { output: '{"posts":3}' }; } },
+    '@/lib/chatTools': { CHAT_TOOLS: [{ type: 'function', name: 'pax_profile' }], chatDataFacts: () => 'Latest attendance date 2026-10-14.', isChatTool: (n) => n === 'pax_profile', runChatTool: async (ctx, name, args) => { tools.push([name, args]); return { output: '{"posts":3}', link: '/data?period=all&pax=Clove' }; } },
   }));
   const response = await chat.POST(new Request('https://data.f3bedrock.com/api/chat', { method: 'POST', body: JSON.stringify({ question: 'How many posts does Clove have?', reasoningLevel: 'low' }) }));
   const events = (await response.text()).split('\n\n').filter(Boolean).map(e => JSON.parse(e.slice(6)));
@@ -127,6 +127,10 @@ test('Chat streams the answer, runs lookup tools, refuses writes, and sends sugg
   assert.ok(types.lastIndexOf('delta') < types.indexOf('done'));
   assert.ok(types.indexOf('done') < types.indexOf('suggestions'));
   assert.deepEqual(events.find(e => e.type === 'suggestions').suggestions, ['What about Spartan?']);
+  // The closing links line becomes page buttons; links no lookup or directory supplied are dropped.
+  const done = events.find(e => e.type === 'done');
+  assert.equal(done.answer, '**Clove** has 3 posts.');
+  assert.deepEqual(done.pages, [{ href: '/data?period=all&pax=Clove', label: 'Clove’s profile' }]);
   assert.deepEqual(tools, [['pax_profile', { name: 'Clove', from: null, to: null }]]);
   assert.deepEqual(sql, [], 'write SQL never reaches the database');
   const sol = calls.filter(c => c.model === 'gpt-6.1-sol');

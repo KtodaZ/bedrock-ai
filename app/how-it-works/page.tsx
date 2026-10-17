@@ -56,7 +56,7 @@ export default function HowItWorksPage() {
           <p>
             Bedrock loads attendance, Roster, and Sites records from Google Sheets. The AI first uses lookups built on the
             same code as the Data, AO, Community, Milestones, and EH Challenge pages, so its numbers match those pages, and
-            links to the page it used. For anything else it writes a read-only SQL query against an in-memory SQLite copy.
+            offers buttons to the Data pages that show the answer. For anything else it writes a read-only SQL query against an in-memory SQLite copy.
             You can inspect every lookup and query below each response.
           </p>
           <Diagram />
@@ -68,7 +68,7 @@ export default function HowItWorksPage() {
             ["Step 1", "Load the attendance records"],
             ["Step 2", "Run page lookups or a read-only SQL query"],
             ["Step 3", "Read the results and look up more if needed"],
-            ["Step 4", "Write the answer as you watch, with page links"],
+            ["Step 4", "Write the answer as you watch, with buttons to matching pages"],
           ]} />
           <p>
             Lookup and query results give the model records to work from, but it can still make mistakes. Check the
