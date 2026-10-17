@@ -123,6 +123,8 @@ test('Lists, family tree, and milestones use Community and Milestones rules', as
   const ctx = context();
   const kotter = await run(ctx, 'pax_list', { list: 'kotter', limit: null });
   assert.deepEqual(kotter.rows.map(r => r[0]), ['Gone']);
+  assert.deepEqual(kotter.columns, ['name', 'allTimePosts', 'allTimeQs', 'lastPost', 'days'], 'Q counts answer "who never Q\'d" in one lookup');
+  assert.equal(typeof kotter.rows[0][2], 'number');
   assert.equal(kotter._link, '/data?view=kotter&period=all');
   const mix = await run(ctx, 'pax_list', { list: 'run_site_qs', limit: 5 });
   assert.ok(Array.isArray(mix.runOnly));

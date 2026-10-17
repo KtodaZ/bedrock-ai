@@ -138,7 +138,7 @@ export const CHAT_TOOLS: ChatToolDefinition[] = [
   ),
   tool(
     "pax_list",
-    `Ready-made PAX lists that match the Data and Community pages. kotter: Bedrock PAX whose last post was 15–364 days ago (2.0s excluded). q_kotter: Bedrock PAX whose last Q was 31–364 days ago. qsource: most Qsource posts and Qsource Qs, all time. first_q_candidates: no recorded Q, ${FIRST_Q.minPosts}+ posts, ${FIRST_Q.minRecent}+ posts in the last 30 days (2.0s excluded). q_ratio_regulars: Q ratio among PAX with ${REGULAR_POSTS_90}+ posts in the last 90 days. run_site_qs: Qs with ${Q_MIX.runOnlyMin}+ run-site Qs and no beatdown Q in the last ${Q_MIX.days} days, plus the run vs beatdown Q mix.`,
+    `Ready-made PAX lists that match the Data and Community pages. kotter: Bedrock PAX whose last post was 15–364 days ago (2.0s excluded), with all-time posts and Qs. q_kotter: Bedrock PAX whose last Q was 31–364 days ago, with all-time posts and Qs. qsource: most Qsource posts and Qsource Qs, all time. first_q_candidates: no recorded Q, ${FIRST_Q.minPosts}+ posts, ${FIRST_Q.minRecent}+ posts in the last 30 days (2.0s excluded). q_ratio_regulars: Q ratio among PAX with ${REGULAR_POSTS_90}+ posts in the last 90 days. run_site_qs: Qs with ${Q_MIX.runOnlyMin}+ run-site Qs and no beatdown Q in the last ${Q_MIX.days} days, plus the run vs beatdown Q mix.`,
     {
       list: {
         type: "string",
@@ -151,7 +151,7 @@ export const CHAT_TOOLS: ChatToolDefinition[] = [
           "run_site_qs",
         ],
       },
-      limit: nullable("integer", "Maximum rows, 1–50; null for 25."),
+      limit: nullable("integer", "Maximum rows, 1–100; null for 25 (kotter and q_kotter: the whole list, up to 100)."),
     },
   ),
   tool(
@@ -636,11 +636,12 @@ function periodSummary(ctx: ChatToolContext, args: Json): ChatToolResult {
 
 function paxList(ctx: ChatToolContext, args: Json): ChatToolResult {
   const { data } = ctx;
-  const limit = Math.min(
-    50,
-    Math.max(1, Number.isInteger(args.limit) ? (args.limit as number) : 25),
-  );
   const list = String(args.list);
+  const whole = list === "kotter" || list === "q_kotter";
+  const limit = Math.min(
+    100,
+    Math.max(1, Number.isInteger(args.limit) ? (args.limit as number) : whole ? 100 : 25),
+  );
   const all = (view: DataView) =>
     summarizePax(data, { ...defaultDataFilters(data.asOf), view, period: "all" });
   let result: Json;
@@ -655,10 +656,10 @@ function paxList(ctx: ChatToolContext, args: Json): ChatToolResult {
           ? "Bedrock Roster PAX whose last post was 15–364 days before the latest attendance date; 2.0s excluded."
           : "Bedrock Roster PAX whose last Q was 31–364 days before the latest attendance date.",
       total: rows.length,
-      columns: ["name", "allTimePosts", list === "kotter" ? "lastPost" : "lastQ", "days"],
+      columns: ["name", "allTimePosts", "allTimeQs", list === "kotter" ? "lastPost" : "lastQ", "days"],
       rows: rows
         .slice(0, limit)
-        .map((r) => [r.name, r.posts, list === "kotter" ? r.last : r.lastQ, r.days]),
+        .map((r) => [r.name, r.posts, r.qs, list === "kotter" ? r.last : r.lastQ, r.days]),
     };
     link = `/data?view=${list === "kotter" ? "kotter" : "qkotter"}&period=all`;
   } else if (list === "qsource") {
