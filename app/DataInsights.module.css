@@ -468,7 +468,10 @@
   min-width: 57px;
   text-align: center;
 }
-.heatmap td > a,
+.heatWrap {
+  position: relative;
+}
+.heatmap td > [role="button"],
 .noHeat {
   display: flex;
   align-items: center;
@@ -478,7 +481,11 @@
   color: #f1eaff;
   text-decoration: none;
 }
-.heatmap td > a:hover {
+.heatmap td > [role="button"] {
+  cursor: pointer;
+}
+.heatmap td > [role="button"]:hover,
+.heatmap td > .openHeat {
   outline: 1px solid #d0abff;
   outline-offset: 1px;
 }
@@ -490,6 +497,56 @@
   background: #0d0b16;
   min-width: 155px;
   padding-left: 10px;
+}
+.heatTip {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  width: 220px;
+  padding: 8px;
+  border: 1px solid #3f3152;
+  border-radius: 9px;
+  background: rgb(20 16 31 / 0.97);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.heatTip strong {
+  padding: 0 4px;
+  color: #f1eaff;
+  font-size: 13px;
+}
+.heatTip span {
+  padding: 0 4px;
+  color: #b4a6c6;
+  font-size: 11px;
+}
+.heatTip p {
+  margin: 4px 0 2px;
+  padding: 0 4px;
+  color: #d9d3e8;
+}
+.heatTip p b {
+  color: #c3a1ff;
+  font-size: 15px;
+}
+.heatTip a {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px;
+  border-radius: 6px;
+  color: #e0c7ff;
+}
+.heatTip a b {
+  margin-left: auto;
+  font-size: 16px;
+  color: #c3a1ff;
+}
+.heatTip a:hover,
+.heatTip a:focus-visible {
+  background: #2a2140;
 }
 .noHeat {
   color: #ac9aba;

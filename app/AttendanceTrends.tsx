@@ -71,6 +71,41 @@ function TrendsContent({ data }: { data: ExplorerData }) {
   );
   const selectedSites = sites.filter((site) => allSites.includes(site));
   const heatmapRef = useRef<HTMLDivElement>(null);
+  // The tapped heatmap cell, placed under the cell inside heatWrapRef. It closes
+  // on a tap outside the heatmap, Escape, or a horizontal scroll.
+  const heatWrapRef = useRef<HTMLDivElement>(null);
+  const [heatTip, setHeatTip] = useState<{
+    site: string;
+    start: string;
+    top: number;
+    left: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!heatTip) return;
+    const close = (e: PointerEvent) => {
+      if (!heatWrapRef.current?.contains(e.target as Node)) setHeatTip(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [heatTip]);
+  const toggleHeat = (site: string, start: string, cell: HTMLElement) => {
+    if (heatTip?.site === site && heatTip.start === start)
+      return setHeatTip(null);
+    const wrap = heatWrapRef.current!.getBoundingClientRect(),
+      rect = cell.getBoundingClientRect();
+    setHeatTip({
+      site,
+      start,
+      top: rect.bottom - wrap.top + 6,
+      left: Math.max(
+        4,
+        Math.min(
+          rect.left - wrap.left + rect.width / 2 - 110,
+          wrap.width - 224,
+        ),
+      ),
+    });
+  };
   useEffect(() => {
     const params = new URLSearchParams({ weeks: String(weeks), metric });
     sites.forEach((site) => params.append("ao", site));
@@ -127,6 +162,12 @@ function TrendsContent({ data }: { data: ExplorerData }) {
     1,
     ...heatRows.flatMap((row) => row.buckets.map((b) => b.average ?? 0)),
   );
+  // Undefined when the tapped cell left the selection, which hides the tip.
+  const tipBucket = heatTip
+    ? heatRows
+        .find((row) => row.site === heatTip.site)
+        ?.buckets.find((b) => b.start === heatTip.start && b.average !== null)
+    : undefined;
   const setSites = (values: string[]) =>
     setOptions((o) => ({ ...o, sites: values }));
   const growth = useMemo(
@@ -462,10 +503,7 @@ function TrendsContent({ data }: { data: ExplorerData }) {
       >
         <div className={styles.chartTitle}>
           <h2 id="attendance-map-heading">Weekly turnout by AO</h2>
-          <p>
-            Average PAX per recorded workout · select a cell for the raw
-            attendance
-          </p>
+          <p>Average PAX per recorded workout · tap a cell for its workouts</p>
         </div>
         <div className={styles.heatLegend}>
           <span>Lower turnout</span>
@@ -481,67 +519,122 @@ function TrendsContent({ data }: { data: ExplorerData }) {
         </div>
         {heatRows.length ? (
           <div
-            ref={heatmapRef}
-            className={styles.heatScroll}
-            role="region"
-            tabIndex={0}
-            aria-label="Scrollable AO attendance heatmap"
+            ref={heatWrapRef}
+            className={styles.heatWrap}
+            onKeyDown={(e) => e.key === "Escape" && setHeatTip(null)}
           >
-            <table className={styles.heatmap}>
-              <caption className={common.srOnly}>
-                Weekly average attendance by AO. Dates are Mondays; the last
-                week is partial.
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col" className={styles.heatPinned}>
-                    AO
-                  </th>
-                  {regionBuckets.map((b, i) => (
-                    <th scope="col" key={b.start}>
-                      {insightDate(b.start)}
-                      {i === regionBuckets.length - 1 ? "*" : ""}
+            <div
+              ref={heatmapRef}
+              className={styles.heatScroll}
+              role="region"
+              tabIndex={0}
+              aria-label="Scrollable AO attendance heatmap"
+              onScroll={() => setHeatTip(null)}
+            >
+              <table className={styles.heatmap}>
+                <caption className={common.srOnly}>
+                  Weekly average attendance by AO. Dates are Mondays; the last
+                  week is partial.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col" className={styles.heatPinned}>
+                      AO
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {heatRows.map((row) => (
-                  <tr key={row.site}>
-                    <th scope="row" className={styles.heatPinned}>
-                      <Link className={styles.nameLink} href={aoURL(row.site)}>
-                        {row.site}
-                      </Link>
-                    </th>
-                    {row.buckets.map((b) => (
-                      <td key={b.start}>
-                        {b.average === null ? (
-                          <span
-                            className={styles.noHeat}
-                            title={`${row.site}, week of ${insightDate(b.start, true)}: No recorded workouts`}
-                          >
-                            —
-                          </span>
-                        ) : (
-                          <Link
-                            className={
-                              styles[
-                                `heat${Math.min(3, Math.floor((b.average / heatMax) * 4))}`
-                              ]
-                            }
-                            href={rawAttendanceURL(row.site, b.start, b.end)}
-                            title={`${row.site}, week of ${insightDate(b.start, true)}: ${b.average.toFixed(1)} average PAX, ${b.workouts} workouts`}
-                            aria-label={`${row.site}, week of ${insightDate(b.start, true)}: ${b.average.toFixed(1)} average PAX across ${b.workouts} workouts. View attendance.`}
-                          >
-                            {b.average.toFixed(1)}
-                          </Link>
-                        )}
-                      </td>
+                    {regionBuckets.map((b, i) => (
+                      <th scope="col" key={b.start}>
+                        {insightDate(b.start)}
+                        {i === regionBuckets.length - 1 ? "*" : ""}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {heatRows.map((row) => (
+                    <tr key={row.site}>
+                      <th scope="row" className={styles.heatPinned}>
+                        <Link
+                          className={styles.nameLink}
+                          href={aoURL(row.site)}
+                        >
+                          {row.site}
+                        </Link>
+                      </th>
+                      {row.buckets.map((b) => (
+                        <td key={b.start}>
+                          {b.average === null ? (
+                            <span
+                              className={styles.noHeat}
+                              title={`${row.site}, week of ${insightDate(b.start, true)}: No recorded workouts`}
+                            >
+                              —
+                            </span>
+                          ) : (
+                            <div
+                              className={`${
+                                styles[
+                                  `heat${Math.min(3, Math.floor((b.average / heatMax) * 4))}`
+                                ]
+                              } ${heatTip?.site === row.site && heatTip.start === b.start ? styles.openHeat : ""}`}
+                              role="button"
+                              tabIndex={0}
+                              aria-expanded={
+                                heatTip?.site === row.site &&
+                                heatTip.start === b.start
+                              }
+                              aria-label={`${row.site}, week of ${insightDate(b.start, true)}: ${b.average.toFixed(1)} average PAX across ${b.workouts} workouts`}
+                              onClick={(e) =>
+                                toggleHeat(row.site, b.start, e.currentTarget)
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  toggleHeat(
+                                    row.site,
+                                    b.start,
+                                    e.currentTarget,
+                                  );
+                                }
+                              }}
+                            >
+                              {b.average.toFixed(1)}
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {tipBucket && heatTip && (
+              <div
+                className={styles.heatTip}
+                style={{ top: heatTip.top, left: heatTip.left }}
+              >
+                <strong>{heatTip.site}</strong>
+                <span>
+                  Week of {insightDate(tipBucket.start, true)}
+                  {tipBucket.start === regionBuckets.at(-1)!.start
+                    ? " (partial)"
+                    : ""}
+                </span>
+                <p>
+                  <b>{tipBucket.average!.toFixed(1)}</b> avg PAX ·{" "}
+                  {tipBucket.workouts}{" "}
+                  {tipBucket.workouts === 1 ? "workout" : "workouts"}
+                </p>
+                <Link
+                  href={rawAttendanceURL(
+                    heatTip.site,
+                    tipBucket.start,
+                    tipBucket.end,
+                  )}
+                >
+                  See workouts<b aria-hidden="true">›</b>
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <p className={styles.note}>
