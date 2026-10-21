@@ -11,7 +11,7 @@ import RegionPulse from "./RegionPulse";
 import Sparkline from "./Sparkline";
 import SwipeViews from "./SwipeViews";
 import { PaxOverTime, PaxYear } from "./PaxActivity";
-import { weeklyPostCounts } from "../lib/attendanceTrends";
+import { rawAttendanceURL, weeklyPostCounts } from "../lib/attendanceTrends";
 import { aoURL } from "../lib/aoProfile";
 import {
   companions,
@@ -220,8 +220,10 @@ function Explorer({
   const pending = useRef<string[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
   const resultsScroll = useRef(0);
-  // Chart points link here with jump=results to open at the matching rows.
-  const [jump] = useState(() => searchParams.get("jump") === "results");
+  // Chart points and calendar days link here with jump=results to open at the matching rows.
+  const [jump, setJump] = useState(() =>
+    searchParams.get("jump") === "results" ? 1 : 0,
+  );
   useEffect(() => {
     if (!jump) return;
     const timer = setTimeout(
@@ -288,6 +290,7 @@ function Explorer({
     setFilters(readDataFilters(params, data.asOf));
     setSelected(params.get("pax") ?? "");
     setPage(0);
+    if (params.get("jump") === "results") setJump((n) => n + 1);
   }, [search, data.asOf]);
   useEffect(() => {
     const pop = () => {
@@ -998,6 +1001,18 @@ function PaxDetail({
     [data, displayName, relation, start, range],
   );
   const calendarRows = rows.filter((row) => row.date.startsWith(month));
+  // The tapped calendar day; it closes on a tap outside the calendar or a month change.
+  const [tapped, setTapped] = useState("");
+  const openDay = tapped.startsWith(month) ? tapped : "";
+  const calendarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!openDay) return;
+    const close = (e: PointerEvent) => {
+      if (!calendarRef.current?.contains(e.target as Node)) setTapped("");
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [openDay]);
   const [yearNum, monthNum] = month.split("-").map(Number);
   const firstWeekday = new Date(Date.UTC(yearNum, monthNum - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(yearNum, monthNum, 0)).getUTCDate();
@@ -1123,9 +1138,11 @@ function PaxDetail({
                 </div>
               </div>
               <div
+                ref={calendarRef}
                 className={styles.calendar}
                 role="group"
                 aria-label={`Attendance for ${month}`}
+                onKeyDown={(e) => e.key === "Escape" && setTapped("")}
               >
                 {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
                   <span className={styles.weekday} key={day}>
@@ -1142,19 +1159,34 @@ function PaxDetail({
                     dayPosts = dayRows.filter((row) => row.post),
                     hasQ = dayPosts.some((row) => row.q),
                     hasQS = dayRows.some((row) => row.qs);
-                  const summary = dayRows
+                  const entries = dayRows
                     .filter((row) => row.post || row.qs)
-                    .map(
-                      (row) =>
-                        `${row.site}${row.post ? " · Post" : ""}${row.q ? " · Q" : ""}${row.qs ? " · QS" : ""}${row.qsq ? " · QS-Q" : ""}`,
-                    )
-                    .join("; ");
+                    .map((row) => ({
+                      row,
+                      text: `${row.site}${row.post ? " · Post" : ""}${row.q ? " · Q" : ""}${row.qs ? " · QS" : ""}${row.qsq ? " · QS-Q" : ""}`,
+                    }));
+                  const summary = entries.map((e) => e.text).join("; ");
+                  const open = openDay === date;
+                  // Tips open toward the middle of the calendar so the swipe panel doesn't clip them.
+                  const cell = firstWeekday + i,
+                    lastRow = Math.ceil((firstWeekday + daysInMonth) / 7) - 1;
+                  const tipPlace = `${Math.floor(cell / 7) >= lastRow - 1 ? styles.tipAbove : ""} ${cell % 7 > 3 ? styles.tipEnd : ""}`;
                   return (
                     <div
                       key={day}
-                      className={`${styles.calendarDay} ${dayPosts.length ? styles.postDay : ""} ${hasQ ? styles.qDay : ""}`}
-                      title={`${formatDate(date)}${summary ? ": " + summary : ": No recorded attendance"}`}
+                      className={`${styles.calendarDay} ${dayPosts.length ? styles.postDay : ""} ${hasQ ? styles.qDay : ""} ${open ? styles.openDay : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={open}
                       aria-label={`${formatDate(date)}${summary ? ": " + summary : ": No recorded attendance"}`}
+                      onClick={() => setTapped(open ? "" : date)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setTapped(open ? "" : date);
+                        }
+                      }}
                     >
                       <span>{day}</span>
                       <small>
@@ -1167,13 +1199,38 @@ function PaxDetail({
                               : ""}
                         {hasQS ? " QS" : ""}
                       </small>
+                      {open && (
+                        <div
+                          className={`${styles.dayTip} ${tipPlace}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <strong>{formatDate(date)}</strong>
+                          {entries.length ? (
+                            entries.map(({ row, text }, n) =>
+                              row.post ? (
+                                <Link
+                                  key={n}
+                                  href={rawAttendanceURL(row.site, date, date)}
+                                >
+                                  {text}
+                                  <b aria-hidden="true">›</b>
+                                </Link>
+                              ) : (
+                                <p key={n}>{text}</p>
+                              ),
+                            )
+                          ) : (
+                            <p>No recorded attendance</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
               <p className={styles.viewNote}>
-                Purple = post · green = Q · QS = Qsource. See the list below for
-                each date’s details.
+                Purple = post · green = Q · QS = Qsource. Tap a day to see who
+                else posted, or see the list below.
               </p>
               <details className={styles.monthList}>
                 <summary>

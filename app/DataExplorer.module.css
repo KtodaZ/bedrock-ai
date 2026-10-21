@@ -543,6 +543,69 @@
   line-height: 1.2;
   white-space: nowrap;
 }
+.calendarDay[role="button"] {
+  position: relative;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.calendarDay[role="button"]:focus-visible,
+.openDay {
+  outline: 2px solid #c3a1ff;
+  outline-offset: 1px;
+}
+.dayTip {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  min-width: 150px;
+  max-width: 230px;
+  padding: 8px;
+  border: 1px solid #3f3152;
+  border-radius: 9px;
+  background: #14101f;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  color: #eee6f8;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: default;
+}
+.tipAbove {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.tipEnd {
+  left: auto;
+  right: 0;
+}
+.dayTip strong {
+  padding: 0 4px 2px;
+  color: #b4a6c6;
+  font-size: 11px;
+  font-weight: 600;
+}
+.dayTip a,
+.dayTip p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px;
+  border-radius: 6px;
+  color: inherit;
+}
+.dayTip a:hover,
+.dayTip a:focus-visible {
+  background: #2a2140;
+}
+.dayTip b {
+  margin-left: auto;
+  font-size: 16px;
+  color: #c3a1ff;
+}
 .postDay {
   background: #2b1d40;
   border-color: #6a478d;
