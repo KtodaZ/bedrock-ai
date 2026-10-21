@@ -179,7 +179,11 @@ function statColumns(view: DataView): Column[] {
 export default function DataExplorer() {
   const query = useExplorerData();
   return (
-    <section className={styles.shell} aria-label="Attendance data explorer">
+    <section
+      className={styles.shell}
+      aria-label="Attendance data explorer"
+      data-scroll-memory
+    >
       {query.isPending ? (
         <div className={styles.loading} role="status">
           <span className={styles.spinner} />
@@ -238,9 +242,17 @@ function Explorer({
   const [extraFiltersOpen, setExtraFiltersOpen] = useState(() =>
     Boolean(filters.site || filters.region || filters.flags.length),
   );
+  // A profile opened from the table gets its own history entry, so Back returns to the table.
+  const pushProfile = useRef(false);
+  const pushedFor = useRef("");
   const openPerson = (name: string) => {
     resultsScroll.current = contentRef.current?.parentElement?.scrollTop ?? 0;
+    pushProfile.current = true;
     setSelected(name);
+  };
+  const closePerson = () => {
+    if (pushedFor.current && pushedFor.current === selected) window.history.back();
+    else setSelected("");
   };
   useEffect(() => {
     const section = contentRef.current?.parentElement;
@@ -271,11 +283,12 @@ function Explorer({
     if (selected) params.set("pax", selected);
     if (params.toString() !== synced.current)
       pending.current.push(params.toString());
-    window.history.replaceState(
-      null,
-      "",
-      `${window.location.pathname}?${params}`,
-    );
+    const url = `${window.location.pathname}?${params}`;
+    if (pushProfile.current && selected) {
+      pushProfile.current = false;
+      pushedFor.current = selected;
+      window.history.pushState(null, "", url);
+    } else window.history.replaceState(null, "", url);
   }, [filters, selected]);
   useEffect(() => {
     if (search === synced.current) return;
@@ -294,6 +307,7 @@ function Explorer({
   }, [search, data.asOf]);
   useEffect(() => {
     const pop = () => {
+      pushedFor.current = "";
       const params = new URLSearchParams(window.location.search);
       setFilters(readDataFilters(params, data.asOf));
       setSelected(params.get("pax") ?? "");
@@ -465,7 +479,7 @@ function Explorer({
             key={normalizeDataName(selected)}
             data={data}
             name={selected}
-            close={() => setSelected("")}
+            close={closePerson}
           />
         ) : (
           <div className={styles.empty}>

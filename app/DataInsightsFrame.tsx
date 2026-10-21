@@ -29,7 +29,7 @@ export default function DataInsightsFrame({
   const query = useExplorerData();
   useLinkedSection(Boolean(query.data));
   return (
-    <main className={common.shell} aria-label={title}>
+    <main className={common.shell} aria-label={title} data-scroll-memory>
       <div className={common.content}>
         <DataSectionNav active={page} />
         <h1>{title}</h1>

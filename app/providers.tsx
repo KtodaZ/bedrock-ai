@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import ChatSessionProvider from "./ChatSessionProvider";
+import ScrollMemory from "./ScrollMemory";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -18,5 +19,5 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  return <QueryClientProvider client={queryClient}><ChatSessionProvider>{children}</ChatSessionProvider></QueryClientProvider>;
+  return <QueryClientProvider client={queryClient}><ChatSessionProvider><ScrollMemory />{children}</ChatSessionProvider></QueryClientProvider>;
 }
