@@ -321,6 +321,7 @@
   margin-top: 24px;
 }
 .chartScroll {
+  position: relative;
   overflow-x: auto;
   max-width: 100%;
   scrollbar-width: thin;
@@ -331,6 +332,68 @@
   width: 100%;
   height: auto;
   margin-top: 18px;
+}
+.chartScroll:focus-visible {
+  outline: 2px solid #c3a1ff;
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.pickable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pointCard {
+  position: absolute;
+  top: 18px;
+  display: grid;
+  gap: 2px;
+  max-width: min(64%, 300px);
+  padding: 4px;
+  border: 1px solid #3f3152;
+  border-radius: 10px;
+  background: rgb(20 16 31 / 0.96);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  font-size: 12px;
+  line-height: 1.35;
+  color: #eee6f8;
+}
+/* .chartScroll outranks the Data page's own button styles. */
+.chartScroll .pointCard > a,
+.chartScroll .pointCard > button,
+.chartScroll .pointCard > p {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font: inherit;
+  justify-content: flex-start;
+  text-align: left;
+  color: inherit;
+}
+.chartScroll .pointCard > a:hover,
+.chartScroll .pointCard > button:hover,
+.chartScroll .pointCard > a:focus-visible,
+.chartScroll .pointCard > button:focus-visible {
+  background: #2a2140;
+}
+.pointCard span:first-child {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+.pointCard b {
+  display: block;
+  margin-top: 2px;
+  font-weight: 600;
+  color: #c3a1ff;
 }
 .chartLegend {
   display: flex;
@@ -1288,6 +1351,7 @@
   flex: 0 0 8px;
   width: 8px;
   height: 8px;
+  margin-top: 4px;
   border-radius: 50%;
 }
 .inlineSelect select {

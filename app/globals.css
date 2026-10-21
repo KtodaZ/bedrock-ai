@@ -28,6 +28,7 @@ body {
 }
 
 /* Sections a link scrolls to (#…-heading) clear the sticky page header. */
-[id$="-heading"] {
+[id$="-heading"],
+#data-results {
   scroll-margin-top: 4.5rem;
 }

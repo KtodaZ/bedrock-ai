@@ -106,6 +106,7 @@ export function attendanceValue(
   // An empty source week is unknown, not proof that an AO had zero turnout.
   return bucket.workouts ? bucket[metric] : null;
 }
+/** Post rows for one AO (or every AO when blank) between two dates, opened at the rows. */
 export function rawAttendanceURL(site: string, from: string, through: string) {
   return (
     "/data?" +
@@ -114,8 +115,9 @@ export function rawAttendanceURL(site: string, from: string, through: string) {
       period: "custom",
       from,
       to: through,
-      site,
+      ...(site && { site }),
       flags: "post",
+      jump: "results",
     })
   );
 }

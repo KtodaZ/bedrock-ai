@@ -301,6 +301,13 @@ function TrendsContent({ data }: { data: ExplorerData }) {
           pointTitle={(name, i, value) =>
             `${name}, week of ${insightDate(regionBuckets[i].start, true)}: ${value.toFixed(metric === "average" ? 1 : 0)}`
           }
+          pointTarget={(name, i) =>
+            rawAttendanceURL(
+              selectedSites.length ? name : "",
+              regionBuckets[i].start,
+              regionBuckets[i].end,
+            )
+          }
         />
         <p className={styles.note}>
           *The last week is partial. Gaps mean no recorded workouts, not

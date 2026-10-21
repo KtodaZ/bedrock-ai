@@ -222,6 +222,12 @@ export function dataFilterParams(filters: DataFilters): URLSearchParams {
   }
   return params;
 }
+/** First and last day of a month, for linking a monthly chart point to its rows. */
+export function monthDays(year: number, month: number): [string, string] {
+  const mm = String(month).padStart(2, "0");
+  const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return [`${year}-${mm}-01`, `${year}-${mm}-${last}`];
+}
 export function daysBetween(first: string, last: string) {
   return Math.floor((Date.parse(last) - Date.parse(first)) / 86400000);
 }

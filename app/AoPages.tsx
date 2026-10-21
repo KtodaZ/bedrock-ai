@@ -26,7 +26,11 @@ import {
   type AoYearOverYear,
   type AoYearStats,
 } from "../lib/aoProfile";
-import { normalizeDataName, type ExplorerData } from "../lib/dataExplorer";
+import {
+  monthDays,
+  normalizeDataName,
+  type ExplorerData,
+} from "../lib/dataExplorer";
 import DataInsightsFrame, { insightDate } from "./DataInsightsFrame";
 import LineChart from "./LineChart";
 import Sparkline from "./Sparkline";
@@ -523,6 +527,9 @@ function AoChart({
                   pointTitle={(name, i, value) =>
                     `${name}, week of ${insightDate(buckets[i].start, true)}: ${value.toFixed(metric === "average" ? 1 : 0)}`
                   }
+                  pointTarget={(name, i) =>
+                    rawAttendanceURL(name, buckets[i].start, buckets[i].end)
+                  }
                 />
                 <p className={styles.note}>
                   *The last week is partial. Gaps mean no recorded workouts.
@@ -702,6 +709,12 @@ function AoYearView({
         description="Monthly values for each year. Missing records create gaps."
         pointTitle={(name, i, v) =>
           `${MONTHS[i]} ${name}: ${v.toFixed(metric === "average" ? 1 : 0)}`
+        }
+        pointTarget={(name, i) =>
+          rawAttendanceURL(
+            yoy.site,
+            ...monthDays(Number(name), months[i].month),
+          )
         }
       />
       <p className={styles.note}>

@@ -51,6 +51,7 @@ export const LINK_ROUTES: Record<string, Route> = {
       pyear: { kind: YEAR, doc: "profile year view YYYY" },
       rel: { kind: ["with", "by", "led"], doc: "profile people list: with (posted with most) | by (Q'd by most) | led (Q'd most)" },
       prange: { kind: /^(recent|\d*00|0)$/, doc: "profile people list range: recent (last 100 posts) | 0, 100, 200… (posts 1–100, 101–200…)" },
+      jump: { kind: ["results"], doc: "results = open scrolled to the table rows" },
     },
     sections: {
       "calendar-heading": "profile attendance calendar and charts",

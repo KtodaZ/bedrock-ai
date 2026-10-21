@@ -220,6 +220,19 @@ function Explorer({
   const pending = useRef<string[]>([]);
   const contentRef = useRef<HTMLDivElement>(null);
   const resultsScroll = useRef(0);
+  // Chart points link here with jump=results to open at the matching rows.
+  const [jump] = useState(() => searchParams.get("jump") === "results");
+  useEffect(() => {
+    if (!jump) return;
+    const timer = setTimeout(
+      () =>
+        document
+          .getElementById("data-results")
+          ?.scrollIntoView({ block: "start" }),
+      50,
+    );
+    return () => clearTimeout(timer);
+  }, [jump]);
   const [extraFiltersOpen, setExtraFiltersOpen] = useState(() =>
     Boolean(filters.site || filters.region || filters.flags.length),
   );
@@ -628,7 +641,11 @@ function Explorer({
               Choose a start date on or before the end date.
             </p>
           )}
-          <div className={styles.resultBar} aria-live="polite">
+          <div
+            id="data-results"
+            className={styles.resultBar}
+            aria-live="polite"
+          >
             <p>
               <strong>{number(sorted.length)}</strong>{" "}
               {isRaw ? "attendance rows" : "PAX"}
@@ -1212,7 +1229,16 @@ function PaxDetail({
               {
                 key: "trend",
                 label: "Over time",
-                content: <PaxOverTime rows={rows} asOf={data.asOf} />,
+                content: (
+                  <PaxOverTime
+                    rows={rows}
+                    asOf={data.asOf}
+                    openMonth={(m) => {
+                      setMonth(m);
+                      setActivityView(0);
+                    }}
+                  />
+                ),
               },
             ]}
           />

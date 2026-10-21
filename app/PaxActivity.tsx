@@ -126,7 +126,15 @@ export function PaxYear({
 }
 
 /** Posts and Qs per month since the first recorded post. */
-export function PaxOverTime({ rows, asOf }: { rows: DataRow[]; asOf: string }) {
+export function PaxOverTime({
+  rows,
+  asOf,
+  openMonth,
+}: {
+  rows: DataRow[];
+  asOf: string;
+  openMonth: (month: string) => void;
+}) {
   const months = monthlyActivity(rows, asOf);
   if (!months.length)
     return <p className={styles.viewNote}>No recorded workout posts.</p>;
@@ -189,6 +197,8 @@ export function PaxOverTime({ rows, asOf }: { rows: DataRow[]; asOf: string }) {
         pointTitle={(name, i, value) =>
           `${monthName(months[i].month, true)}: ${plural(value, name === "Qs" ? "Q" : "post")}`
         }
+        pointTarget={(_, i) => () => openMonth(months[i].month)}
+        targetLabel="Open month"
       />
       <p className={styles.viewNote}>
         *{monthName(months.at(-1)!.month, true)} is partial. The monthly average
