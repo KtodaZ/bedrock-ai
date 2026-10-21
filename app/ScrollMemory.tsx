@@ -75,6 +75,19 @@ export default function ScrollMemory() {
       });
     };
     window.history.pushState = pushTop;
+    // A page rewriting its own URL (a profile's calendar month) keeps its position for Back.
+    const replace = window.history.replaceState;
+    const replaceKeep: typeof replace = (...args) => {
+      const before = key();
+      replace.apply(window.history, args);
+      if (key() === before || until) return;
+      try {
+        sessionStorage.setItem(key(), String(Math.round(scroller().scrollTop)));
+      } catch {
+        // As in save.
+      }
+    };
+    window.history.replaceState = replaceKeep;
     document.addEventListener("scroll", save, { capture: true, passive: true });
     // Any scroll of their own ends the hold.
     const interrupts = ["wheel", "touchstart", "pointerdown", "keydown"];
@@ -82,6 +95,8 @@ export default function ScrollMemory() {
       window.addEventListener(type, stop, { capture: true, passive: true });
     return () => {
       if (window.history.pushState === pushTop) window.history.pushState = push;
+      if (window.history.replaceState === replaceKeep)
+        window.history.replaceState = replace;
       stop();
       cancelAnimationFrame(saving);
       window.removeEventListener("popstate", restore);

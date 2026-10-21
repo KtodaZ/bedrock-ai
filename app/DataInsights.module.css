@@ -422,6 +422,15 @@
 .weeklyNumbers > div {
   margin-top: 14px;
 }
+.weeklyNumbers td a {
+  display: inline-block;
+  padding: 10px 0 10px 24px;
+  margin: -10px 0 -10px -24px;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: #6a478d;
+  text-underline-offset: 4px;
+}
 .heatSection {
   padding-top: 25px;
   margin-top: 28px;
@@ -739,6 +748,18 @@
 }
 
 /* Tiny weekly bar charts in tables and lists. */
+.sparkLink {
+  display: inline-flex;
+  padding: 6px 4px;
+  margin: -6px -4px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+.sparkLink:hover,
+.sparkLink:focus-visible {
+  background: #1d1629;
+}
 .sparkCell {
   display: inline-flex;
   align-items: center;

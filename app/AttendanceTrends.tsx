@@ -166,7 +166,7 @@ function TrendsContent({ data }: { data: ExplorerData }) {
   const tipBucket = heatTip
     ? heatRows
         .find((row) => row.site === heatTip.site)
-        ?.buckets.find((b) => b.start === heatTip.start && b.average !== null)
+        ?.buckets.find((b) => b.start === heatTip.start)
     : undefined;
   const setSites = (values: string[]) =>
     setOptions((o) => ({ ...o, sites: values }));
@@ -385,9 +385,20 @@ function TrendsContent({ data }: { data: ExplorerData }) {
                       const value = attendanceValue(s.buckets[i], metric);
                       return (
                         <td key={s.name}>
-                          {value === null
-                            ? "No records"
-                            : value.toFixed(metric === "average" ? 1 : 0)}
+                          {value === null ? (
+                            "No records"
+                          ) : (
+                            <Link
+                              href={rawAttendanceURL(
+                                selectedSites.length ? s.name : "",
+                                b.start,
+                                b.end,
+                              )}
+                              aria-label={`${s.name}, week of ${insightDate(b.start, true)}: ${value.toFixed(metric === "average" ? 1 : 0)}. See workouts.`}
+                            >
+                              {value.toFixed(metric === "average" ? 1 : 0)}
+                            </Link>
+                          )}
                         </td>
                       );
                     })}
@@ -432,10 +443,16 @@ function TrendsContent({ data }: { data: ExplorerData }) {
                     </button>
                   </small>
                 </div>
-                <Sparkline
-                  values={g.buckets.map((b) => b.average)}
-                  total={g.current == null ? "—" : g.current.toFixed(1)}
-                />
+                <Link
+                  className={styles.sparkLink}
+                  href={`${aoURL(g.site)}#ao-chart-heading`}
+                  aria-label={`${g.site} turnout over time: ${g.current == null ? "no recent workouts" : g.current.toFixed(1) + " average PAX"}`}
+                >
+                  <Sparkline
+                    values={g.buckets.map((b) => b.average)}
+                    total={g.current == null ? "—" : g.current.toFixed(1)}
+                  />
+                </Link>
                 <span
                   className={
                     g.change == null
@@ -562,44 +579,33 @@ function TrendsContent({ data }: { data: ExplorerData }) {
                       </th>
                       {row.buckets.map((b) => (
                         <td key={b.start}>
-                          {b.average === null ? (
-                            <span
-                              className={styles.noHeat}
-                              title={`${row.site}, week of ${insightDate(b.start, true)}: No recorded workouts`}
-                            >
-                              —
-                            </span>
-                          ) : (
-                            <div
-                              className={`${
-                                styles[
-                                  `heat${Math.min(3, Math.floor((b.average / heatMax) * 4))}`
-                                ]
-                              } ${heatTip?.site === row.site && heatTip.start === b.start ? styles.openHeat : ""}`}
-                              role="button"
-                              tabIndex={0}
-                              aria-expanded={
-                                heatTip?.site === row.site &&
-                                heatTip.start === b.start
+                          <div
+                            className={`${
+                              b.average === null
+                                ? styles.noHeat
+                                : styles[
+                                    `heat${Math.min(3, Math.floor((b.average / heatMax) * 4))}`
+                                  ]
+                            } ${heatTip?.site === row.site && heatTip.start === b.start ? styles.openHeat : ""}`}
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={
+                              heatTip?.site === row.site &&
+                              heatTip.start === b.start
+                            }
+                            aria-label={`${row.site}, week of ${insightDate(b.start, true)}: ${b.average === null ? "No recorded workouts" : `${b.average.toFixed(1)} average PAX across ${b.workouts} workouts`}`}
+                            onClick={(e) =>
+                              toggleHeat(row.site, b.start, e.currentTarget)
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleHeat(row.site, b.start, e.currentTarget);
                               }
-                              aria-label={`${row.site}, week of ${insightDate(b.start, true)}: ${b.average.toFixed(1)} average PAX across ${b.workouts} workouts`}
-                              onClick={(e) =>
-                                toggleHeat(row.site, b.start, e.currentTarget)
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  toggleHeat(
-                                    row.site,
-                                    b.start,
-                                    e.currentTarget,
-                                  );
-                                }
-                              }}
-                            >
-                              {b.average.toFixed(1)}
-                            </div>
-                          )}
+                            }}
+                          >
+                            {b.average === null ? "—" : b.average.toFixed(1)}
+                          </div>
                         </td>
                       ))}
                     </tr>
@@ -619,20 +625,31 @@ function TrendsContent({ data }: { data: ExplorerData }) {
                     ? " (partial)"
                     : ""}
                 </span>
-                <p>
-                  <b>{tipBucket.average!.toFixed(1)}</b> avg PAX ·{" "}
-                  {tipBucket.workouts}{" "}
-                  {tipBucket.workouts === 1 ? "workout" : "workouts"}
-                </p>
-                <Link
-                  href={rawAttendanceURL(
-                    heatTip.site,
-                    tipBucket.start,
-                    tipBucket.end,
-                  )}
-                >
-                  See workouts<b aria-hidden="true">›</b>
-                </Link>
+                {tipBucket.average === null ? (
+                  <>
+                    <p>No recorded workouts</p>
+                    <Link href={aoURL(heatTip.site)}>
+                      AO page<b aria-hidden="true">›</b>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      <b>{tipBucket.average.toFixed(1)}</b> avg PAX ·{" "}
+                      {tipBucket.workouts}{" "}
+                      {tipBucket.workouts === 1 ? "workout" : "workouts"}
+                    </p>
+                    <Link
+                      href={rawAttendanceURL(
+                        heatTip.site,
+                        tipBucket.start,
+                        tipBucket.end,
+                      )}
+                    >
+                      See workouts<b aria-hidden="true">›</b>
+                    </Link>
+                  </>
+                )}
               </div>
             )}
           </div>

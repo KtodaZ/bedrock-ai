@@ -218,6 +218,8 @@ function Explorer({
     readDataFilters(new URLSearchParams(search), data.asOf),
   );
   const [selected, setSelected] = useState(() => searchParams.get("pax") ?? "");
+  // The open profile's non-default view (pmonth, pview…), kept in the URL so Back reopens it.
+  const [profileView, setProfileView] = useState("");
   // URLs this view wrote itself; anything else is a link to a different view.
   // URLs this component wrote and is waiting to see echoed back through useSearchParams.
   const synced = useRef(search);
@@ -280,7 +282,10 @@ function Explorer({
   useEffect(() => {
     const params = dataFilterParams(filters);
     if (window.location.pathname === "/") params.set("tab", "data");
-    if (selected) params.set("pax", selected);
+    if (selected) {
+      params.set("pax", selected);
+      new URLSearchParams(profileView).forEach((v, k) => params.set(k, v));
+    }
     if (params.toString() !== synced.current)
       pending.current.push(params.toString());
     const url = `${window.location.pathname}?${params}`;
@@ -289,7 +294,7 @@ function Explorer({
       pushedFor.current = selected;
       window.history.pushState(null, "", url);
     } else window.history.replaceState(null, "", url);
-  }, [filters, selected]);
+  }, [filters, selected, profileView]);
   useEffect(() => {
     if (search === synced.current) return;
     synced.current = search;
@@ -480,6 +485,7 @@ function Explorer({
             data={data}
             name={selected}
             close={closePerson}
+            setView={setProfileView}
           />
         ) : (
           <div className={styles.empty}>
@@ -939,10 +945,12 @@ function PaxDetail({
   data,
   name,
   close,
+  setView,
 }: {
   data: ExplorerData;
   name: string;
   close: () => void;
+  setView: (params: string) => void;
 }) {
   const key = normalizeDataName(name);
   const rows = useMemo(
@@ -971,20 +979,17 @@ function PaxDetail({
   // Links can open a specific view of the profile; see PROFILE_PARAMS in lib/chatPages.ts.
   const linked = useSearchParams();
   useLinkedSection(true);
+  const latest = rows.at(-1)?.date ?? data.asOf;
   const [month, setMonth] = useState(() => {
     const m = linked.get("pmonth") ?? "";
-    return /^20\d{2}-(0[1-9]|1[0-2])$/.test(m)
-      ? m
-      : (rows.at(-1)?.date ?? data.asOf).slice(0, 7);
+    return /^20\d{2}-(0[1-9]|1[0-2])$/.test(m) ? m : latest.slice(0, 7);
   });
   const [activityView, setActivityView] = useState(() =>
       Math.max(0, ["month", "year", "trend"].indexOf(linked.get("pview") ?? "")),
     ),
     [activityYear, setActivityYear] = useState(() => {
       const y = linked.get("pyear") ?? "";
-      return /^20\d{2}$/.test(y)
-        ? Number(y)
-        : Number((rows.at(-1)?.date ?? data.asOf).slice(0, 4));
+      return /^20\d{2}$/.test(y) ? Number(y) : Number(latest.slice(0, 4));
     });
   const [relation, setRelation] = useState<"with" | "by" | "led">(() => {
       const r = linked.get("rel");
@@ -1014,6 +1019,17 @@ function PaxDetail({
       ),
     [data, displayName, relation, start, range],
   );
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activityView) params.set("pview", ["month", "year", "trend"][activityView]);
+    if (month !== latest.slice(0, 7)) params.set("pmonth", month);
+    if (activityYear !== Number(latest.slice(0, 4)))
+      params.set("pyear", String(activityYear));
+    if (relation !== "with") params.set("rel", relation);
+    if (range !== "all") params.set("prange", range);
+    setView(params.toString());
+  }, [activityView, month, activityYear, relation, range, latest, setView]);
+  useEffect(() => () => setView(""), [setView]);
   const calendarRows = rows.filter((row) => row.date.startsWith(month));
   // The tapped calendar day; it closes on a tap outside the calendar or a month change.
   const [tapped, setTapped] = useState("");
