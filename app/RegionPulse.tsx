@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo } from "react";
-import { regionPulse } from "../lib/attendanceTrends";
+import { rawAttendanceURL, regionPulse } from "../lib/attendanceTrends";
 import type { ExplorerData } from "../lib/dataExplorer";
 import { aoURL } from "../lib/aoProfile";
 import { insightDate } from "./DataInsightsFrame";
@@ -9,7 +9,8 @@ import styles from "./DataInsights.module.css";
 
 function Change({ now, before }: { now: number; before: number }) {
   const diff = now - before;
-  if (!diff) return <small className={styles.pulseFlat}>Same as prior 7 days</small>;
+  if (!diff)
+    return <small className={styles.pulseFlat}>Same as prior 7 days</small>;
   return (
     <small className={diff > 0 ? styles.pulseUp : styles.pulseDown}>
       <span aria-hidden="true">{diff > 0 ? "▲" : "▼"}</span>{" "}
@@ -22,6 +23,23 @@ function Change({ now, before }: { now: number; before: number }) {
 /** Last 7 recorded days vs the 7 before, anchored to the latest attendance date. */
 export default function RegionPulse({ data }: { data: ExplorerData }) {
   const { current, previous } = useMemo(() => regionPulse(data), [data]);
+  const range = { period: "custom", from: current.from, to: current.to };
+  // Each number links to the rows behind it.
+  const links = {
+    posts: rawAttendanceURL("", current.from, current.to),
+    pax:
+      "/data?" +
+      new URLSearchParams({ view: "pax", ...range, jump: "results" }),
+    fngs:
+      "/data?" +
+      new URLSearchParams({
+        view: "raw",
+        ...range,
+        region: "bedrock",
+        flags: "fng",
+        jump: "results",
+      }),
+  };
   return (
     <section className={styles.pulse} aria-labelledby="pulse-heading">
       <div className={styles.pulseHeading}>
@@ -36,17 +54,25 @@ export default function RegionPulse({ data }: { data: ExplorerData }) {
       <dl>
         <div>
           <dt>Posts</dt>
-          <dd>{current.posts.toLocaleString("en-US")}</dd>
+          <dd>
+            <Link href={links.posts}>
+              {current.posts.toLocaleString("en-US")}
+            </Link>
+          </dd>
           <Change now={current.posts} before={previous.posts} />
         </div>
         <div>
           <dt>Unique PAX</dt>
-          <dd>{current.pax.toLocaleString("en-US")}</dd>
+          <dd>
+            <Link href={links.pax}>{current.pax.toLocaleString("en-US")}</Link>
+          </dd>
           <Change now={current.pax} before={previous.pax} />
         </div>
         <div>
           <dt>Bedrock FNGs</dt>
-          <dd>{current.fngs}</dd>
+          <dd>
+            <Link href={links.fngs}>{current.fngs}</Link>
+          </dd>
           <Change now={current.fngs} before={previous.fngs} />
         </div>
         <div>

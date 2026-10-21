@@ -181,18 +181,28 @@ export function weekdayTurnout(
   through: string,
   sites: string[] = [],
 ) {
-  const days = WEEKDAYS.map((day) => ({ day, workouts: 0, pax: 0 }));
+  const days = WEEKDAYS.map((day) => ({
+    day,
+    workouts: 0,
+    pax: 0,
+    list: [] as { date: string; site: string; pax: number }[],
+  }));
   for (const w of workouts) {
     if (w.date < from || w.date > through) continue;
     if (sites.length && !sites.includes(w.site)) continue;
     const day = days[(new Date(w.date + "T00:00:00Z").getUTCDay() + 6) % 7];
     day.workouts++;
     day.pax += w.pax.length;
+    day.list.push({ date: w.date, site: w.site, pax: w.pax.length });
   }
   return days.map((d) => ({
     day: d.day,
     workouts: d.workouts,
     average: d.workouts ? d.pax / d.workouts : null,
+    /** Each workout on this weekday, newest first. */
+    list: d.list.sort(
+      (a, b) => b.date.localeCompare(a.date) || a.site.localeCompare(b.site),
+    ),
   }));
 }
 

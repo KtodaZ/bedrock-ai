@@ -748,6 +748,12 @@
   font-size: 22px;
   font-weight: 600;
 }
+.pulse dd a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: #6a478d;
+  text-underline-offset: 4px;
+}
 .pulse dd.pulseAO {
   font-size: 16px;
   line-height: 1.6;
@@ -847,14 +853,75 @@
   display: grid;
   gap: 8px;
 }
-.weekdayBars li {
+/* .weekdayBars outranks the Data pages' own button styles. */
+.weekdayBars .weekdayRow {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) 40px 90px;
   align-items: center;
+  justify-content: stretch;
   gap: 12px;
+  width: 100%;
+  min-height: 34px;
+  margin: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
   font-size: 13px;
+  text-align: left;
   color: #c9bddb;
   font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+}
+.weekdayBars .weekdayRow:hover:not(:disabled),
+.weekdayBars .weekdayRow[aria-expanded="true"] {
+  color: #c9bddb;
+  background: #1a1326;
+}
+.weekdayBars .weekdayRow:disabled {
+  opacity: 1;
+}
+.weekdayRow b {
+  color: #c3a1ff;
+  font-weight: 400;
+}
+.weekdayList {
+  list-style: none;
+  margin: 6px 0 8px 40px;
+  padding: 4px 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border-left: 2px solid #3a2d4a;
+  scrollbar-color: #6b528e #14101f;
+}
+.weekdayList a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 14px;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 2px 10px;
+  color: #ddd2ec;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.weekdayList a:hover,
+.weekdayList a:focus-visible {
+  background: #1a1326;
+}
+.weekdayList span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.weekdayList strong {
+  color: #eee6ff;
+  font-weight: 600;
+}
+.weekdayList b {
+  color: #c3a1ff;
+  font-size: 16px;
 }
 .weekdayTrack {
   height: 14px;
@@ -1115,8 +1182,8 @@
     grid-template-columns: minmax(0, 1fr) auto 62px;
     gap: 10px;
   }
-  .weekdayBars li {
-    grid-template-columns: 32px minmax(0, 1fr) 34px 72px;
+  .weekdayBars .weekdayRow {
+    grid-template-columns: 32px minmax(0, 1fr) 34px 80px;
     gap: 8px;
   }
   .fngSummary {

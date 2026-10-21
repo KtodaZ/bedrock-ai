@@ -35,6 +35,7 @@ import DataInsightsFrame, { insightDate } from "./DataInsightsFrame";
 import LineChart from "./LineChart";
 import Sparkline from "./Sparkline";
 import SwipeViews from "./SwipeViews";
+import WeekdayBars from "./WeekdayBars";
 import common from "./DataExplorer.module.css";
 import styles from "./DataInsights.module.css";
 
@@ -913,31 +914,22 @@ function AoWeekdays({
         <h2 id="ao-weekday-heading">Turnout by day</h2>
         <p>Average PAX per workout · days with a recorded workout</p>
       </div>
-      <ul className={styles.weekdayBars}>
-        {days.map((d) =>
-          d.values.map((v, i) => (
-            <li key={d.day + i}>
-              <span>{i ? "" : d.day}</span>
-              <span className={styles.weekdayTrack}>
-                {v.average != null && (
-                  <span
-                    className={styles.weekdayFill}
-                    style={{
-                      width: `${(v.average / max) * 100}%`,
-                      ...(i ? { backgroundColor: COLORS[1] } : {}),
-                    }}
-                  />
-                )}
-              </span>
-              <strong>{v.average == null ? "" : v.average.toFixed(1)}</strong>
-              <small>
-                {v.workouts ? plural(v.workouts, "workout") : "No workouts"}
-                {other ? ` · ${rows[i].site}` : ""}
-              </small>
-            </li>
-          )),
+      <WeekdayBars
+        bars={days.flatMap((d) =>
+          d.values.map((v, i) => ({
+            key: d.day + i,
+            day: i ? "" : d.day,
+            name: `${d.day} at ${rows[i].site}`,
+            average: v.average,
+            workouts: v.workouts,
+            list: v.list,
+            color: i ? COLORS[1] : undefined,
+            note: other ? rows[i].site : undefined,
+          })),
         )}
-      </ul>
+        max={max}
+        showSite={false}
+      />
     </section>
   );
 }

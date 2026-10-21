@@ -17,6 +17,7 @@ import { type ExplorerData } from "../lib/dataExplorer";
 import DataInsightsFrame, { insightDate } from "./DataInsightsFrame";
 import Sparkline from "./Sparkline";
 import LineChart from "./LineChart";
+import WeekdayBars from "./WeekdayBars";
 import { aoURL } from "../lib/aoProfile";
 import common from "./DataExplorer.module.css";
 import styles from "./DataInsights.module.css";
@@ -442,27 +443,18 @@ function TrendsContent({ data }: { data: ExplorerData }) {
             {weeks} weeks
           </p>
         </div>
-        <ul className={styles.weekdayBars}>
-          {weekdays.map((d) => (
-            <li key={d.day}>
-              <span>{d.day}</span>
-              <span className={styles.weekdayTrack}>
-                {d.average != null && (
-                  <span
-                    className={styles.weekdayFill}
-                    style={{ width: `${(d.average / weekdayMax) * 100}%` }}
-                  />
-                )}
-              </span>
-              <strong>{d.average == null ? "" : d.average.toFixed(1)}</strong>
-              <small>
-                {d.workouts
-                  ? `${d.workouts} ${d.workouts === 1 ? "workout" : "workouts"}`
-                  : "No workouts"}
-              </small>
-            </li>
-          ))}
-        </ul>
+        <WeekdayBars
+          bars={weekdays.map((d) => ({
+            key: d.day,
+            day: d.day,
+            name: `${d.day} at ${selectedSites.length ? selectedSites.join(", ") : "all AOs"}`,
+            average: d.average,
+            workouts: d.workouts,
+            list: d.list,
+          }))}
+          max={weekdayMax}
+          showSite={selectedSites.length !== 1}
+        />
       </section>
       <section
         className={styles.heatSection}
