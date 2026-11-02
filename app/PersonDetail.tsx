@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { fetchChallenge } from "@/lib/challenge-client";
 import { buildPersonProfile, nextMilestone, personURL } from "@/lib/ehProfile";
-import { formatDay, PERIODS, PERIOD_LABELS, type FngEntry, type Period } from "@/lib/ehChallenge";
+import { formatDay, HIDDEN_PAX, PERIODS, PERIOD_LABELS, type FngEntry, type Period } from "@/lib/ehChallenge";
 import { useLinkedSection } from "@/lib/useLinkedSection";
 import EhCorrectionForm from "./EhCorrectionForm";
 
@@ -78,14 +78,14 @@ export default function PersonDetail({ name, period }: { name: string; period: P
 
     {ownFng && <section aria-labelledby="own-workouts-heading" className="mt-7 border-t border-white/10 pt-6">
       <h2 id="own-workouts-heading" className="text-lg font-semibold text-white">First workouts in Bedrock</h2>
-      <p className="text-sm text-white/80 mt-3">Joined {new Date(`${ownFng.firstPost}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })} · {ownFng.posts} workouts{scoring && <> · {ownFng.points} workout points</>}{ownFng.ehBy ? <> · invited by <Link className={`text-violet-300 underline ${focus}`} href={personURL(ownFng.ehBy, period)}>{ownFng.ehBy}</Link></> : " awaiting an EH’er"}.</p>
+      <p className="text-sm text-white/80 mt-3">Joined {new Date(`${ownFng.firstPost}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })} · {ownFng.posts} workouts{scoring && <> · {ownFng.points} workout points</>}{ownFng.ehBy ? <> · invited by {ownFng.ehBy === HIDDEN_PAX ? ownFng.ehBy : <Link className={`text-violet-300 underline ${focus}`} href={personURL(ownFng.ehBy, period)}>{ownFng.ehBy}</Link>}</> : " awaiting an EH’er"}.</p>
       <Milestone fng={ownFng} scoring={scoring} />
       {!ownFng.ehBy && <p className="mt-3 text-sm text-amber-200">Know who invited him? Use “Suggest an EH correction” above to send the name for maintainer review.</p>}
     </section>}
 
     <section aria-labelledby="recruits-heading" className="mt-7 border-t border-white/10 pt-6">
       <h2 id="recruits-heading" className="text-lg font-semibold text-white">FNGs invited <span className="text-sm font-normal text-white/65">{recruits.length}</span></h2>
-      {recruits.length ? <ul className="divide-y divide-white/10 mt-2">{recruits.map((fng) => <li key={fng.name} className="py-4"><div className="flex items-baseline justify-between gap-3"><Link href={personURL(fng.name, period)} className={`font-medium text-violet-200 hover:underline break-words ${focus}`}>{fng.name}</Link><span className="text-sm text-white/85 shrink-0 tabular-nums">{scoring ? `${fng.points} pts` : `${fng.posts} workout${fng.posts === 1 ? "" : "s"}`}</span></div><p className="text-xs text-white/65 mt-1">{fng.posts} workout{fng.posts === 1 ? "" : "s"} · first post {formatDay(fng.firstPost)}</p><Milestone fng={fng} scoring={scoring} /></li>)}</ul> : <p className="text-sm text-white/65 mt-3">No FNGs attributed to {profile.name} in this period.</p>}
+      {recruits.length ? <ul className="divide-y divide-white/10 mt-2">{recruits.map((fng, i) => <li key={`${fng.name}-${i}`} className="py-4"><div className="flex items-baseline justify-between gap-3">{fng.name === HIDDEN_PAX ? <span className="font-medium text-white/70">{fng.name}</span> : <Link href={personURL(fng.name, period)} className={`font-medium text-violet-200 hover:underline break-words ${focus}`}>{fng.name}</Link>}<span className="text-sm text-white/85 shrink-0 tabular-nums">{scoring ? `${fng.points} pts` : `${fng.posts} workout${fng.posts === 1 ? "" : "s"}`}</span></div><p className="text-xs text-white/65 mt-1">{fng.posts} workout{fng.posts === 1 ? "" : "s"} · first post {formatDay(fng.firstPost)}</p><Milestone fng={fng} scoring={scoring} /></li>)}</ul> : <p className="text-sm text-white/65 mt-3">No FNGs attributed to {profile.name} in this period.</p>}
     </section>
     <p className="text-xs text-white/65 mt-8 pt-5 border-t border-white/10">Based on recorded attendance and the existing Roster. Next steps are suggestions.{scoring && " Points are awarded when the workout is recorded within the challenge window."}</p>
   </main>;

@@ -191,7 +191,7 @@ A nonblank Roster EH'er is authoritative. With no EH'er, the FNG still appears, 
 
 Referral example: You EH Alex; Alex EHs Ben. You receive a +5 upstream referral bonus for Ben, while Alex receives Ben's workout points. Both Alex and Ben must belong to the Oct 15–Dec 31 challenge cohort. The code awards this per qualifying downstream FNG, not as an unlimited multigeneration chain.
 
-The annual goal is 100 FNGs; the challenge goal is 50. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
+The annual goal is 100 FNGs; the challenge goal is 50. Under-18 and archived names appear as `Hidden PAX` in challenge results and are left out of the correction form's names; their points and FNG counts still stand. Weekly points cover the Monday–Sunday week containing `asOf`. Points sorting breaks ties by weekly points, then name. FNG sorting orders by FNG count, total points, weekly points, then name. Search preserves the ranks of the currently selected sort. “Copy for Band” copies the top ten using that sort; it does not post to Band.
 
 ### 2026 themed weeks
 

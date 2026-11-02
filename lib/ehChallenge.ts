@@ -1,3 +1,4 @@
+import { isPublicDataName } from "./dataExplorer";
 import type { AttendanceRow } from "./sheet";
 
 // ── Challenge config ─────────────────────────────────────────────────────────
@@ -31,6 +32,9 @@ export const POINTS = {
   afterFifth: 1, // each post after the 5th
   referral: 5, // original EH'er's bonus when their FNG EHs another FNG
 };
+
+// Under-18 and archived names stay out of public results; their points and FNG counts still stand.
+export const HIDDEN_PAX = "Hidden PAX";
 
 export const CHALLENGE_FNG_GOAL = 50;
 export const ANNUAL_FNG_GOAL = 100;
@@ -207,6 +211,11 @@ export function computeChallenge(
   const nameOf = (key: string) =>
     displayName.get(key) ?? ehLog.find((e) => norm(e.ehBy) === key)?.ehBy.trim() ?? resurrections.find((e) => norm(e.broughtBy) === key)?.broughtBy.trim() ?? key;
 
+  const publicName = (key: string) => {
+    const name = nameOf(key);
+    return isPublicDataName(name) ? name : HIDDEN_PAX;
+  };
+
   const inWindow = (d: string) => d >= start && d <= asOf;
   const challengeFngs = [...fngDate.entries()]
     .filter(([, d]) => inWindow(d))
@@ -228,7 +237,7 @@ export function computeChallenge(
       if (ehr) events.push({ who: ehr, date, points: p, kind: "workouts" });
     });
     if (!ehr) unassignedPoints += points;
-    fngs.push({ name: nameOf(key), ehBy: ehr ? nameOf(ehr) : null, firstPost: first, posts: posts.length, points, lastPost: posts.at(-1) ?? null });
+    fngs.push({ name: publicName(key), ehBy: ehr ? publicName(ehr) : null, firstPost: first, posts: posts.length, points, lastPost: posts.at(-1) ?? null });
 
     // Referral: this FNG was EH'd by another challenge FNG → that FNG's EH'er gets a bonus
     const grand = ehr && isChallengeFng(ehr) ? ehByKey.get(ehr) : undefined;
@@ -274,7 +283,7 @@ export function computeChallenge(
 
   const board = new Map<string, LeaderboardEntry>();
   const entry = (key: string) => {
-    if (!board.has(key)) board.set(key, { name: nameOf(key), total: 0, week: 0, fngs: 0, breakdown: { workouts: 0, referrals: 0, themes: 0 } });
+    if (!board.has(key)) board.set(key, { name: publicName(key), total: 0, week: 0, fngs: 0, breakdown: { workouts: 0, referrals: 0, themes: 0 } });
     return board.get(key)!;
   };
   for (const e of events) {

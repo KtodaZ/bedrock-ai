@@ -1,4 +1,4 @@
-import { POINTS, type ChallengeResult, type FngEntry, type Period } from "./ehChallenge";
+import { HIDDEN_PAX, POINTS, type ChallengeResult, type FngEntry, type Period } from "./ehChallenge";
 
 export const normalizePerson = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
 
@@ -14,6 +14,7 @@ export function nextMilestone(posts: number) {
 
 export function buildPersonProfile(data: ChallengeResult, name: string) {
   const key = normalizePerson(name);
+  if (key === normalizePerson(HIDDEN_PAX)) return null;
   const standing = data.leaderboard.find((p) => normalizePerson(p.name) === key);
   const ownFng = data.fngs.find((p) => normalizePerson(p.name) === key);
   if (!standing && !ownFng) return null;
@@ -44,7 +45,7 @@ export function buildPersonProfile(data: ChallengeResult, name: string) {
     regulars,
     badges,
     // Put the shortest path to the next points milestone first.
-    nextSteps: [...recruits].sort((a, b) => nextMilestone(a.posts).remaining - nextMilestone(b.posts).remaining || a.posts - b.posts || a.name.localeCompare(b.name)),
+    nextSteps: recruits.filter((p) => p.name !== HIDDEN_PAX).sort((a, b) => nextMilestone(a.posts).remaining - nextMilestone(b.posts).remaining || a.posts - b.posts || a.name.localeCompare(b.name)),
   };
 }
 

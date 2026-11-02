@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isPublicDataName } from "@/lib/dataExplorer";
 import { fetchEhRoster } from "@/lib/sheet";
 import { CorrectionInputError, validateCorrection } from "@/lib/ehCorrections";
 import { notifyCorrection, saveCorrection } from "@/lib/ehCorrectionStore";
@@ -8,7 +9,8 @@ export const maxDuration = 60;
 
 export async function GET() {
   try {
-    return NextResponse.json({ people: await fetchEhRoster() }, { headers: { "Cache-Control": "no-store" } });
+    const people = (await fetchEhRoster()).flatMap((p) => isPublicDataName(p.name) ? [{ name: p.name, ehBy: p.ehBy && isPublicDataName(p.ehBy) ? p.ehBy : null }] : []);
+    return NextResponse.json({ people }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Couldn't load the Roster names. Try again." }, { status: 503 });
   }

@@ -15,7 +15,7 @@ const community = load('lib/community.ts', { './dataExplorer': dataLib, './miles
 const trends = load('lib/attendanceTrends.ts', { './dataExplorer': dataLib, './milestones': milestones, './community': community });
 const ao = load('lib/aoProfile.ts', { './dataExplorer': dataLib, './milestones': milestones, './attendanceTrends': trends, './community': community });
 const activity = load('lib/paxActivity.ts');
-const eh = load('lib/ehChallenge.ts');
+const eh = load('lib/ehChallenge.ts', { './dataExplorer': dataLib });
 const ehProfile = load('lib/ehProfile.ts', { './ehChallenge': eh });
 const tools = load('lib/chatTools.ts', { './dataExplorer': dataLib, './milestones': milestones, './attendanceTrends': trends, './aoProfile': ao, './community': community, './paxActivity': activity, './ehChallenge': eh, './ehProfile': ehProfile });
 

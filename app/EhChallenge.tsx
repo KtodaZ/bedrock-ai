@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { attendanceIsBehindToday, buildBandText, formatDay, sortLeaderboard, type LeaderboardSort, type Period, PERIODS, PERIOD_LABELS, parsePeriod } from "@/lib/ehChallenge";
+import { attendanceIsBehindToday, buildBandText, formatDay, HIDDEN_PAX, sortLeaderboard, type LeaderboardSort, type Period, PERIODS, PERIOD_LABELS, parsePeriod } from "@/lib/ehChallenge";
 import { fetchChallenge } from "@/lib/challenge-client";
 import { matchesPerson, normalizePerson, personURL } from "@/lib/ehProfile";
 import PointsGuide from "./PointsGuide";
@@ -227,8 +227,8 @@ export default function EhChallenge() {
                 </p>
               ) : (
                 <ol>
-                  {leaderboard.map((e) => (
-                    <li key={e.name} className="relative flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
+                  {leaderboard.map((e, i) => (
+                    <li key={`${e.name}-${i}`} className="relative flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
                       <span
                         className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
                         style={
@@ -240,7 +240,7 @@ export default function EhChallenge() {
                         {e.rank}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <Link href={personURL(e.name, period)} className="block text-sm text-violet-200 hover:underline underline-offset-4 rounded after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-violet-400" aria-label={`View ${e.name}`}><span className="block truncate">{e.name}</span></Link>
+                        {e.name === HIDDEN_PAX ? <span className="block truncate text-sm text-white/70">{e.name}</span> : <Link href={personURL(e.name, period)} className="block text-sm text-violet-200 hover:underline underline-offset-4 rounded after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-violet-400" aria-label={`View ${e.name}`}><span className="block truncate">{e.name}</span></Link>}
                         <div className="text-xs text-white/50">{effectiveSort === "points" ? `${e.fngs} FNG${e.fngs === 1 ? "" : "s"}` : scoring ? `${e.total} pts` : "View invited FNGs →"}</div>
                       </div>
                       {e.week > 0 && <span className="text-xs text-emerald-400/80">+{e.week} this week</span>}
@@ -264,10 +264,10 @@ export default function EhChallenge() {
                 <p className="px-4 py-6 text-sm text-white/65 text-center">{search.trim() ? "No FNGs match this search. Try another name or clear the search." : "No FNGs in this period yet."}</p>
               ) : (
                 <ul>
-                  {(showAllFngs ? fngs : fngs.slice(0, FNG_PREVIEW)).map((f) => (
-                    <li key={f.name} className="relative flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
+                  {(showAllFngs ? fngs : fngs.slice(0, FNG_PREVIEW)).map((f, i) => (
+                    <li key={`${f.name}-${i}`} className="relative flex items-center gap-3 px-4 py-2.5 border-b border-white/5 last:border-0">
                       <div className="flex-1 min-w-0">
-                        <Link href={personURL(f.name, period)} className="block text-sm text-violet-200 hover:underline underline-offset-4 rounded after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-violet-400" aria-label={`View ${f.name}`}><span className="block truncate">{f.name}</span></Link>
+                        {f.name === HIDDEN_PAX ? <span className="block truncate text-sm text-white/70">{f.name}</span> : <Link href={personURL(f.name, period)} className="block text-sm text-violet-200 hover:underline underline-offset-4 rounded after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-violet-400" aria-label={`View ${f.name}`}><span className="block truncate">{f.name}</span></Link>}
                         <div className="text-xs text-white/35">
                           First post {formatDay(f.firstPost)} · {f.posts} post{f.posts === 1 ? "" : "s"}
                         </div>

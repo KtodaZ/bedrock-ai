@@ -12,7 +12,7 @@ function loadTS(file, dependencies = {}) {
   return exports;
 }
 
-const scoring = loadTS('lib/ehChallenge.ts');
+const scoring = loadTS('lib/ehChallenge.ts', { './dataExplorer': loadTS('lib/dataExplorer.ts') });
 const profiles = loadTS('lib/ehProfile.ts', { './ehChallenge': scoring });
 const post = (pax, date, fng = false) => ({ pax, date, fng, post: true, site: 'Test' });
 
@@ -166,4 +166,18 @@ test('Theme calendar covers the challenge without gaps or overlaps, and only che
     ['Alex', 'Ben', 'Cal'].map((pax) => ({ pax, ehBy: 'Old Hand' })), 'challenge');
   assert.equal(r.leaderboard[0].breakdown.themes, 10);
   assert.doesNotMatch(r.bandText, /provisional/i);
+});
+
+test('Under-18 and archived names stay hidden while their points and counts stand', () => {
+  const rows = [post('Kid (<18)', '2026-10-16', true), post('Teen (<18)', '2026-10-17', true), post('Grown', '2026-10-18', true), post('Gone (archived)', '2026-10-19', true)];
+  const log = [{ pax: 'Kid (<18)', ehBy: 'Dad' }, { pax: 'Teen (<18)', ehBy: 'Dad' }, { pax: 'Grown', ehBy: 'Kid (<18)' }, { pax: 'Gone (archived)', ehBy: 'Dad' }];
+  const r = scoring.computeChallenge(rows, log, 'challenge');
+  assert.doesNotMatch(JSON.stringify(r), /Kid|Teen|Gone|<18|archived/);
+  assert.equal(r.regionFngs, 4);
+  const dad = r.leaderboard.find((p) => p.name === 'Dad');
+  assert.deepEqual([dad.total, dad.fngs, dad.breakdown.referrals], [20, 3, 5]);
+  assert.equal(r.fngs.filter((f) => f.name === scoring.HIDDEN_PAX).length, 3);
+  assert.equal(r.fngs.find((f) => f.name === 'Grown').ehBy, scoring.HIDDEN_PAX);
+  assert.equal(profiles.buildPersonProfile(r, scoring.HIDDEN_PAX), null);
+  assert.equal(profiles.buildPersonProfile(r, 'Dad').nextSteps.length, 0);
 });

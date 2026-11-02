@@ -72,7 +72,8 @@ test('The submission endpoint rejects invalid JSON/origins and never notifies Di
   const { NextRequest } = require('next/server');
   let notified = 0;
   const api = loadTS('app/api/eh-corrections/route.ts', {
-    '@/lib/sheet': { fetchEhRoster: async () => people },
+    '@/lib/dataExplorer': loadTS('lib/dataExplorer.ts'),
+    '@/lib/sheet': { fetchEhRoster: async () => [...people, { name: 'Kid (<18)', ehBy: 'Gelato' }, { name: 'Junior', ehBy: 'Gone (archived)' }] },
     '@/lib/ehCorrections': corrections,
     '@/lib/ehCorrectionStore': { saveCorrection: async () => { throw new Error('Storage outage'); }, notifyCorrection: async () => { notified++; return 'sent'; } },
   });
@@ -81,4 +82,7 @@ test('The submission endpoint rejects invalid JSON/origins and never notifies Di
   assert.equal((await api.POST(req('{'))).status, 400);
   assert.equal((await api.POST(req(JSON.stringify(input())))).status, 503);
   assert.equal(notified, 0);
+  const roster = await (await api.GET()).json();
+  assert.doesNotMatch(JSON.stringify(roster), /Kid|Gone|<18|archived/);
+  assert.deepEqual(roster.people.find((p) => p.name === 'Junior'), { name: 'Junior', ehBy: null });
 });
